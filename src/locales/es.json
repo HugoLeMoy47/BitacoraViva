@@ -1,0 +1,75 @@
+{
+  "app": {
+    "title": "Bitácora Viva",
+    "tagline": "Memoria institucional y acompañamiento ético",
+    "badge_poc": "POC v0.1 — Épica E1 (Fundación)",
+    "ethos_commitment": "Compromiso C4 activo: Auditoría de escritura inmutable por disparador"
+  },
+  "roles": {
+    "director": {
+      "title": "Dirección",
+      "description": "Supervisión global del albergue, gobernanza de roles, digest de alertas y auditoría",
+      "badge": "Acceso Directivo"
+    },
+    "caseworker": {
+      "title": "Trabajo Social / Caso",
+      "description": "Gestión integral del caso, notas de evolución y bitácora en áreas asignadas",
+      "badge": "Operación de Caso"
+    },
+    "intake_officer": {
+      "title": "Oficial de Ingreso",
+      "description": "Recepción inicial, levantamiento de ficha básica y apertura de folios",
+      "badge": "Ingreso / Admisión"
+    },
+    "viewer": {
+      "title": "Observador / Auditor",
+      "description": "Lectura de métricas agregadas y anonimizadas; sin acceso a datos identificables",
+      "badge": "Solo Métricas"
+    }
+  },
+  "session": {
+    "current_role": "Rol activo en sesión:",
+    "switch_role": "Simular cambio de rol:",
+    "organization": "Albergue activo:",
+    "status_connected": "Supabase Local / Migración E1",
+    "mode_emulation": "Modo Simulación Activo (Sin Docker)"
+  },
+  "navigation": {
+    "overview": "Visión General",
+    "areas": "Áreas del Albergue",
+    "audit_trail": "Registro de Auditoría Inmutable",
+    "cases_preview": "Gestión de Casos (Próximamente E2/E3)",
+    "rules": "10 Reglas Duras"
+  },
+  "dashboard": {
+    "organization_details": "Identidad del Albergue (Tenancy)",
+    "org_slug": "Identificador único (slug):",
+    "org_legal": "Razón Social:",
+    "org_display": "Nombre Público:",
+    "security_status": "Garantías de Seguridad RLS",
+    "security_status_desc": "La seguridad vive en la base de datos PostgreSQL. Se revocaron privilegios de DELETE y UPDATE sobre audit_event.",
+    "areas_title": "Áreas Operativas Habilitadas",
+    "audit_title": "Últimos Eventos de Auditoría (Append-Only)",
+    "audit_empty": "No hay eventos registrados en este momento.",
+    "table_column_action": "Acción",
+    "table_column_table": "Tabla",
+    "table_column_user": "Usuario",
+    "table_column_timestamp": "Marca Temporal",
+    "table_column_record": "ID Registro",
+    "active_badge": "Activa",
+    "total_areas": "Áreas operativas registradas:",
+    "total_roles": "Roles normativos soportados:"
+  },
+  "rules_list": {
+    "r1": "1. La seguridad vive en la base de datos (RLS en toda tabla)",
+    "r2": "2. service_role nunca llega al cliente",
+    "r3": "3. Ningún rol de aplicación tiene DELETE sobre tablas de negocio",
+    "r4": "4. audit_event es estrictamente append-only",
+    "r5": "5. Toda escritura genera evento de auditoría por disparador",
+    "r6": "6. journal_entry nace area_private por defecto",
+    "r7": "7. El estatus no se sobrescribe: se cierra el vigente y se abre uno nuevo",
+    "r8": "8. Nombres estandarizados según el glosario de términos",
+    "r9": "9. Cero literales de texto visibles en componentes (i18n)",
+    "r10": "10. Cero cambios de esquema desde consola (migraciones versionadas)"
+  }
+}
