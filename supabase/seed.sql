@@ -314,17 +314,8 @@ begin
         true, '2026-09-22T11:00:00Z', '2026-09-22T11:45:00Z', 'area_private'
     ) on conflict (id) do nothing;
 
-    -- 4. Entrada original de Trabajo Social con error tipográfico
-    insert into public.journal_entry (
-        id, organization_id, case_id, area_id, author_user_id, entry_type_key,
-        body, is_work_note, occurred_at, created_at, visibility, superseded_by_id
-    ) values (
-        v_entry_3, v_org, v_c_wendy, v_area_ts, v_user_case, 'note',
-        'Se entregó kit de aseo y ropa para Dylan en módulo 4.',
-        false, '2026-09-23T15:00:00Z', '2026-09-23T15:10:00Z', 'area_private', v_entry_4
-    ) on conflict (id) do nothing;
-
-    -- 5. Nota aclaratoria / Fe de erratas (BV-4.2)
+    -- 4. Nota aclaratoria / Fe de erratas (BV-4.2)
+    -- NOTA: Se inserta antes de v_entry_3 para satisfacer la clave foránea superseded_by_id
     insert into public.journal_entry (
         id, organization_id, case_id, area_id, author_user_id, entry_type_key,
         body, is_work_note, occurred_at, created_at, visibility
@@ -332,6 +323,16 @@ begin
         v_entry_4, v_org, v_c_wendy, v_area_ts, v_user_case, 'note',
         'Fe de erratas: Se aclara que la entrega del kit de aseo y muda de ropa para Dylan fue en el Módulo Familiar B (habitación 12), no en el módulo 4.',
         false, '2026-09-23T15:00:00Z', '2026-09-23T16:00:00Z', 'area_private'
+    ) on conflict (id) do nothing;
+
+    -- 5. Entrada original de Trabajo Social con error tipográfico superada por la fe de erratas
+    insert into public.journal_entry (
+        id, organization_id, case_id, area_id, author_user_id, entry_type_key,
+        body, is_work_note, occurred_at, created_at, visibility, superseded_by_id
+    ) values (
+        v_entry_3, v_org, v_c_wendy, v_area_ts, v_user_case, 'note',
+        'Se entregó kit de aseo y ropa para Dylan en módulo 4.',
+        false, '2026-09-23T15:00:00Z', '2026-09-23T15:10:00Z', 'area_private', v_entry_4
     ) on conflict (id) do nothing;
 
     -- 6. Entrada inicial en caso de Mateo (NNA no acompañado)
