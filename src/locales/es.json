@@ -2,28 +2,28 @@
   "app": {
     "title": "Bitácora Viva",
     "tagline": "Memoria institucional y acompañamiento ético",
-    "badge_poc": "POC v0.1 — Épica E1 (Fundación)",
+    "badge_poc": "POC v0.1 — Épica E1 (Fundación y Gobernanza)",
     "ethos_commitment": "Compromiso C4 activo: Auditoría de escritura inmutable por disparador"
   },
   "roles": {
     "director": {
       "title": "Dirección",
-      "description": "Supervisión global del albergue, gobernanza de roles, digest de alertas y auditoría",
+      "description": "Supervisión global del albergue, gobernanza de roles, digest de alertas, auditoría y requerimientos de autoridad",
       "badge": "Acceso Directivo"
     },
     "caseworker": {
       "title": "Trabajo Social / Caso",
-      "description": "Gestión integral del caso, notas de evolución y bitácora en áreas asignadas",
+      "description": "Gestión integral del caso, notas de evolución y bitácora en áreas operativas asignadas",
       "badge": "Operación de Caso"
     },
     "intake_officer": {
       "title": "Oficial de Ingreso",
-      "description": "Recepción inicial, levantamiento de ficha básica y apertura de folios",
+      "description": "Recepción inicial, levantamiento de ficha básica validada (MAP-OIM v3) y apertura de folios",
       "badge": "Ingreso / Admisión"
     },
     "viewer": {
       "title": "Observador / Auditor",
-      "description": "Lectura de métricas agregadas y anonimizadas; sin acceso a datos identificables",
+      "description": "Lectura de métricas agregadas y anonimizadas (umbral n >= 5); sin acceso a datos identificables",
       "badge": "Solo Métricas"
     }
   },
@@ -32,13 +32,16 @@
     "switch_role": "Simular cambio de rol:",
     "organization": "Albergue activo:",
     "status_connected": "Supabase Local / Migración E1",
-    "mode_emulation": "Modo Simulación Activo (Sin Docker)"
+    "mode_emulation": "Modo Simulación Activo (Sin Docker)",
+    "assigned_area": "Área de adscripción:",
+    "transversal_role": "Transversal (Organización completa)"
   },
   "navigation": {
     "overview": "Visión General",
     "areas": "Áreas del Albergue",
-    "audit_trail": "Registro de Auditoría Inmutable",
-    "cases_preview": "Gestión de Casos (Próximamente E2/E3)",
+    "audit_trail": "Registro de Auditoría",
+    "authority_requests": "Requerimientos de Autoridad",
+    "cases_preview": "Gestión de Casos (MAP-OIM v3)",
     "rules": "10 Reglas Duras"
   },
   "dashboard": {
@@ -59,6 +62,30 @@
     "active_badge": "Activa",
     "total_areas": "Áreas operativas registradas:",
     "total_roles": "Roles normativos soportados:"
+  },
+  "audit": {
+    "restricted_title": "Acceso Restringido por Ethos C4 y BV-1.3",
+    "restricted_badge": "Exclusivo Dirección",
+    "restricted_message": "El registro global de auditoría inmutable es accesible exclusivamente para el rol Dirección. Los roles Operación de Caso, Ingreso y Observador tienen el acceso denegado por política RLS para preservar la compartimentación ética de la información.",
+    "restricted_detail": "Cualquier intento de consulta desde un rol no directivo es bloqueado por la regla de seguridad a nivel de motor PostgreSQL.",
+    "active_policy_label": "Política RLS activa:",
+    "active_policy_code": "create policy \"Solo directores leen auditoría de su organización\" on public.audit_event for select using (public.has_role('director'));"
+  },
+  "authority_requests": {
+    "title": "Requerimientos de Autoridad (Ethos E-03)",
+    "subtitle": "Registro formal de requerimientos judiciales y administrativos. El cumplimiento ocurre fuera del sistema; aquí queda constancia del hecho legal.",
+    "restricted_title": "Acceso Restringido por Ethos E-03",
+    "restricted_badge": "Exclusivo Dirección",
+    "restricted_message": "Los requerimientos de autoridad y medidas cautelares son de visualización estrictamente reservada para la Dirección. Ningún rol operativo puede consultar esta tabla.",
+    "table_column_authority": "Autoridad Solicitante",
+    "table_column_type": "Tipo de Solicitud",
+    "table_column_ref": "Oficio / Causa",
+    "table_column_received": "Recepción",
+    "table_column_status": "Estatus Entrega",
+    "table_column_summary": "Resumen Institucional",
+    "status_delivered": "Extracto Entregado",
+    "status_pending": "Trámite Externo / En Proceso",
+    "governance_note": "Gobernanza Ethos E-02: En caso de requerimiento legal de entrega de expediente, las notas de trabajo protegidas (is_work_note) no forman parte de la titularidad de la persona y se excluyen por protocolo."
   },
   "rules_list": {
     "r1": "1. La seguridad vive en la base de datos (RLS en toda tabla)",

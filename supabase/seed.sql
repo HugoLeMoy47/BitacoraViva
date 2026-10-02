@@ -23,8 +23,7 @@ values
     ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'coordinacion', 'Coordinación General', true)
 on conflict (id) do nothing;
 
--- 3. Cuentas de demostración en auth.users y user_profile
--- Nota: En Supabase local, se insertan en auth.users con contraseña fija "albergue2026!"
+-- 3. Cuentas de demostración en auth.users, user_profile y user_role
 -- Passwords con hash bcrypt de 'albergue2026!'
 do $$
 declare
@@ -53,14 +52,37 @@ begin
             (v_user_view, v_org_id, 'viewer@alberguesantafe.org', 'Dr. Roberto Soto', true)
         on conflict (id) do nothing;
 
-        -- Asignación de roles
-        insert into public.user_role (user_id, role_name)
+        -- Asignación de roles con área y trazabilidad
+        insert into public.user_role (user_id, role_name, area_id, granted_by, granted_at)
         values
-            (v_user_dir, 'director'),
-            (v_user_case, 'caseworker'),
-            (v_user_intk, 'intake_officer'),
-            (v_user_view, 'viewer')
-        on conflict (user_id, role_name) do nothing;
+            (v_user_dir, 'director', null, v_user_dir, now()),
+            (v_user_case, 'caseworker', '10000000-0000-0000-0000-000000000001', v_user_dir, now()),
+            (v_user_intk, 'intake_officer', null, v_user_dir, now()),
+            (v_user_view, 'viewer', null, v_user_dir, now())
+        on conflict do nothing;
+
+        -- Requerimiento de autoridad inicial de prueba (Ethos E-03)
+        insert into public.authority_request (
+            id,
+            organization_id,
+            authority_name,
+            request_type,
+            official_letter_ref,
+            received_at,
+            handled_by_user_id,
+            response_summary,
+            extract_delivered
+        ) values (
+            'd0000000-0000-0000-0000-000000000001',
+            v_org_id,
+            'Comisión Nacional de los Derechos Humanos (CNDH)',
+            'Solicitud de información sobre medidas cautelares',
+            'CNDH/2026/V4/7821',
+            now() - interval '2 days',
+            v_user_dir,
+            'Requerimiento atendido institucionalmente fuera del sistema conforme a protocolo.',
+            false
+        ) on conflict (id) do nothing;
     end if;
 end $$;
 
@@ -78,5 +100,5 @@ insert into public.audit_event (
     'INSERT',
     'organization',
     '00000000-0000-0000-0000-000000000001',
-    '{"event": "genesis_albergue_santa_fe", "commitments": "Ethos C1-C8 activados", "version": "v1.0"}'::jsonb
+    '{"event": "genesis_albergue_santa_fe", "commitments": "Ethos C1-C8 activados", "version": "v1.2"}'::jsonb
 ) on conflict (id) do nothing;

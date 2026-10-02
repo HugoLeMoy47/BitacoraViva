@@ -1,4 +1,4 @@
-import { Organization, Area, Role, UserProfile, AuditEvent, RoleName } from '../types/database';
+import { Organization, Area, Role, UserProfile, UserRole, AuditEvent, AuthorityRequest, RoleName } from '../types/database';
 
 export const DEMO_ORGANIZATION: Organization = {
   id: '00000000-0000-0000-0000-000000000001',
@@ -44,6 +44,8 @@ export const DEMO_AREAS: Area[] = [
 export interface DemoUser {
   profile: UserProfile;
   role: RoleName;
+  userRole: UserRole;
+  assignedAreaName?: string;
 }
 
 export const DEMO_USERS: Record<RoleName, DemoUser> = {
@@ -58,6 +60,14 @@ export const DEMO_USERS: Record<RoleName, DemoUser> = {
       updated_at: '2026-09-14T08:00:00Z',
     },
     role: 'director',
+    userRole: {
+      id: '11111111-0000-0000-0000-000000000000',
+      user_id: 'a0000000-0000-0000-0000-000000000001',
+      role_name: 'director',
+      area_id: null,
+      granted_by: 'a0000000-0000-0000-0000-000000000001',
+      granted_at: '2026-09-14T08:00:00Z',
+    },
   },
   caseworker: {
     profile: {
@@ -70,6 +80,15 @@ export const DEMO_USERS: Record<RoleName, DemoUser> = {
       updated_at: '2026-09-14T08:00:00Z',
     },
     role: 'caseworker',
+    userRole: {
+      id: '11111111-0000-0000-0000-000000000001',
+      user_id: 'a0000000-0000-0000-0000-000000000002',
+      role_name: 'caseworker',
+      area_id: '10000000-0000-0000-0000-000000000001', // Trabajo Social
+      granted_by: 'a0000000-0000-0000-0000-000000000001',
+      granted_at: '2026-09-14T08:05:00Z',
+    },
+    assignedAreaName: 'Trabajo Social',
   },
   intake_officer: {
     profile: {
@@ -82,6 +101,14 @@ export const DEMO_USERS: Record<RoleName, DemoUser> = {
       updated_at: '2026-09-14T08:00:00Z',
     },
     role: 'intake_officer',
+    userRole: {
+      id: '11111111-0000-0000-0000-000000000002',
+      user_id: 'a0000000-0000-0000-0000-000000000003',
+      role_name: 'intake_officer',
+      area_id: null,
+      granted_by: 'a0000000-0000-0000-0000-000000000001',
+      granted_at: '2026-09-14T08:06:00Z',
+    },
   },
   viewer: {
     profile: {
@@ -94,6 +121,14 @@ export const DEMO_USERS: Record<RoleName, DemoUser> = {
       updated_at: '2026-09-14T08:00:00Z',
     },
     role: 'viewer',
+    userRole: {
+      id: '11111111-0000-0000-0000-000000000003',
+      user_id: 'a0000000-0000-0000-0000-000000000004',
+      role_name: 'viewer',
+      area_id: null,
+      granted_by: 'a0000000-0000-0000-0000-000000000001',
+      granted_at: '2026-09-14T08:07:00Z',
+    },
   },
 };
 
@@ -117,7 +152,7 @@ export const DEMO_AUDIT_EVENTS: AuditEvent[] = [
     table_name: 'user_role',
     record_id: '11111111-0000-0000-0000-000000000001',
     old_values: null,
-    new_values: { user_id: 'a0000000-0000-0000-0000-000000000002', role_name: 'caseworker' },
+    new_values: { user_id: 'a0000000-0000-0000-0000-000000000002', role_name: 'caseworker', area_id: '10000000-0000-0000-0000-000000000001' },
     created_at: '2026-09-14T08:05:00Z',
   },
   {
@@ -128,7 +163,33 @@ export const DEMO_AUDIT_EVENTS: AuditEvent[] = [
     table_name: 'user_role',
     record_id: '11111111-0000-0000-0000-000000000002',
     old_values: null,
-    new_values: { user_id: 'a0000000-0000-0000-0000-000000000003', role_name: 'intake_officer' },
+    new_values: { user_id: 'a0000000-0000-0000-0000-000000000003', role_name: 'intake_officer', area_id: null },
     created_at: '2026-09-14T08:06:00Z',
+  },
+  {
+    id: 'e0000000-0000-0000-0000-000000000004',
+    organization_id: DEMO_ORGANIZATION.id,
+    user_id: 'a0000000-0000-0000-0000-000000000001',
+    action: 'INSERT',
+    table_name: 'authority_request',
+    record_id: 'd0000000-0000-0000-0000-000000000001',
+    old_values: null,
+    new_values: { official_letter_ref: 'CNDH/2026/V4/7821', authority_name: 'CNDH', request_type: 'Medidas cautelares' },
+    created_at: '2026-09-30T10:30:00Z',
+  },
+];
+
+export const DEMO_AUTHORITY_REQUESTS: AuthorityRequest[] = [
+  {
+    id: 'd0000000-0000-0000-0000-000000000001',
+    organization_id: DEMO_ORGANIZATION.id,
+    authority_name: 'Comisión Nacional de los Derechos Humanos (CNDH)',
+    request_type: 'Solicitud de información sobre medidas cautelares',
+    official_letter_ref: 'CNDH/2026/V4/7821',
+    received_at: '2026-09-30T10:15:00Z',
+    handled_by_user_id: 'a0000000-0000-0000-0000-000000000001',
+    response_summary: 'Requerimiento atendido formalmente fuera del sistema conforme a protocolo de protección humanitaria.',
+    extract_delivered: false,
+    created_at: '2026-09-30T10:30:00Z',
   },
 ];
