@@ -6,7 +6,7 @@ import {
   Lock
 } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { CaseWithDetails, RoleName, StatusAxisCode } from '../types/database';
+import { CaseWithDetails, RoleName, StatusAxisCode, JournalEntry } from '../types/database';
 import { CaseDetailView } from './CaseDetailView';
 import { NewCaseModal } from './NewCaseModal';
 
@@ -14,6 +14,7 @@ interface CasesViewProps {
   cases: CaseWithDetails[];
   activeRole: RoleName;
   assignedAreaCode?: string;
+  assignedAreaId?: string;
   authorUserId: string;
   authorFullName: string;
   onCaseCreated: (newCase: CaseWithDetails) => void;
@@ -23,16 +24,23 @@ interface CasesViewProps {
     newValueCode: string, 
     reason: string
   ) => void;
+  onAddJournalEntry?: (entry: JournalEntry) => void;
+  onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;
+  onShareJournalEntry?: (entryId: string, toAreaId: string, toAreaName: string, reason: string) => void;
 }
 
 export const CasesView: React.FC<CasesViewProps> = ({
   cases,
   activeRole,
   assignedAreaCode,
+  assignedAreaId,
   authorUserId,
   authorFullName,
   onCaseCreated,
   onTransitionStatus,
+  onAddJournalEntry,
+  onAddClarification,
+  onShareJournalEntry,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -60,8 +68,14 @@ export const CasesView: React.FC<CasesViewProps> = ({
         onBack={() => setSelectedCaseId(null)}
         activeRole={activeRole}
         assignedAreaCode={assignedAreaCode}
+        assignedAreaId={assignedAreaId}
+        authorUserId={authorUserId}
+        authorFullName={authorFullName}
         onTransitionStatus={onTransitionStatus}
         onSelectSubfolio={(subfolio) => setSelectedCaseId(subfolio.id)}
+        onAddJournalEntry={onAddJournalEntry}
+        onAddClarification={onAddClarification}
+        onShareJournalEntry={onShareJournalEntry}
       />
     );
   }

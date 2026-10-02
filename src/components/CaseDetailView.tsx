@@ -7,27 +7,41 @@ import {
   Layers, 
   FileText, 
   Users, 
-  ChevronRight,
-  Send,
-  Lock
+  ChevronRight, 
+  Send, 
+  Lock,
+  BookOpen,
+  Share2,
+  Plus,
+  Shield,
+  CornerDownRight,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { 
   CaseWithDetails, 
   RoleName, 
-  StatusAxisCode 
+  StatusAxisCode,
+  JournalEntry
 } from '../types/database';
 import { 
   DEMO_STATUS_AXES, 
   DEMO_STATUS_VALUES, 
   VULNERABILITY_CATALOG 
 } from '../lib/mockData';
+import { NewJournalEntryModal } from './NewJournalEntryModal';
+import { ClarificationNoteModal } from './ClarificationNoteModal';
+import { ShareEntryModal } from './ShareEntryModal';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
   onBack: () => void;
   activeRole: RoleName;
   assignedAreaCode?: string;
+  assignedAreaId?: string;
+  authorUserId: string;
+  authorFullName: string;
   onTransitionStatus: (
     caseId: string, 
     axisCode: StatusAxisCode, 
@@ -35,6 +49,9 @@ interface CaseDetailViewProps {
     reason: string
   ) => void;
   onSelectSubfolio?: (subfolioCase: CaseWithDetails) => void;
+  onAddJournalEntry?: (entry: JournalEntry) => void;
+  onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;
+  onShareJournalEntry?: (entryId: string, toAreaId: string, toAreaName: string, reason: string) => void;
 }
 
 export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
@@ -42,14 +59,27 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onBack,
   activeRole,
   assignedAreaCode,
+  assignedAreaId,
+  authorUserId,
+  authorFullName,
   onTransitionStatus,
   onSelectSubfolio,
+  onAddJournalEntry,
+  onAddClarification,
+  onShareJournalEntry,
 }) => {
-  const [activeTab, setActiveTab] = useState<'axes' | 'summary' | 'vulnerabilities' | 'subfolios'>('axes');
+  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios'>('axes');
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   const [targetValueCode, setTargetValueCode] = useState<string>('');
   const [transitionReason, setTransitionReason] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Estados para Bitácora (Épica E4)
+  const [journalFilter, setJournalFilter] = useState<'all' | 'my_area' | 'shared' | 'work_notes'>('all');
+  const [isNewJournalOpen, setIsNewJournalOpen] = useState<boolean>(false);
+  const [clarifyingEntry, setClarifyingEntry] = useState<JournalEntry | null>(null);
+  const [sharingEntry, setSharingEntry] = useState<JournalEntry | null>(null);
+  const [expandedSuperseded, setExpandedSuperseded] = useState<Record<string, boolean>>({});
 
   const hasUnaccompaniedChild = caseData.vulnerabilities.some(
     (v) => v.marker_code === 'unaccompanied_child'
@@ -57,6 +87,29 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
   const isDirector = activeRole === 'director';
   const isLegalCaseworker = activeRole === 'caseworker' && assignedAreaCode === 'legal';
+  const canWriteJournal = activeRole === 'caseworker' || activeRole === 'intake_officer' || activeRole === 'director';
+
+  const journalEntries = caseData.journal_entries || [];
+
+  const filteredJournalEntries = journalEntries.filter((entry) => {
+    if (journalFilter === 'my_area') {
+      return entry.area_code === assignedAreaCode;
+    }
+    if (journalFilter === 'shared') {
+      return entry.visibility === 'shared';
+    }
+    if (journalFilter === 'work_notes') {
+      return entry.is_work_note;
+    }
+    return true;
+  });
+
+  const toggleSuperseded = (entryId: string) => {
+    setExpandedSuperseded((prev) => ({
+      ...prev,
+      [entryId]: !prev[entryId],
+    }));
+  };
 
   const handleOpenTransition = (axisCode: StatusAxisCode) => {
     setTransitioningAxis(axisCode);
@@ -81,52 +134,58 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
       return;
     }
 
-    // Regla de gobernanza: record_status a closed solo director
-    if (transitioningAxis === 'record_status' && targetValueCode === 'closed' && !isDirector) {
+    // Regla de gobernanza: closed sólo director
+    if (targetValueCode === 'closed' && !isDirector) {
       setErrorMessage(t('cases.err_closed_restricted'));
       return;
     }
 
     onTransitionStatus(caseData.id, transitioningAxis, targetValueCode, transitionReason.trim());
     setTransitioningAxis(null);
-    setTransitionReason('');
-    setErrorMessage(null);
   };
 
   return (
     <div className="space-y-6">
-      {/* Botón Volver y Cabecera de Expediente */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-        <div>
-          <button
-            onClick={onBack}
-            className="flex items-center text-xs font-semibold text-gray-500 hover:text-carbon transition-colors mb-3"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            {t('cases.back_to_list')}
-          </button>
+      {/* Barra superior de navegación */}
+      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-xs font-semibold text-carbon-muted hover:text-carbon transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>{t('cases.btn_back')}</span>
+        </button>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-mono font-extrabold text-carbon">
-              {caseData.case_number}
-            </h2>
-            <span className="bg-claro text-turquesa-dark border border-turquesa/30 px-3 py-1 rounded-full text-xs font-bold">
-              {caseData.statuses.engagement_status?.label || 'En atención'}
-            </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs px-2.5 py-1 rounded bg-carbon text-white font-bold tracking-wider">
+            {caseData.case_number}
+          </span>
+          <span className="text-xs bg-turquesa/10 text-turquesa px-2.5 py-1 rounded-full font-bold">
+            {caseData.statuses.engagement_status?.label || 'Primer Contacto'}
+          </span>
+        </div>
+      </div>
+
+      {/* Cabecera del Expediente */}
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-title text-2xl font-bold text-carbon">
+              {caseData.person.preferred_name || `${caseData.person.given_name} ${caseData.person.paternal_family_name}`}
+            </h1>
             {caseData.parent_case_id && (
-              <span className="bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
+              <span className="text-[11px] bg-turquesa/15 text-turquesa px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                 {t('cases.badge_subfolio')}
               </span>
             )}
-            {caseData.previous_case_id && (
-              <span className="bg-blue-100 text-blue-800 px-2.5 py-0.5 rounded-full text-xs font-medium">
-                {t('cases.badge_reentry')}
+            {hasUnaccompaniedChild && (
+              <span className="text-[11px] bg-alerta text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                {t('cases.badge_unaccompanied')}
               </span>
             )}
           </div>
-
-          <div className="mt-2 text-sm text-gray-600 flex flex-wrap items-center gap-2">
-            <span className="font-bold text-carbon">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-2">
+            <span className="font-medium text-carbon">
               {caseData.person.given_name} {caseData.person.paternal_family_name}
             </span>
             {caseData.person.preferred_name && (
@@ -163,7 +222,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
       )}
 
       {/* Pestañas del Expediente */}
-      <div className="flex space-x-2 border-b border-gray-200">
+      <div className="flex flex-wrap space-x-2 border-b border-gray-200">
         <button
           onClick={() => setActiveTab('axes')}
           className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
@@ -175,6 +234,19 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           <Layers className="w-4 h-4" />
           {t('cases.tab_axes')}
         </button>
+
+        <button
+          onClick={() => setActiveTab('journal')}
+          className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
+            activeTab === 'journal'
+              ? 'border-turquesa text-carbon'
+              : 'border-transparent text-gray-500 hover:text-carbon'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          {t('journal.tab_title')} ({journalEntries.length})
+        </button>
+
         <button
           onClick={() => setActiveTab('summary')}
           className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
@@ -218,193 +290,440 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           <div className="bg-claro/30 p-4 rounded-xl border border-turquesa/30 text-xs text-carbon">
             <h3 className="font-bold text-turquesa-dark mb-1">{t('cases.axes_section_title')}</h3>
             <p className="text-gray-600">
-              {t('cases.change_modal_notice')}
+              {t('cases.axes_section_desc')}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {DEMO_STATUS_AXES.map((axis) => {
-              const current = caseData.statuses[axis.code];
+              const currentStatus = caseData.statuses[axis.code];
               const isPrimary = axis.is_primary;
-              const isLegal = axis.code === 'legal_status';
 
               return (
                 <div
                   key={axis.id}
-                  className={`bg-white rounded-2xl p-5 border shadow-xs flex flex-col justify-between ${
-                    isPrimary ? 'border-turquesa ring-1 ring-turquesa/20' : 'border-gray-200'
+                  className={`bg-white rounded-2xl p-5 border flex flex-col justify-between shadow-sm transition hover:shadow-md ${
+                    isPrimary ? 'border-turquesa/60 ring-2 ring-turquesa/20' : 'border-gray-200'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          {axis.label_es}
-                        </span>
-                        {isPrimary && (
-                          <span className="bg-turquesa/20 text-turquesa-dark text-[10px] font-bold px-2 py-0.5 rounded-full">
-                            Estatus Prioritario
-                          </span>
-                        )}
-                      </div>
-                      {isLegal && (
-                        <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1">
-                          <Lock className="w-3 h-3" /> Área Jurídica
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                        {axis.label_es}
+                      </span>
+                      {isPrimary && (
+                        <span className="text-[10px] bg-turquesa/20 text-carbon font-extrabold px-2 py-0.5 rounded-full">
+                          {t('cases.axis_primary')}
                         </span>
                       )}
                     </div>
 
-                    <div className="my-3">
-                      <span className="text-base font-bold text-carbon block">
-                        {current?.label || 'Sin asignar'}
-                      </span>
-                      <p className="text-xs text-gray-500 font-mono mt-1">
-                        Código: <code>{current?.valueCode}</code>
+                    <div className="my-2">
+                      <h4 className="text-base font-bold text-carbon">
+                        {currentStatus?.label || 'Sin Asignar'}
+                      </h4>
+                      <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{t('cases.status_since')}: {currentStatus?.valid_from ? new Date(currentStatus.valid_from).toLocaleDateString() : '—'}</span>
                       </p>
                     </div>
 
-                    <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs space-y-1 mb-4">
-                      <div className="flex items-center text-gray-500 text-[11px] gap-1">
-                        <Clock className="w-3.5 h-3.5 text-gray-400" />
-                        <span>Vigente desde: {current?.valid_from.substring(0, 10)}</span>
+                    {currentStatus?.reason && (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-xl text-xs text-gray-600 border border-gray-100">
+                        <span className="font-semibold text-gray-500 block mb-0.5">
+                          {t('cases.last_reason')}:
+                        </span>
+                        <p className="italic">"{currentStatus.reason}"</p>
                       </div>
-                      <p className="text-gray-700 italic text-[11px] mt-1">
-                        "{current?.reason || 'Apertura de caso'}"
-                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-[11px] text-gray-400 font-mono">
+                      {axis.code}
+                    </span>
+                    <button
+                      onClick={() => handleOpenTransition(axis.code)}
+                      className="px-3 py-1.5 text-xs font-bold text-carbon bg-turquesa/20 hover:bg-turquesa hover:text-carbon rounded-lg transition"
+                    >
+                      {t('cases.btn_change_status')}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Bitácora de Intervenciones (Épica E4) */}
+      {activeTab === 'journal' && (
+        <div className="space-y-4">
+          {/* Header de Bitácora */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200">
+            {/* Filtros */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <button
+                onClick={() => setJournalFilter('all')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  journalFilter === 'all'
+                    ? 'bg-carbon text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {t('journal.filter_all')}
+              </button>
+              {assignedAreaCode && (
+                <button
+                  onClick={() => setJournalFilter('my_area')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                    journalFilter === 'my_area'
+                      ? 'bg-turquesa text-carbon shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('journal.filter_my_area')}
+                </button>
+              )}
+              <button
+                onClick={() => setJournalFilter('shared')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  journalFilter === 'shared'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {t('journal.filter_shared')}
+              </button>
+              <button
+                onClick={() => setJournalFilter('work_notes')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  journalFilter === 'work_notes'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {t('journal.filter_work_notes')}
+              </button>
+            </div>
+
+            {/* Botón de Nueva Entrada */}
+            {canWriteJournal && (
+              <button
+                onClick={() => setIsNewJournalOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" />
+                <span>{t('journal.btn_new_entry')}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Lista de Entradas de Bitácora */}
+          {filteredJournalEntries.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-sm text-gray-500">
+              {t('journal.empty_state')}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredJournalEntries.map((entry) => {
+                const isSuperseded = !!entry.superseded_by_id;
+                const isExpanded = !!expandedSuperseded[entry.id];
+                const isShared = entry.visibility === 'shared';
+
+                return (
+                  <div
+                    key={entry.id}
+                    className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow ${
+                      isSuperseded
+                        ? 'border-gray-200 bg-gray-50/70 opacity-90'
+                        : isShared
+                        ? 'border-blue-200 ring-1 ring-blue-100'
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    {/* Header de la Tarjeta */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
+                          {entry.area_name || entry.area_code}
+                        </span>
+                        <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa">
+                          {t(`journal.types.${entry.entry_type_key}`)}
+                        </span>
+
+                        {entry.is_work_note && (
+                          <span
+                            title={t('journal.work_note_tooltip')}
+                            className="flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800"
+                          >
+                            <Shield className="h-3 w-3" />
+                            {t('journal.work_note_badge')}
+                          </span>
+                        )}
+
+                        {isShared ? (
+                          <span className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800">
+                            <Share2 className="h-3 w-3" />
+                            {t('journal.visibility_shared')} {entry.sharing_event?.to_area_name || 'otra área'}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                            <Lock className="h-3 w-3" />
+                            {t('journal.visibility_area_private')}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span title={`Capturado: ${new Date(entry.created_at).toLocaleString()}`}>
+                          <strong>{t('journal.occurred_at')}</strong> {new Date(entry.occurred_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Banner si la nota fue superada por fe de erratas */}
+                    {isSuperseded && (
+                      <div className="mt-3 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <span>{t('journal.superseded_notice')}</span>
+                        </div>
+                        <button
+                          onClick={() => toggleSuperseded(entry.id)}
+                          className="flex items-center gap-1 font-bold text-amber-800 underline hover:text-amber-950"
+                        >
+                          {isExpanded ? (
+                            <>
+                              <EyeOff className="h-3.5 w-3.5" />
+                              <span>{t('journal.superseded_toggle_hide')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-3.5 w-3.5" />
+                              <span>{t('journal.superseded_toggle_show')}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Cuerpo de la intervención */}
+                    {(!isSuperseded || isExpanded) && (
+                      <div className={`mt-3.5 whitespace-pre-wrap text-sm leading-relaxed ${
+                        isSuperseded ? 'text-gray-500 line-through' : 'text-carbon'
+                      }`}>
+                        {entry.body}
+                      </div>
+                    )}
+
+                    {/* Footer y Acciones */}
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs text-gray-400">
+                      <div>
+                        <span>{t('journal.author_by')} <strong className="text-gray-700">{entry.author_name || 'Personal Operativo'}</strong></span>
+                        <span className="mx-2">·</span>
+                        <span>{t('journal.created_at')} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+
+                      {/* Botones de Acción (solo en entradas activas) */}
+                      {!isSuperseded && canWriteJournal && (
+                        <div className="flex items-center gap-2">
+                          {/* Botón de Fe de Erratas */}
+                          <button
+                            onClick={() => setClarifyingEntry(entry)}
+                            className="flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:text-carbon"
+                          >
+                            <CornerDownRight className="h-3 w-3 text-turquesa" />
+                            <span>{t('journal.btn_clarify')}</span>
+                          </button>
+
+                          {/* Botón de Compartir si es privada */}
+                          {!isShared && (
+                            <button
+                              onClick={() => setSharingEntry(entry)}
+                              className="flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                            >
+                              <Share2 className="h-3 w-3" />
+                              <span>{t('journal.btn_share')}</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-
-                  <button
-                    onClick={() => handleOpenTransition(axis.code)}
-                    className="w-full text-xs font-semibold py-2 px-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-carbon transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <span>{t('cases.btn_change_status')}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Tab 2: Ficha Sociodemográfica MAP-OIM v3 */}
+      {/* Tab 3: Resumen y Ficha Sociodemográfica MAP-OIM v3 */}
       {activeTab === 'summary' && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
-          <h3 className="text-base font-bold text-carbon border-b pb-3">
-            Ficha de Identificación MAP-OIM v3 (Fase 1 y 2)
-          </h3>
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
+              {t('cases.section_identity')}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_given_name')}</span>
+                <span className="font-semibold text-carbon text-sm">{caseData.person.given_name}</span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_family_names')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {caseData.person.paternal_family_name} {caseData.person.maternal_family_name || ''}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_preferred_name')}</span>
+                <span className="font-semibold text-turquesa-dark text-sm">
+                  {caseData.person.preferred_name || 'No especificado'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_birth_date')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {caseData.person.birth_date} {caseData.person.birth_date_is_estimated && `(${t('cases.estimated_birth')})`}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_nationality')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {caseData.person.other_nationality || 'Honduras'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_language')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {caseData.person.other_language || 'Español'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_phone')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {caseData.person.phone_number || 'Sin teléfono'}
+                </span>
+              </div>
+            </div>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-            <div>
-              <span className="text-gray-400 block font-medium">Nombre Completo:</span>
-              <span className="font-bold text-carbon text-sm">
-                {caseData.person.given_name} {caseData.person.paternal_family_name} {caseData.person.maternal_family_name || ''}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Nombre Preferido (Compromiso C1):</span>
-              <span className="font-semibold text-turquesa-dark text-sm">
-                {caseData.person.preferred_name || 'No especificado'}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Fecha de Nacimiento:</span>
-              <span className="font-semibold text-carbon">
-                {caseData.person.birth_date} {caseData.person.birth_date_is_estimated && '(Estimada)'}
-              </span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Nacionalidad:</span>
-              <span className="font-semibold text-carbon">{caseData.person.other_nationality || 'Honduras'}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Idioma Principal:</span>
-              <span className="font-semibold text-carbon">{caseData.person.other_language || 'Español'}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Teléfono de Contacto:</span>
-              <span className="font-mono text-carbon">{caseData.person.phone_number || 'Sin teléfono'}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Vía de Ingreso a México:</span>
-              <span className="font-semibold text-carbon">Terrestre (Frontera Sur)</span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Tipo de Ventanilla:</span>
-              <span className="font-semibold text-carbon capitalize">{caseData.intake_window_type}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 block font-medium">Núcleo Familiar:</span>
-              <span className="font-semibold text-carbon">
-                {caseData.travels_with_family ? 'Viaja con familia' : 'Viaja solo'}
-              </span>
+          <div>
+            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
+              {t('cases.section_intake_context')}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_window_type')}</span>
+                <span className="font-semibold text-carbon text-sm capitalize">{caseData.intake_window_type}</span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_entry_date')}</span>
+                <span className="font-semibold text-carbon text-sm">{caseData.entry_date_str || 'Septiembre 2026'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400 block">{t('cases.field_family_travel')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {caseData.travels_with_family ? t('common.yes') : t('common.no')}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab 3: Marcadores de Vulnerabilidad */}
+      {/* Tab 4: Marcadores de Vulnerabilidad (13 MAP-OIM v3) */}
       {activeTab === 'vulnerabilities' && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-          <div className="flex justify-between items-center border-b pb-3">
-            <div>
-              <h3 className="text-base font-bold text-carbon">Marcadores de Vulnerabilidad Objetivos</h3>
-              <p className="text-xs text-gray-500">Afirmados profesionalmente en ventanilla (13 marcadores de MAP-OIM v3)</p>
-            </div>
-            <span className="bg-alerta-bg text-alerta px-2.5 py-1 rounded-full font-bold text-xs">
-              {caseData.vulnerabilities.length} activos
-            </span>
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div className="border-b pb-3">
+            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+              {t('cases.tab_vulnerabilities')} ({caseData.vulnerabilities.length})
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Marcadores objetivos conforme al estándar MAP-OIM v3 (Fase 3).
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {caseData.vulnerabilities.map((v) => {
-              const info = VULNERABILITY_CATALOG[v.marker_code];
-              return (
-                <div key={v.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2 text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-alerta flex-shrink-0" />
-                    <span className="font-bold text-carbon text-sm">{info?.label || v.marker_code}</span>
+          {caseData.vulnerabilities.length === 0 ? (
+            <div className="text-xs text-gray-400 italic p-4 text-center">
+              No se han afirmado marcadores de vulnerabilidad para este caso.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {caseData.vulnerabilities.map((v) => {
+                const def = VULNERABILITY_CATALOG[v.marker_code];
+                return (
+                  <div
+                    key={v.id}
+                    className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-alerta flex-shrink-0" />
+                        <h4 className="text-xs font-bold text-carbon">
+                          {def?.label || v.marker_code}
+                        </h4>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {def?.description}
+                      </p>
+                      {v.notes && (
+                        <div className="mt-2 text-xs bg-white p-2.5 rounded border border-gray-200 italic text-gray-700">
+                          "{v.notes}"
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-gray-200/60 text-[11px] text-gray-400 flex items-center justify-between">
+                      <span>Afirmado por: {v.affirmed_by}</span>
+                      <span>{new Date(v.affirmed_at).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <p className="text-gray-600 text-xs leading-relaxed">{v.notes || info?.description}</p>
-                  <div className="pt-2 border-t border-gray-100 flex justify-between text-[11px] text-gray-400">
-                    <span>Afirmado por: {v.affirmed_by}</span>
-                    <span>{v.affirmed_at.substring(0, 10)}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Tab 4: Subfolios Vinculados */}
-      {activeTab === 'subfolios' && caseData.subfolios && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-carbon border-b pb-3">
-            Subfolios de Infancias Acompañadas (BV-3.2)
-          </h3>
-          <div className="divide-y divide-gray-100">
-            {caseData.subfolios.map((sub) => (
-              <div key={sub.id} className="py-4 flex items-center justify-between">
+      {/* Tab 5: Subfolios Familiares */}
+      {activeTab === 'subfolios' && (
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div className="border-b pb-3">
+            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+              {t('cases.tab_subfolios')} ({caseData.subfolios?.length || 0})
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Subfolios subordinados (NNA acompañados con expediente propio).
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {caseData.subfolios?.map((sub) => (
+              <div
+                key={sub.id}
+                className="p-4 rounded-xl border border-gray-200 bg-white hover:border-turquesa transition flex items-center justify-between"
+              >
                 <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="font-mono font-bold text-carbon">{sub.case_number}</span>
-                    <span className="bg-purple-100 text-purple-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                      Subfolio NNA
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold bg-carbon text-white px-2 py-0.5 rounded">
+                      {sub.case_number}
+                    </span>
+                    <span className="text-xs font-bold text-carbon">
+                      {sub.person.given_name} {sub.person.paternal_family_name}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 font-semibold mt-1">
-                    {sub.person.given_name} {sub.person.paternal_family_name}
-                  </p>
+                  <span className="text-xs text-gray-500 mt-1 block">
+                    {sub.person.preferred_name && `"${sub.person.preferred_name}" · `}
+                    {sub.person.birth_date} ({sub.statuses.engagement_status?.label})
+                  </span>
                 </div>
                 {onSelectSubfolio && (
                   <button
                     onClick={() => onSelectSubfolio(sub)}
-                    className="text-xs font-semibold text-turquesa-dark hover:underline flex items-center gap-1"
+                    className="p-2 text-carbon hover:text-turquesa"
                   >
-                    <span>Ver Subfolio</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-5 h-5" />
                   </button>
                 )}
               </div>
@@ -413,20 +732,22 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         </div>
       )}
 
-      {/* Modal de Transición de Estatus (Regla Dura 7) */}
+      {/* Modal de Cambio de Estatus Multieje (Regla Dura 7) */}
       {transitioningAxis && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 bg-carbon text-white flex justify-between items-center">
+        <div className="fixed inset-0 bg-carbon/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-gray-200">
+            <div className="px-6 py-4 bg-carbon text-white flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold">{t('cases.change_modal_title')}</h3>
-                <p className="text-xs text-turquesa-light font-mono capitalize">
-                  {DEMO_STATUS_AXES.find((a) => a.code === transitioningAxis)?.label_es}
-                </p>
+                <h3 className="font-bold text-sm">
+                  {t('cases.transition_modal_title')}
+                </h3>
+                <span className="text-xs text-turquesa font-mono">
+                  {transitioningAxis}
+                </span>
               </div>
               <button
                 onClick={() => setTransitioningAxis(null)}
-                className="text-gray-400 hover:text-white p-1"
+                className="text-gray-400 hover:text-white text-sm"
               >
                 ✕
               </button>
@@ -434,9 +755,12 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
             <div className="p-6 space-y-4 text-xs">
               {errorMessage && (
-                <div className="p-3 bg-alerta-bg border border-alerta/30 text-alerta rounded-xl text-xs flex items-start gap-2">
+                <div className="p-3 bg-alerta-bg text-alerta border border-alerta/30 rounded-xl flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>{errorMessage}</span>
+                  <div>
+                    <span className="font-bold">Error de gobernanza:</span>
+                    <p>{errorMessage}</p>
+                  </div>
                 </div>
               )}
 
@@ -498,6 +822,44 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: Nueva Entrada de Bitácora (BV-4.1) */}
+      {isNewJournalOpen && onAddJournalEntry && (
+        <NewJournalEntryModal
+          isOpen={isNewJournalOpen}
+          onClose={() => setIsNewJournalOpen(false)}
+          caseId={caseData.id}
+          caseNumber={caseData.case_number}
+          authorUserId={authorUserId}
+          authorFullName={authorFullName}
+          assignedAreaId={assignedAreaId}
+          onEntryCreated={onAddJournalEntry}
+        />
+      )}
+
+      {/* Modal: Fe de Erratas / Aclaración (BV-4.2) */}
+      {clarifyingEntry && onAddClarification && (
+        <ClarificationNoteModal
+          isOpen={!!clarifyingEntry}
+          onClose={() => setClarifyingEntry(null)}
+          originalEntry={clarifyingEntry}
+          authorUserId={authorUserId}
+          authorFullName={authorFullName}
+          onSubmitClarification={onAddClarification}
+        />
+      )}
+
+      {/* Modal: Compartir Entrada (BV-4.3) */}
+      {sharingEntry && onShareJournalEntry && (
+        <ShareEntryModal
+          isOpen={!!sharingEntry}
+          onClose={() => setSharingEntry(null)}
+          entry={sharingEntry}
+          authorUserId={authorUserId}
+          authorFullName={authorFullName}
+          onSubmitShare={onShareJournalEntry}
+        />
       )}
     </div>
   );

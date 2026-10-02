@@ -11,7 +11,9 @@ import {
   StatusValue,
   CaseWithDetails,
   VulnerabilityMarkerCode,
-  StatusAxisCode
+  StatusAxisCode,
+  JournalEntry,
+  SharingEvent
 } from '../types/database';
 
 export const DEMO_ORGANIZATION: Organization = {
@@ -282,6 +284,127 @@ export const VULNERABILITY_CATALOG: Record<VulnerabilityMarkerCode, { label: str
 };
 
 // ==============================================================================
+// BITÁCORA DE ÁREA Y COMPARTICIÓN (ÉPICA E4)
+// ==============================================================================
+
+export const DEMO_SHARING_EVENTS: SharingEvent[] = [
+  {
+    id: '50000000-0000-0000-0000-000000000001',
+    organization_id: DEMO_ORGANIZATION.id,
+    journal_entry_id: '40000000-0000-0000-0000-000000000001',
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    case_number: 'ASF-2026-0001',
+    from_area_id: '10000000-0000-0000-0000-000000000001',
+    from_area_name: 'Trabajo Social',
+    to_area_id: '10000000-0000-0000-0000-000000000002',
+    to_area_name: 'Atención Jurídica',
+    from_visibility: 'area_private',
+    to_visibility: 'shared',
+    reason: 'Se comparte narrativa de entrevista de ingreso para iniciar de inmediato el acompañamiento jurídico ante COMAR.',
+    shared_by_user_id: 'a0000000-0000-0000-0000-000000000002',
+    shared_by_name: 'Carlos Méndez',
+    shared_at: '2026-09-21T09:00:00Z',
+    acknowledged_by_user_id: null,
+    acknowledged_by_name: null,
+    acknowledged_at: null,
+  },
+];
+
+export const DEMO_JOURNAL_ENTRIES: JournalEntry[] = [
+  {
+    id: '40000000-0000-0000-0000-000000000001',
+    organization_id: DEMO_ORGANIZATION.id,
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    case_number: 'ASF-2026-0001',
+    area_id: '10000000-0000-0000-0000-000000000001',
+    area_code: 'trabajo_social',
+    area_name: 'Trabajo Social',
+    author_user_id: 'a0000000-0000-0000-0000-000000000002',
+    author_name: 'Carlos Méndez',
+    entry_type_key: 'intake_interview',
+    body: 'Entrevista cualitativa inicial de ingreso (MAP-OIM v3). La persona titular acude acompañada de su hijo menor Dylan (6 años). Refiere haber salido de San Pedro Sula por extorsión y amenazas directas a su comercio familiar. Manifiesta necesidad de alojamiento seguro y regularización migratoria.',
+    is_work_note: false,
+    occurred_at: '2026-09-20T10:00:00Z',
+    created_at: '2026-09-20T10:30:00Z',
+    visibility: 'shared',
+    superseded_by_id: null,
+    sharing_event: DEMO_SHARING_EVENTS[0],
+  },
+  {
+    id: '40000000-0000-0000-0000-000000000002',
+    organization_id: DEMO_ORGANIZATION.id,
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    case_number: 'ASF-2026-0001',
+    area_id: '10000000-0000-0000-0000-000000000002',
+    area_code: 'legal',
+    area_name: 'Atención Jurídica',
+    author_user_id: 'a0000000-0000-0000-0000-000000000001',
+    author_name: 'Elena Morales',
+    entry_type_key: 'follow_up',
+    body: 'Hipótesis legal preliminar sobre elegibilidad COMAR: Se identifica relato sólido conforme a la Declaración de Cartagena (violencia generalizada y amenazas de maras). Se redacta borrador de solicitud de la condición de refugiado.',
+    is_work_note: true,
+    occurred_at: '2026-09-22T11:00:00Z',
+    created_at: '2026-09-22T11:45:00Z',
+    visibility: 'area_private',
+    superseded_by_id: null,
+  },
+  {
+    id: '40000000-0000-0000-0000-000000000003',
+    organization_id: DEMO_ORGANIZATION.id,
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    case_number: 'ASF-2026-0001',
+    area_id: '10000000-0000-0000-0000-000000000001',
+    area_code: 'trabajo_social',
+    area_name: 'Trabajo Social',
+    author_user_id: 'a0000000-0000-0000-0000-000000000002',
+    author_name: 'Carlos Méndez',
+    entry_type_key: 'note',
+    body: 'Se entregó kit de aseo y ropa para Dylan en módulo 4.',
+    is_work_note: false,
+    occurred_at: '2026-09-23T15:00:00Z',
+    created_at: '2026-09-23T15:10:00Z',
+    visibility: 'area_private',
+    superseded_by_id: '40000000-0000-0000-0000-000000000004',
+  },
+  {
+    id: '40000000-0000-0000-0000-000000000004',
+    organization_id: DEMO_ORGANIZATION.id,
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    case_number: 'ASF-2026-0001',
+    area_id: '10000000-0000-0000-0000-000000000001',
+    area_code: 'trabajo_social',
+    area_name: 'Trabajo Social',
+    author_user_id: 'a0000000-0000-0000-0000-000000000002',
+    author_name: 'Carlos Méndez',
+    entry_type_key: 'note',
+    body: 'Fe de erratas: Se aclara que la entrega del kit de aseo y muda de ropa para Dylan fue en el Módulo Familiar B (habitación 12), no en el módulo 4.',
+    is_work_note: false,
+    occurred_at: '2026-09-23T15:00:00Z',
+    created_at: '2026-09-23T16:00:00Z',
+    visibility: 'area_private',
+    superseded_by_id: null,
+  },
+  {
+    id: '40000000-0000-0000-0000-000000000005',
+    organization_id: DEMO_ORGANIZATION.id,
+    case_id: 'c0000000-0000-0000-0000-000000000003',
+    case_number: 'ASF-2026-0002',
+    area_id: '10000000-0000-0000-0000-000000000001',
+    area_code: 'trabajo_social',
+    area_name: 'Trabajo Social',
+    author_user_id: 'a0000000-0000-0000-0000-000000000003',
+    author_name: 'Mariana Ríos',
+    entry_type_key: 'intake_interview',
+    body: 'Entrevista de primer contacto para adolescente en movilidad no acompañado. Se verifica buen estado general de salud pero agotamiento físico. Se solicita de inmediato intérprete de lengua Qʼeqchiʼ y se activa canal directo con Procuraduría de Protección.',
+    is_work_note: false,
+    occurred_at: '2026-09-26T16:30:00Z',
+    created_at: '2026-09-26T17:00:00Z',
+    visibility: 'area_private',
+    superseded_by_id: null,
+  },
+];
+
+// ==============================================================================
 // EXPEDIENTES DE DEMOSTRACIÓN (ÉPICA E3)
 // ==============================================================================
 
@@ -375,6 +498,7 @@ export const DEMO_CASES: CaseWithDetails[] = [
         reason: 'Gestiones de regularización y canalización escolar para su hijo.',
       },
     },
+    journal_entries: DEMO_JOURNAL_ENTRIES.slice(0, 4),
   },
   {
     id: 'c0000000-0000-0000-0000-000000000002',
@@ -465,6 +589,7 @@ export const DEMO_CASES: CaseWithDetails[] = [
         reason: 'Revisión médica y vinculación comunitaria.',
       },
     },
+    journal_entries: [],
   },
   {
     id: 'c0000000-0000-0000-0000-000000000003',
@@ -565,6 +690,7 @@ export const DEMO_CASES: CaseWithDetails[] = [
         reason: 'Entrevista psicológica inicial y evaluación médica.',
       },
     },
+    journal_entries: [DEMO_JOURNAL_ENTRIES[4]],
   },
   {
     id: 'c0000000-0000-0000-0000-000000000004',
@@ -654,5 +780,6 @@ export const DEMO_CASES: CaseWithDetails[] = [
         reason: 'Entrevista de reingreso y actualización de ficha.',
       },
     },
+    journal_entries: [],
   },
 ];

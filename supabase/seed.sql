@@ -261,3 +261,86 @@ begin
         (v_c_mateo, v_org, 'indigenous_language_speaker', 'Hablante nativo de Qʼeqchiʼ; se requiere apoyo de interpretación.', v_user_intk)
     on conflict do nothing;
 end $$;
+
+-- ==============================================================================
+-- 7. Bitácora de Área y Eventos de Compartición (Épica E4)
+-- ==============================================================================
+do $$
+declare
+    v_org uuid := '00000000-0000-0000-0000-000000000001';
+    v_c_wendy uuid := 'c0000000-0000-0000-0000-000000000001';
+    v_c_mateo uuid := 'c0000000-0000-0000-0000-000000000003';
+    v_area_ts uuid := '10000000-0000-0000-0000-000000000001';   -- Trabajo Social
+    v_area_leg uuid := '10000000-0000-0000-0000-000000000002';  -- Legal
+    v_area_psi uuid := '10000000-0000-0000-0000-000000000003';  -- Psicología
+    v_user_dir uuid := 'a0000000-0000-0000-0000-000000000001';  -- Elena Morales
+    v_user_case uuid := 'a0000000-0000-0000-0000-000000000002'; -- Carlos Méndez
+    v_user_intk uuid := 'a0000000-0000-0000-0000-000000000003'; -- Mariana Ríos
+    v_entry_1 uuid := '40000000-0000-0000-0000-000000000001';
+    v_entry_2 uuid := '40000000-0000-0000-0000-000000000002';
+    v_entry_3 uuid := '40000000-0000-0000-0000-000000000003';
+    v_entry_4 uuid := '40000000-0000-0000-0000-000000000004';
+    v_entry_5 uuid := '40000000-0000-0000-0000-000000000005';
+    v_share_1 uuid := '50000000-0000-0000-0000-000000000001';
+begin
+    -- 1. Entrevista de ingreso de Trabajo Social (Wendy) - Compartida con Legal
+    insert into public.journal_entry (
+        id, organization_id, case_id, area_id, author_user_id, entry_type_key,
+        body, is_work_note, occurred_at, created_at, visibility
+    ) values (
+        v_entry_1, v_org, v_c_wendy, v_area_ts, v_user_case, 'intake_interview',
+        'Entrevista cualitativa inicial de ingreso (MAP-OIM v3). La persona titular acude acompañada de su hijo menor Dylan (6 años). Refiere haber salido de San Pedro Sula por extorsión y amenazas directas a su comercio familiar. Manifiesta necesidad de alojamiento seguro y regularización migratoria.',
+        false, '2026-09-20T10:00:00Z', '2026-09-20T10:30:00Z', 'shared'
+    ) on conflict (id) do nothing;
+
+    -- 2. Evento de compartición formal de la entrevista hacia Legal (notifica al digest de dirección)
+    insert into public.sharing_event (
+        id, organization_id, journal_entry_id, case_id, from_area_id, to_area_id,
+        from_visibility, to_visibility, reason, shared_by_user_id, shared_at
+    ) values (
+        v_share_1, v_org, v_entry_1, v_c_wendy, v_area_ts, v_area_leg,
+        'area_private', 'shared',
+        'Se comparte narrativa de entrevista de ingreso para iniciar de inmediato el acompañamiento jurídico ante COMAR.',
+        v_user_case, '2026-09-21T09:00:00Z'
+    ) on conflict (id) do nothing;
+
+    -- 3. Nota de deliberación profesional protegida (Legal) - is_work_note = true
+    insert into public.journal_entry (
+        id, organization_id, case_id, area_id, author_user_id, entry_type_key,
+        body, is_work_note, occurred_at, created_at, visibility
+    ) values (
+        v_entry_2, v_org, v_c_wendy, v_area_leg, v_user_dir, 'follow_up',
+        'Hipótesis legal preliminar sobre elegibilidad COMAR: Se identifica relato sólido conforme a la Declaración de Cartagena (violencia generalizada y amenazas de maras). Se redacta borrador de solicitud de la condición de refugiado.',
+        true, '2026-09-22T11:00:00Z', '2026-09-22T11:45:00Z', 'area_private'
+    ) on conflict (id) do nothing;
+
+    -- 4. Entrada original de Trabajo Social con error tipográfico
+    insert into public.journal_entry (
+        id, organization_id, case_id, area_id, author_user_id, entry_type_key,
+        body, is_work_note, occurred_at, created_at, visibility, superseded_by_id
+    ) values (
+        v_entry_3, v_org, v_c_wendy, v_area_ts, v_user_case, 'note',
+        'Se entregó kit de aseo y ropa para Dylan en módulo 4.',
+        false, '2026-09-23T15:00:00Z', '2026-09-23T15:10:00Z', 'area_private', v_entry_4
+    ) on conflict (id) do nothing;
+
+    -- 5. Nota aclaratoria / Fe de erratas (BV-4.2)
+    insert into public.journal_entry (
+        id, organization_id, case_id, area_id, author_user_id, entry_type_key,
+        body, is_work_note, occurred_at, created_at, visibility
+    ) values (
+        v_entry_4, v_org, v_c_wendy, v_area_ts, v_user_case, 'note',
+        'Fe de erratas: Se aclara que la entrega del kit de aseo y muda de ropa para Dylan fue en el Módulo Familiar B (habitación 12), no en el módulo 4.',
+        false, '2026-09-23T15:00:00Z', '2026-09-23T16:00:00Z', 'area_private'
+    ) on conflict (id) do nothing;
+
+    -- 6. Entrada inicial en caso de Mateo (NNA no acompañado)
+    insert into public.journal_entry (
+        id, organization_id, case_id, area_id, author_user_id, entry_type_key,
+        body, is_work_note, occurred_at, created_at, visibility
+    ) values (
+        v_entry_5, v_org, v_c_mateo, v_area_ts, v_user_intk, 'intake_interview',
+        'Entrevista de primer contacto para adolescente en movilidad no acompañado. Se verifica buen estado general de salud pero agotamiento físico. Se solicita de inmediato intérprete de lengua Qʼeqchiʼ y se activa canal directo con Procuraduría de Protección.',
+        false, '2026-09-26T16:30:00Z', '2026-09-26T17:00:00Z', 'area_private'
+    ) on conflict (id) do nothing;
+end $$;

@@ -11,10 +11,18 @@ import {
   History,
   Scale,
   FolderOpen,
-  FileText
+  FileText,
+  Bell
 } from 'lucide-react';
 import { t } from './lib/i18n';
-import { RoleName, StatusAxisCode, CaseWithDetails, AuditEvent } from './types/database';
+import { 
+  RoleName, 
+  StatusAxisCode, 
+  CaseWithDetails, 
+  AuditEvent,
+  JournalEntry,
+  SharingEvent
+} from './types/database';
 import { 
   DEMO_ORGANIZATION, 
   DEMO_ROLES, 
@@ -23,15 +31,19 @@ import {
   DEMO_AUDIT_EVENTS,
   DEMO_AUTHORITY_REQUESTS,
   DEMO_CASES,
-  DEMO_STATUS_VALUES
+  DEMO_STATUS_VALUES,
+  DEMO_SHARING_EVENTS
 } from './lib/mockData';
 import { CasesView } from './components/CasesView';
+import { DirectorSharingInbox } from './components/DirectorSharingInbox';
 
 export const App: React.FC = () => {
   const [activeRole, setActiveRole] = useState<RoleName>('director');
   const [activeTab, setActiveTab] = useState<'overview' | 'cases' | 'areas' | 'audit' | 'authority_requests' | 'rules'>('cases');
   const [casesList, setCasesList] = useState<CaseWithDetails[]>(DEMO_CASES);
   const [auditEventsList, setAuditEventsList] = useState<AuditEvent[]>(DEMO_AUDIT_EVENTS);
+  const [sharingEventsList, setSharingEventsList] = useState<SharingEvent[]>(DEMO_SHARING_EVENTS);
+  const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
 
   const currentUser = DEMO_USERS[activeRole];
   const isDirector = activeRole === 'director';
@@ -112,6 +124,190 @@ export const App: React.FC = () => {
     setAuditEventsList((prev) => [newAuditEvent, ...prev]);
   };
 
+  // Handlers para Bitácora de Área (Épica E4)
+  const handleAddJournalEntry = (newEntry: JournalEntry) => {
+    setCasesList((prev) =>
+      prev.map((c) => {
+        if (c.id !== newEntry.case_id) return c;
+        const currentEntries = c.journal_entries || [];
+        return {
+          ...c,
+          updated_at: newEntry.created_at,
+          journal_entries: [newEntry, ...currentEntries],
+        };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'INSERT',
+      table_name: 'journal_entry',
+      record_id: newEntry.id,
+      case_id: newEntry.case_id,
+      old_values: null,
+      new_values: {
+        entry_type: newEntry.entry_type_key,
+        is_work_note: newEntry.is_work_note,
+        occurred_at: newEntry.occurred_at,
+        visibility: newEntry.visibility,
+        author: currentUser.profile.full_name,
+      },
+      created_at: new Date().toISOString(),
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
+  const handleAddClarification = (originalEntryId: string, clarificationEntry: JournalEntry) => {
+    setCasesList((prev) =>
+      prev.map((c) => {
+        if (c.id !== clarificationEntry.case_id) return c;
+        const currentEntries = c.journal_entries || [];
+        const updatedEntries = currentEntries.map((e) =>
+          e.id === originalEntryId ? { ...e, superseded_by_id: clarificationEntry.id } : e
+        );
+        return {
+          ...c,
+          updated_at: clarificationEntry.created_at,
+          journal_entries: [clarificationEntry, ...updatedEntries],
+        };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'CLARIFICATION',
+      table_name: 'journal_entry',
+      record_id: clarificationEntry.id,
+      case_id: clarificationEntry.case_id,
+      old_values: null,
+      new_values: {
+        superseded_entry_id: originalEntryId,
+        is_work_note: clarificationEntry.is_work_note,
+        author: currentUser.profile.full_name,
+      },
+      created_at: new Date().toISOString(),
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
+  const handleShareJournalEntry = (
+    entryId: string,
+    toAreaId: string,
+    toAreaName: string,
+    reason: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    let targetCaseNumber = '';
+    let targetCaseId = '';
+    let fromAreaName = '';
+
+    setCasesList((prev) =>
+      prev.map((c) => {
+        const hasEntry = c.journal_entries?.some((e) => e.id === entryId);
+        if (!hasEntry) return c;
+
+        targetCaseNumber = c.case_number;
+        targetCaseId = c.id;
+
+        const updatedEntries = (c.journal_entries || []).map((e) => {
+          if (e.id !== entryId) return e;
+          fromAreaName = e.area_name || '';
+
+          const sharingEvt: SharingEvent = {
+            id: `share-${Date.now()}`,
+            organization_id: DEMO_ORGANIZATION.id,
+            journal_entry_id: entryId,
+            case_id: c.id,
+            case_number: c.case_number,
+            from_area_id: e.area_id,
+            from_area_name: e.area_name,
+            to_area_id: toAreaId,
+            to_area_name: toAreaName,
+            from_visibility: 'area_private',
+            to_visibility: 'shared',
+            reason,
+            shared_by_user_id: currentUser.profile.id,
+            shared_by_name: currentUser.profile.full_name,
+            shared_at: timestamp,
+            acknowledged_by_user_id: null,
+            acknowledged_by_name: null,
+            acknowledged_at: null,
+          };
+
+          setSharingEventsList((sPrev) => [sharingEvt, ...sPrev]);
+
+          return {
+            ...e,
+            visibility: 'shared' as const,
+            sharing_event: sharingEvt,
+          };
+        });
+
+        return { ...c, journal_entries: updatedEntries };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'SHARE',
+      table_name: 'sharing_event',
+      record_id: entryId,
+      case_id: targetCaseId || null,
+      old_values: null,
+      new_values: {
+        case_number: targetCaseNumber,
+        from_area: fromAreaName,
+        to_area: toAreaName,
+        reason,
+        author: currentUser.profile.full_name,
+      },
+      created_at: timestamp,
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
+  const handleAcknowledgeSharing = (sharingEventId: string) => {
+    const timestamp = new Date().toISOString();
+
+    setSharingEventsList((prev) =>
+      prev.map((s) => {
+        if (s.id !== sharingEventId) return s;
+        return {
+          ...s,
+          acknowledged_by_user_id: currentUser.profile.id,
+          acknowledged_by_name: currentUser.profile.full_name,
+          acknowledged_at: timestamp,
+        };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'ACKNOWLEDGE',
+      table_name: 'sharing_event',
+      record_id: sharingEventId,
+      old_values: null,
+      new_values: {
+        acknowledged_by: currentUser.profile.full_name,
+        acknowledged_at: timestamp,
+      },
+      created_at: timestamp,
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col text-carbon font-sans">
       {/* Header Superior con Branding Freejolitos */}
@@ -141,6 +337,22 @@ export const App: React.FC = () => {
               <Database className="w-3.5 h-3.5 mr-1.5 text-turquesa" />
               {t('session.mode_emulation')}
             </div>
+
+            {isDirector && (
+              <button
+                onClick={() => setIsDirectorDigestOpen(true)}
+                className="relative flex items-center gap-1.5 rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-200 border border-gray-700 hover:bg-gray-700 hover:text-white transition"
+                title={t('journal.director_digest.title')}
+              >
+                <Bell className="w-3.5 h-3.5 text-turquesa" />
+                <span>Digest</span>
+                {sharingEventsList.filter(e => !e.acknowledged_at).length > 0 && (
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-alerta px-1 text-[10px] font-bold text-white">
+                    {sharingEventsList.filter(e => !e.acknowledged_at).length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -282,16 +494,20 @@ export const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Tab 1: Gestión de Expedientes y Casos (Épicas E2 y E3) */}
+        {/* Tab 1: Gestión de Expedientes y Casos (Épicas E2, E3 y E4) */}
         {activeTab === 'cases' && (
           <CasesView
             cases={casesList}
             activeRole={activeRole}
             assignedAreaCode={currentUser.assignedAreaCode}
+            assignedAreaId={currentUser.userRole?.area_id || undefined}
             authorUserId={currentUser.profile.id}
             authorFullName={currentUser.profile.full_name}
             onCaseCreated={handleCaseCreated}
             onTransitionStatus={handleTransitionStatus}
+            onAddJournalEntry={handleAddJournalEntry}
+            onAddClarification={handleAddClarification}
+            onShareJournalEntry={handleShareJournalEntry}
           />
         )}
 
@@ -560,6 +776,16 @@ export const App: React.FC = () => {
       <footer className="bg-white border-t border-gray-200 py-4 text-center text-xs text-gray-500">
         <p>Bitácora Viva · Plataforma libre para la dignidad y soberanía informativa de la sociedad civil.</p>
       </footer>
+
+      {/* Modal Director Sharing Digest (BV-4.4 / ADR-0005) */}
+      {isDirectorDigestOpen && (
+        <DirectorSharingInbox
+          isOpen={isDirectorDigestOpen}
+          onClose={() => setIsDirectorDigestOpen(false)}
+          sharingEvents={sharingEventsList}
+          onAcknowledge={handleAcknowledgeSharing}
+        />
+      )}
     </div>
   );
 };

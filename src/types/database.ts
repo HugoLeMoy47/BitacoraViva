@@ -8,7 +8,16 @@ export type RoleName = 'viewer' | 'caseworker' | 'intake_officer' | 'director';
 
 export type AreaCode = 'legal' | 'psicologia' | 'trabajo_social' | 'medica' | 'coordinacion';
 
-export type AuditAction = 'INSERT' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'EXPORT' | 'STATUS_CHANGE';
+export type AuditAction = 
+  | 'INSERT' 
+  | 'UPDATE' 
+  | 'DELETE' 
+  | 'LOGIN' 
+  | 'EXPORT' 
+  | 'STATUS_CHANGE'
+  | 'CLARIFICATION'
+  | 'SHARE'
+  | 'ACKNOWLEDGE';
 
 export interface Organization {
   id: string;
@@ -78,6 +87,7 @@ export interface AuditEvent {
   action: AuditAction;
   table_name: string;
   record_id: string | null;
+  case_id?: string | null;
   old_values: Record<string, unknown> | null;
   new_values: Record<string, unknown> | null;
   ip_address?: string | null;
@@ -245,4 +255,75 @@ export interface CaseWithDetails extends Case {
     record_status: CaseCurrentStatusDetail;
     case_stage: CaseCurrentStatusDetail;
   };
+  journal_entries?: JournalEntry[];
 }
+
+// ------------------------------------------------------------------------------
+// Tipos de Bitácora de Área, Compartición y Adjuntos (Épica E4)
+// ------------------------------------------------------------------------------
+
+export type JournalEntryType = 
+  | 'intake_interview' 
+  | 'follow_up' 
+  | 'referral' 
+  | 'home_visit' 
+  | 'incident' 
+  | 'note';
+
+export type JournalVisibility = 'area_private' | 'shared';
+
+export interface JournalEntry {
+  id: string;
+  organization_id: string;
+  case_id: string;
+  case_number?: string;
+  area_id: string;
+  area_code?: string;
+  area_name?: string;
+  author_user_id: string;
+  author_name?: string;
+  entry_type_key: JournalEntryType;
+  body: string;
+  is_work_note: boolean;
+  occurred_at: string;
+  created_at: string;
+  visibility: JournalVisibility;
+  superseded_by_id?: string | null;
+  sharing_event?: SharingEvent | null;
+}
+
+export interface SharingEvent {
+  id: string;
+  organization_id: string;
+  journal_entry_id: string;
+  case_id: string;
+  case_number?: string;
+  from_area_id: string;
+  from_area_name?: string;
+  to_area_id: string;
+  to_area_name?: string;
+  from_visibility: JournalVisibility;
+  to_visibility: JournalVisibility;
+  reason: string;
+  shared_by_user_id: string;
+  shared_by_name?: string;
+  shared_at: string;
+  acknowledged_by_user_id?: string | null;
+  acknowledged_by_name?: string | null;
+  acknowledged_at?: string | null;
+}
+
+export interface Attachment {
+  id: string;
+  organization_id: string;
+  case_id: string;
+  journal_entry_id?: string | null;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  uploaded_by: string;
+  uploaded_at: string;
+  visibility: JournalVisibility;
+}
+
