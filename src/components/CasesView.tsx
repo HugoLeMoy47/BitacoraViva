@@ -6,7 +6,15 @@ import {
   Lock
 } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { CaseWithDetails, RoleName, StatusAxisCode, JournalEntry } from '../types/database';
+import { 
+  CaseWithDetails, 
+  RoleName, 
+  StatusAxisCode, 
+  JournalEntry,
+  ConsentType,
+  ConsentStatus,
+  Person
+} from '../types/database';
 import { CaseDetailView } from './CaseDetailView';
 import { NewCaseModal } from './NewCaseModal';
 
@@ -27,6 +35,18 @@ interface CasesViewProps {
   onAddJournalEntry?: (entry: JournalEntry) => void;
   onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;
   onShareJournalEntry?: (entryId: string, toAreaId: string, toAreaName: string, reason: string) => void;
+  onSaveConsent?: (caseId: string, consent: {
+    consent_type: ConsentType;
+    status: ConsentStatus;
+    is_minor_assent: boolean;
+    legal_guardian_name?: string;
+    legal_guardian_role?: string;
+    authority_letter_ref?: string;
+    notes?: string;
+  }) => void;
+  onRectifyPerson?: (personId: string, updates: Partial<Person>, reason: string) => void;
+  onAnonymizePerson?: (personId: string, reason: string) => void;
+  onOpposeSecondary?: (personId: string, reason: string) => void;
 }
 
 export const CasesView: React.FC<CasesViewProps> = ({
@@ -41,6 +61,10 @@ export const CasesView: React.FC<CasesViewProps> = ({
   onAddJournalEntry,
   onAddClarification,
   onShareJournalEntry,
+  onSaveConsent,
+  onRectifyPerson,
+  onAnonymizePerson,
+  onOpposeSecondary,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
@@ -76,6 +100,10 @@ export const CasesView: React.FC<CasesViewProps> = ({
         onAddJournalEntry={onAddJournalEntry}
         onAddClarification={onAddClarification}
         onShareJournalEntry={onShareJournalEntry}
+        onSaveConsent={onSaveConsent ? (consent) => onSaveConsent(selectedCase.id, consent) : undefined}
+        onRectifyPerson={onRectifyPerson ? (updates, reason) => onRectifyPerson(selectedCase.person.id, updates, reason) : undefined}
+        onAnonymizePerson={onAnonymizePerson}
+        onOpposeSecondary={onOpposeSecondary}
       />
     );
   }

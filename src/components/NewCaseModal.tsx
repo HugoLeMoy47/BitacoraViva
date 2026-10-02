@@ -142,6 +142,38 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           reason: 'Paso 1 del ciclo estándar de gestión de caso',
         },
       },
+      journal_entries: [],
+      consents: [
+        {
+          id: `cons-${Date.now()}-1`,
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          person_id: newPersonId,
+          case_id: newCaseId,
+          consent_type: 'general_care',
+          status: 'granted',
+          is_minor_assent: selectedVulnerabilities.includes('unaccompanied_child'),
+          granted_at: timestamp,
+          granted_by_user_id: authorUserId,
+          granted_by_name: authorFullName,
+          notes: 'Consentimiento informado general otorgado en proceso de ingreso (BV-5.1).',
+          created_at: timestamp,
+        },
+        {
+          id: `cons-${Date.now()}-2`,
+          organization_id: '00000000-0000-0000-0000-000000000001',
+          person_id: newPersonId,
+          case_id: newCaseId,
+          consent_type: 'sensitive_data',
+          status: 'granted',
+          is_minor_assent: selectedVulnerabilities.includes('unaccompanied_child'),
+          granted_at: timestamp,
+          granted_by_user_id: authorUserId,
+          granted_by_name: authorFullName,
+          notes: 'Consentimiento expreso para datos sensibles firmado en admisión (Control P-06).',
+          created_at: timestamp,
+        },
+      ],
+      arco_requests: [],
     };
 
     onCaseCreated(newCase);

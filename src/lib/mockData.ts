@@ -13,7 +13,10 @@ import {
   VulnerabilityMarkerCode,
   StatusAxisCode,
   JournalEntry,
-  SharingEvent
+  SharingEvent,
+  PrivacyNotice,
+  Consent,
+  ArcoRequest
 } from '../types/database';
 
 export const DEMO_ORGANIZATION: Organization = {
@@ -405,6 +408,114 @@ export const DEMO_JOURNAL_ENTRIES: JournalEntry[] = [
 ];
 
 // ==============================================================================
+// PRIVACIDAD, CONSENTIMIENTOS Y SOLICITUDES ARCO (ÉPICA E5)
+// ==============================================================================
+
+export const DEMO_PRIVACY_NOTICE: PrivacyNotice = {
+  id: '60000000-0000-0000-0000-000000000001',
+  organization_id: DEMO_ORGANIZATION.id,
+  version: '1.0',
+  title: 'Aviso de Privacidad Integral para Personas en Movilidad y Solicitantes de Alojamiento',
+  summary: 'Albergue Santa Fe A.C. es custodio, no dueño de sus datos personales. Se recaban datos generales y sensibles exclusivamente para auxilio humanitario, alojamiento y asesoría legal.',
+  full_text: 'El presente Aviso de Privacidad rige el tratamiento de datos personales por Albergue Santa Fe A.C. con fundamento en la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (vigente 2025) y los Principios Humanitarios de ACNUR y OIM. Sus datos sensibles se tratan bajo estricta confidencialidad y consentimiento expreso.',
+  effective_date: '2026-01-01',
+  active: true,
+  created_at: '2026-01-01T00:00:00Z',
+};
+
+export const DEMO_CONSENTS: Consent[] = [
+  {
+    id: '70000000-0000-0000-0000-000000000001',
+    organization_id: DEMO_ORGANIZATION.id,
+    person_id: '30000000-0000-0000-0000-000000000001',
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    privacy_notice_id: DEMO_PRIVACY_NOTICE.id,
+    consent_type: 'general_care',
+    status: 'granted',
+    is_minor_assent: false,
+    granted_at: '2026-09-20T10:05:00Z',
+    granted_by_user_id: 'a0000000-0000-0000-0000-000000000003',
+    granted_by_name: 'Mariana Ríos',
+    notes: 'Consentimiento general de alojamiento y atención social otorgado formalmente.',
+    created_at: '2026-09-20T10:05:00Z',
+  },
+  {
+    id: '70000000-0000-0000-0000-000000000002',
+    organization_id: DEMO_ORGANIZATION.id,
+    person_id: '30000000-0000-0000-0000-000000000001',
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    privacy_notice_id: DEMO_PRIVACY_NOTICE.id,
+    consent_type: 'sensitive_data',
+    status: 'granted',
+    is_minor_assent: false,
+    granted_at: '2026-09-20T10:06:00Z',
+    granted_by_user_id: 'a0000000-0000-0000-0000-000000000003',
+    granted_by_name: 'Mariana Ríos',
+    notes: 'Consentimiento expreso informado firmado para datos de persecución, salud y situación migratoria.',
+    created_at: '2026-09-20T10:06:00Z',
+  },
+  {
+    id: '70000000-0000-0000-0000-000000000003',
+    organization_id: DEMO_ORGANIZATION.id,
+    person_id: '30000000-0000-0000-0000-000000000003',
+    case_id: 'c0000000-0000-0000-0000-000000000003',
+    privacy_notice_id: DEMO_PRIVACY_NOTICE.id,
+    consent_type: 'general_care',
+    status: 'granted',
+    is_minor_assent: true,
+    legal_guardian_name: 'Lic. Sofía Calderón',
+    legal_guardian_role: 'Procuraduría de Protección de NNA',
+    authority_letter_ref: 'DIF/PPNNA/2026/0491',
+    granted_at: '2026-09-26T16:40:00Z',
+    granted_by_user_id: 'a0000000-0000-0000-0000-000000000003',
+    granted_by_name: 'Mariana Ríos',
+    notes: 'Asentimiento informado del adolescente con anuencia formal de la Procuraduría de Protección de NNA.',
+    created_at: '2026-09-26T16:40:00Z',
+  },
+  {
+    id: '70000000-0000-0000-0000-000000000004',
+    organization_id: DEMO_ORGANIZATION.id,
+    person_id: '30000000-0000-0000-0000-000000000003',
+    case_id: 'c0000000-0000-0000-0000-000000000003',
+    privacy_notice_id: DEMO_PRIVACY_NOTICE.id,
+    consent_type: 'sensitive_data',
+    status: 'granted',
+    is_minor_assent: true,
+    legal_guardian_name: 'Lic. Sofía Calderón',
+    legal_guardian_role: 'Procuraduría de Protección de NNA',
+    authority_letter_ref: 'DIF/PPNNA/2026/0491',
+    granted_at: '2026-09-26T16:42:00Z',
+    granted_by_user_id: 'a0000000-0000-0000-0000-000000000003',
+    granted_by_name: 'Mariana Ríos',
+    notes: 'Consentimiento institucional para valoración médica y datos de origen étnico Qʼeqchiʼ.',
+    created_at: '2026-09-26T16:42:00Z',
+  },
+];
+
+export const DEMO_ARCO_REQUESTS: ArcoRequest[] = [
+  {
+    id: '80000000-0000-0000-0000-000000000001',
+    organization_id: DEMO_ORGANIZATION.id,
+    person_id: '30000000-0000-0000-0000-000000000001',
+    person_name: 'Wendy Carolina Ramos',
+    case_id: 'c0000000-0000-0000-0000-000000000001',
+    case_number: 'ASF-2026-0001',
+    request_type: 'rectification',
+    status: 'approved_executed',
+    details: 'Actualización de número telefónico de contacto en México para seguimiento de cita COMAR.',
+    reason: 'La titular adquirió chip SIM mexicano para recibir notificaciones institucionales.',
+    requested_by_name: 'Wendy Carolina Ramos',
+    is_legal_representative: false,
+    received_at: '2026-09-24T12:00:00Z',
+    handled_by_user_id: 'a0000000-0000-0000-0000-000000000001',
+    handled_by_name: 'Elena Morales',
+    resolved_at: '2026-09-24T12:30:00Z',
+    resolution_notes: 'Se verificó identidad y se actualizó el teléfono en la ficha sociodemográfica person.',
+    created_at: '2026-09-24T12:00:00Z',
+  },
+];
+
+// ==============================================================================
 // EXPEDIENTES DE DEMOSTRACIÓN (ÉPICA E3)
 // ==============================================================================
 
@@ -499,6 +610,8 @@ export const DEMO_CASES: CaseWithDetails[] = [
       },
     },
     journal_entries: DEMO_JOURNAL_ENTRIES.slice(0, 4),
+    consents: DEMO_CONSENTS.filter(c => c.person_id === '30000000-0000-0000-0000-000000000001'),
+    arco_requests: DEMO_ARCO_REQUESTS.filter(r => r.person_id === '30000000-0000-0000-0000-000000000001'),
   },
   {
     id: 'c0000000-0000-0000-0000-000000000002',
@@ -691,6 +804,8 @@ export const DEMO_CASES: CaseWithDetails[] = [
       },
     },
     journal_entries: [DEMO_JOURNAL_ENTRIES[4]],
+    consents: DEMO_CONSENTS.filter(c => c.person_id === '30000000-0000-0000-0000-000000000003'),
+    arco_requests: [],
   },
   {
     id: 'c0000000-0000-0000-0000-000000000004',

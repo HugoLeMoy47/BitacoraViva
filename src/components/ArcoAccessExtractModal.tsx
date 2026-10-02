@@ -1,0 +1,275 @@
+import React, { useState } from 'react';
+import { X, Printer, Copy, Check, FileText, ShieldAlert } from 'lucide-react';
+import { t } from '../lib/i18n';
+import { CaseWithDetails } from '../types/database';
+
+interface ArcoAccessExtractModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  caseData: CaseWithDetails;
+}
+
+export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
+  isOpen,
+  onClose,
+  caseData,
+}) => {
+  const [copied, setCopied] = useState(false);
+
+  if (!isOpen) return null;
+
+  // Filtrado ético estricto por Ethos E-02 / MD-04: Excluir is_work_note = true
+  const accessibleEntries = (caseData.journal_entries || []).filter(
+    (entry) => !entry.is_work_note
+  );
+
+  const extractData = {
+    institution: 'Albergue Santa Fe A.C.',
+    emitted_at: new Date().toISOString(),
+    titular_person: {
+      given_name: caseData.person.given_name,
+      paternal_family_name: caseData.person.paternal_family_name,
+      maternal_family_name: caseData.person.maternal_family_name,
+      preferred_name: caseData.person.preferred_name,
+      birth_date: caseData.person.birth_date,
+      birth_date_is_estimated: caseData.person.birth_date_is_estimated,
+      phone_number: caseData.person.phone_number,
+      email: caseData.person.email,
+      is_anonymized: caseData.person.is_anonymized,
+    },
+    cases: [
+      {
+        case_number: caseData.case_number,
+        opened_at: caseData.opened_at,
+        travels_with_family: caseData.travels_with_family,
+        statuses: caseData.statuses,
+      },
+    ],
+    journal_interventions_count: accessibleEntries.length,
+    journal_interventions: accessibleEntries.map((e) => ({
+      occurred_at: e.occurred_at,
+      area_name: e.area_name || e.area_code,
+      entry_type: e.entry_type_key,
+      body: e.body,
+    })),
+    consents: caseData.consents || [],
+  };
+
+  const handleCopyJson = () => {
+    navigator.clipboard.writeText(JSON.stringify(extractData, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+        {/* Encabezado */}
+        <div className="bg-carbon px-6 py-4 flex items-center justify-between text-white border-b border-carbon-muted/20 shrink-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-turquesa" />
+            <div>
+              <h3 className="text-sm font-bold tracking-wide">
+                {t('arco.modal_access.title')}
+              </h3>
+              <p className="text-[11px] text-gray-300">
+                {caseData.case_number} — {caseData.person.given_name} {caseData.person.paternal_family_name}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white p-1 rounded transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Contenido imprimible */}
+        <div className="p-6 overflow-y-auto space-y-6 text-carbon print:p-0">
+          {/* Cabecera institucional */}
+          <div className="border-b border-gray-200 pb-4 flex justify-between items-start">
+            <div>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-turquesa-dark">
+                {t('arco.modal_access.org_custodian')}
+              </span>
+              <h2 className="text-base font-bold text-carbon">Albergue Santa Fe A.C.</h2>
+              <p className="text-xs text-gray-500">
+                Extracto oficial para ejercicio de derecho de Acceso conforme a la Ley de Protección de Datos Personales
+              </p>
+            </div>
+            <div className="text-right text-[11px] text-gray-400">
+              <span>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+          </div>
+
+          {/* Salvaguarda ética Ethos E-02 / MD-04 */}
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2.5 text-xs text-amber-900">
+            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              {t('arco.modal_access.work_note_disclaimer')}
+            </p>
+          </div>
+
+          {/* Ficha de Persona */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b pb-1">
+              {t('arco.modal_access.person_header')}
+            </h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs bg-gray-50 p-3 rounded-lg">
+              <div>
+                <span className="text-gray-400 block text-[10px]">Nombre Completo:</span>
+                <span className="font-semibold">
+                  {caseData.person.given_name} {caseData.person.paternal_family_name} {caseData.person.maternal_family_name || ''}
+                </span>
+              </div>
+              {caseData.person.preferred_name && (
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Nombre Social / Preferido:</span>
+                  <span>{caseData.person.preferred_name}</span>
+                </div>
+              )}
+              <div>
+                <span className="text-gray-400 block text-[10px]">Fecha de Nacimiento:</span>
+                <span>
+                  {caseData.person.birth_date} {caseData.person.birth_date_is_estimated && '(Aproximada)'}
+                </span>
+              </div>
+              {caseData.person.phone_number && (
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Teléfono:</span>
+                  <span>{caseData.person.phone_number}</span>
+                </div>
+              )}
+              {caseData.person.email && (
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Correo:</span>
+                  <span>{caseData.person.email}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Expedientes y Estatus */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b pb-1">
+              {t('arco.modal_access.cases_header')}
+            </h4>
+            <div className="border border-gray-200 rounded-lg p-3 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-turquesa-dark">{caseData.case_number}</span>
+                <span className="text-gray-500 text-[11px]">Apertura: {new Date(caseData.opened_at).toLocaleDateString('es-MX')}</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t text-[11px]">
+                <div>
+                  <span className="text-gray-400 block">Estatus de Acompañamiento:</span>
+                  <span className="font-semibold">{caseData.statuses.engagement_status.label}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block">Situación Migratoria:</span>
+                  <span className="font-semibold">{caseData.statuses.legal_status.label}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block">Situación de Alojamiento:</span>
+                  <span className="font-semibold">{caseData.statuses.shelter_status.label}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bitácora de Intervenciones Públicas/Compartidas (Excluye notas de trabajo) */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center border-b pb-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                {t('arco.modal_access.journal_header')}
+              </h4>
+              <span className="text-[11px] text-gray-400">
+                ({accessibleEntries.length} hechos registrados)
+              </span>
+            </div>
+
+            {accessibleEntries.length === 0 ? (
+              <p className="text-xs text-gray-400 italic py-2">
+                {t('arco.modal_access.no_entries')}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {accessibleEntries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="p-3 rounded-lg border border-gray-200 bg-white text-xs space-y-1.5"
+                  >
+                    <div className="flex justify-between items-center text-[11px] text-gray-500">
+                      <span className="font-semibold text-carbon">
+                        {entry.area_name || entry.area_code || 'Área Operativa'}
+                      </span>
+                      <span>
+                        {new Date(entry.occurred_at).toLocaleString('es-MX', {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{entry.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Consentimientos */}
+          {caseData.consents && caseData.consents.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 border-b pb-1">
+                {t('arco.modal_access.consents_header')}
+              </h4>
+              <div className="space-y-1.5 text-xs">
+                {caseData.consents.map((c) => (
+                  <div key={c.id} className="flex justify-between items-center p-2 rounded bg-gray-50">
+                    <span className="font-medium text-carbon">
+                      {t(`arco.consent_types.${c.consent_type}`)}
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
+                      {t(`arco.consent_status.${c.status}`)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Barra de Acciones */}
+        <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="px-3 py-1.5 text-xs font-semibold rounded border border-gray-300 bg-white text-carbon hover:bg-gray-100 transition flex items-center gap-1.5 shadow-sm"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>{t('arco.modal_access.btn_print')}</span>
+            </button>
+            <button
+              onClick={handleCopyJson}
+              className="px-3 py-1.5 text-xs font-semibold rounded border border-gray-300 bg-white text-carbon hover:bg-gray-100 transition flex items-center gap-1.5 shadow-sm"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied ? t('arco.modal_access.copied_notice') : t('arco.modal_access.btn_copy_json')}</span>
+            </button>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 text-xs font-semibold rounded bg-carbon text-white hover:bg-carbon-muted transition"
+          >
+            {t('arco.modal_access.btn_close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

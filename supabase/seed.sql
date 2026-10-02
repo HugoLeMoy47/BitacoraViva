@@ -345,3 +345,68 @@ begin
         false, '2026-09-26T16:30:00Z', '2026-09-26T17:00:00Z', 'area_private'
     ) on conflict (id) do nothing;
 end $$;
+
+-- ==============================================================================
+-- 8. Aviso de Privacidad, Consentimientos y Solicitudes ARCO (Épica E5)
+-- ==============================================================================
+do $$
+declare
+    v_org uuid := '00000000-0000-0000-0000-000000000001';
+    v_p_wendy uuid := '30000000-0000-0000-0000-000000000001';
+    v_p_mateo uuid := '30000000-0000-0000-0000-000000000003';
+    v_c_wendy uuid := 'c0000000-0000-0000-0000-000000000001';
+    v_c_mateo uuid := 'c0000000-0000-0000-0000-000000000003';
+    v_user_dir uuid := 'a0000000-0000-0000-0000-000000000001';
+    v_user_intk uuid := 'a0000000-0000-0000-0000-000000000003';
+    v_notice_1 uuid := '60000000-0000-0000-0000-000000000001';
+    v_cons_1 uuid := '70000000-0000-0000-0000-000000000001';
+    v_cons_2 uuid := '70000000-0000-0000-0000-000000000002';
+    v_cons_3 uuid := '70000000-0000-0000-0000-000000000003';
+    v_cons_4 uuid := '70000000-0000-0000-0000-000000000004';
+    v_arco_1 uuid := '80000000-0000-0000-0000-000000000001';
+begin
+    -- 1. Aviso de Privacidad Institucional v1.0
+    insert into public.privacy_notice (
+        id, organization_id, version, title, summary, full_text, effective_date, active
+    ) values (
+        v_notice_1, v_org, '1.0',
+        'Aviso de Privacidad Integral para Personas en Movilidad y Solicitantes de Alojamiento',
+        'Albergue Santa Fe A.C. es custodio, no dueño de sus datos personales. Se recaban datos generales y sensibles exclusivamente para auxilio humanitario, alojamiento y asesoría legal.',
+        'El presente Aviso de Privacidad rige el tratamiento de datos personales por Albergue Santa Fe A.C. con domicilio en Av. Independencia 450, Tuxtla Gutiérrez, Chiapas. Con fundamento en la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (vigente 2025) y los Principios Humanitarios de ACNUR y OIM, sus datos sensibles (salud, condición migratoria, violencia y etnicidad) se tratan bajo estricta confidencialidad y consentimiento expreso. Usted o su tutor pueden ejercer en todo momento sus derechos ARCO de Acceso, Rectificación, Cancelación (anonimización) u Oposición.',
+        '2026-01-01', true
+    ) on conflict (id) do nothing;
+
+    -- 2. Consentimientos de Wendy Carolina Ramos
+    insert into public.consent (
+        id, organization_id, person_id, case_id, privacy_notice_id, consent_type,
+        status, is_minor_assent, granted_at, granted_by_user_id, notes
+    ) values 
+        (v_cons_1, v_org, v_p_wendy, v_c_wendy, v_notice_1, 'general_care', 'granted', false, '2026-09-20T10:05:00Z', v_user_intk, 'Consentimiento general de alojamiento y atención social otorgado formalmente.'),
+        (v_cons_2, v_org, v_p_wendy, v_c_wendy, v_notice_1, 'sensitive_data', 'granted', false, '2026-09-20T10:06:00Z', v_user_intk, 'Consentimiento expreso informado firmado para datos de persecución, salud y situación migratoria.')
+    on conflict (id) do nothing;
+
+    -- 3. Consentimientos de Mateo Chen (NNA No Acompañado: Asentimiento + Tutor Legal)
+    insert into public.consent (
+        id, organization_id, person_id, case_id, privacy_notice_id, consent_type,
+        status, is_minor_assent, legal_guardian_name, legal_guardian_role, authority_letter_ref,
+        granted_at, granted_by_user_id, notes
+    ) values 
+        (v_cons_3, v_org, v_p_mateo, v_c_mateo, v_notice_1, 'general_care', 'granted', true, 'Lic. Sofía Calderón', 'Procuraduría de Protección de NNA', 'DIF/PPNNA/2026/0491', '2026-09-26T16:40:00Z', v_user_intk, 'Asentimiento informado del adolescente con anuencia formal de la Procuraduría de Protección de NNA.'),
+        (v_cons_4, v_org, v_p_mateo, v_c_mateo, v_notice_1, 'sensitive_data', 'granted', true, 'Lic. Sofía Calderón', 'Procuraduría de Protección de NNA', 'DIF/PPNNA/2026/0491', '2026-09-26T16:42:00Z', v_user_intk, 'Consentimiento institucional para valoración médica y datos de origen étnico Qʼeqchiʼ.')
+    on conflict (id) do nothing;
+
+    -- 4. Solicitud ARCO de prueba atendida (Rectificación de teléfono de Wendy)
+    insert into public.arco_request (
+        id, organization_id, person_id, case_id, request_type, status,
+        details, reason, requested_by_name, is_legal_representative,
+        received_at, handled_by_user_id, resolved_at, resolution_notes
+    ) values (
+        v_arco_1, v_org, v_p_wendy, v_c_wendy, 'rectification', 'approved_executed',
+        'Actualización de número telefónico de contacto en México para seguimiento de cita COMAR.',
+        'La titular adquirió chip SIM mexicano para recibir notificaciones institucionales.',
+        'Wendy Carolina Ramos', false,
+        '2026-09-24T12:00:00Z', v_user_dir, '2026-09-24T12:30:00Z',
+        'Se verificó identidad y se actualizó el teléfono en la ficha sociodemográfica person.'
+    ) on conflict (id) do nothing;
+end $$;
+

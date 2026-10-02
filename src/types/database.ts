@@ -17,7 +17,13 @@ export type AuditAction =
   | 'STATUS_CHANGE'
   | 'CLARIFICATION'
   | 'SHARE'
-  | 'ACKNOWLEDGE';
+  | 'ACKNOWLEDGE'
+  | 'RECTIFICATION'
+  | 'ANONYMIZATION'
+  | 'OPPOSITION'
+  | 'CONSENT_GRANTED'
+  | 'CONSENT_REVOKED'
+  | 'ARCO_ACCESS_EXTRACT_ISSUED';
 
 export interface Organization {
   id: string;
@@ -256,6 +262,8 @@ export interface CaseWithDetails extends Case {
     case_stage: CaseCurrentStatusDetail;
   };
   journal_entries?: JournalEntry[];
+  consents?: Consent[];
+  arco_requests?: ArcoRequest[];
 }
 
 // ------------------------------------------------------------------------------
@@ -326,4 +334,77 @@ export interface Attachment {
   uploaded_at: string;
   visibility: JournalVisibility;
 }
+
+// ------------------------------------------------------------------------------
+// Tipos de Consentimiento y Derechos ARCO (Épica E5)
+// ------------------------------------------------------------------------------
+
+export interface PrivacyNotice {
+  id: string;
+  organization_id: string;
+  version: string;
+  title: string;
+  summary: string;
+  full_text: string;
+  effective_date: string;
+  active: boolean;
+  created_at: string;
+}
+
+export type ConsentType = 
+  | 'general_care' 
+  | 'sensitive_data' 
+  | 'internal_sharing' 
+  | 'secondary_use_research';
+
+export type ConsentStatus = 'granted' | 'revoked' | 'opposed';
+
+export interface Consent {
+  id: string;
+  organization_id: string;
+  person_id: string;
+  case_id?: string | null;
+  privacy_notice_id?: string | null;
+  consent_type: ConsentType;
+  status: ConsentStatus;
+  is_minor_assent: boolean;
+  legal_guardian_name?: string | null;
+  legal_guardian_role?: string | null;
+  authority_letter_ref?: string | null;
+  granted_at: string;
+  granted_by_user_id: string;
+  granted_by_name?: string;
+  revoked_at?: string | null;
+  revoked_by_user_id?: string | null;
+  revocation_reason?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export type ArcoRequestType = 'access' | 'rectification' | 'cancellation' | 'opposition';
+
+export type ArcoRequestStatus = 'pending' | 'approved_executed' | 'rejected';
+
+export interface ArcoRequest {
+  id: string;
+  organization_id: string;
+  person_id: string;
+  person_name?: string;
+  case_id?: string | null;
+  case_number?: string | null;
+  request_type: ArcoRequestType;
+  status: ArcoRequestStatus;
+  details: string;
+  reason: string;
+  requested_by_name: string;
+  is_legal_representative: boolean;
+  representative_relationship?: string | null;
+  received_at: string;
+  handled_by_user_id?: string | null;
+  handled_by_name?: string | null;
+  resolved_at?: string | null;
+  resolution_notes?: string | null;
+  created_at: string;
+}
+
 

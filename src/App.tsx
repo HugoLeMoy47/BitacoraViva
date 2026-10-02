@@ -21,7 +21,12 @@ import {
   CaseWithDetails, 
   AuditEvent,
   JournalEntry,
-  SharingEvent
+  SharingEvent,
+  ConsentType,
+  ConsentStatus,
+  Person,
+  Consent,
+  ArcoRequest
 } from './types/database';
 import { 
   DEMO_ORGANIZATION, 
@@ -308,6 +313,320 @@ export const App: React.FC = () => {
     setAuditEventsList((prev) => [newAuditEvent, ...prev]);
   };
 
+  const handleSaveConsent = (
+    caseId: string,
+    consentData: {
+      consent_type: ConsentType;
+      status: ConsentStatus;
+      is_minor_assent: boolean;
+      legal_guardian_name?: string;
+      legal_guardian_role?: string;
+      authority_letter_ref?: string;
+      notes?: string;
+    }
+  ) => {
+    const timestamp = new Date().toISOString();
+    let personId = '';
+    let personName = '';
+
+    setCasesList((prev) =>
+      prev.map((c) => {
+        if (c.id !== caseId) return c;
+        personId = c.person.id;
+        personName = `${c.person.given_name} ${c.person.paternal_family_name}`;
+
+        const newConsent: Consent = {
+          id: `cons-${Date.now()}`,
+          organization_id: DEMO_ORGANIZATION.id,
+          person_id: c.person.id,
+          case_id: c.id,
+          consent_type: consentData.consent_type,
+          status: consentData.status,
+          is_minor_assent: consentData.is_minor_assent,
+          legal_guardian_name: consentData.legal_guardian_name,
+          legal_guardian_role: consentData.legal_guardian_role,
+          authority_letter_ref: consentData.authority_letter_ref,
+          granted_at: timestamp,
+          granted_by_user_id: currentUser.profile.id,
+          granted_by_name: currentUser.profile.full_name,
+          notes: consentData.notes,
+          created_at: timestamp,
+        };
+
+        const existingConsents = c.consents || [];
+        const filtered = existingConsents.filter((item) => item.consent_type !== consentData.consent_type);
+
+        return {
+          ...c,
+          updated_at: timestamp,
+          consents: [...filtered, newConsent],
+        };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'CONSENT_GRANTED',
+      table_name: 'consent',
+      record_id: personId,
+      case_id: caseId,
+      old_values: null,
+      new_values: {
+        person_name: personName,
+        consent_type: consentData.consent_type,
+        status: consentData.status,
+        is_minor_assent: consentData.is_minor_assent,
+        recorded_by: currentUser.profile.full_name,
+      },
+      created_at: timestamp,
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
+  const handleRectifyPerson = (personId: string, updates: Partial<Person>, reason: string) => {
+    const timestamp = new Date().toISOString();
+    const targetCase = casesList.find((c) => c.person.id === personId);
+    const oldPerson = targetCase ? { ...targetCase.person } : null;
+    const targetCaseId = targetCase?.id || null;
+
+    setCasesList((prev) =>
+      prev.map((c) => {
+        if (c.person.id !== personId) return c;
+
+        const updatedPerson: Person = {
+          ...c.person,
+          ...updates,
+          updated_at: timestamp,
+        };
+
+        const rectificationRequest: ArcoRequest = {
+          id: `arco-${Date.now()}`,
+          organization_id: DEMO_ORGANIZATION.id,
+          person_id: personId,
+          person_name: `${updatedPerson.given_name} ${updatedPerson.paternal_family_name}`,
+          case_id: c.id,
+          case_number: c.case_number,
+          request_type: 'rectification',
+          status: 'approved_executed',
+          details: 'Rectificación de datos biográficos en ficha de persona (BV-5.4).',
+          reason,
+          requested_by_name: `${updatedPerson.given_name} ${updatedPerson.paternal_family_name}`,
+          is_legal_representative: false,
+          received_at: timestamp,
+          handled_by_user_id: currentUser.profile.id,
+          handled_by_name: currentUser.profile.full_name,
+          resolved_at: timestamp,
+          resolution_notes: `Datos biográficos actualizados por ${currentUser.profile.full_name}.`,
+          created_at: timestamp,
+        };
+
+        return {
+          ...c,
+          updated_at: timestamp,
+          person: updatedPerson,
+          arco_requests: [rectificationRequest, ...(c.arco_requests || [])],
+        };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'RECTIFICATION',
+      table_name: 'person',
+      record_id: personId,
+      case_id: targetCaseId,
+      old_values: oldPerson ? { given_name: oldPerson.given_name, paternal_family_name: oldPerson.paternal_family_name, birth_date: oldPerson.birth_date, phone_number: oldPerson.phone_number } : null,
+      new_values: {
+        ...updates,
+        reason,
+        rectified_by: currentUser.profile.full_name,
+      },
+      created_at: timestamp,
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
+  const handleAnonymizePerson = (personId: string, reason: string) => {
+    const timestamp = new Date().toISOString();
+
+    setCasesList((prev) =>
+      prev.map((c) => {
+        if (c.person.id !== personId) return c;
+
+        const anonymizedPerson: Person = {
+          ...c.person,
+          given_name: 'PERSONA ANONIMIZADA',
+          paternal_family_name: 'SUPRIMIDO',
+          maternal_family_name: null,
+          preferred_name: null,
+          phone_number: null,
+          email: null,
+          address_line: null,
+          neighborhood: null,
+          postal_code: null,
+          other_language: null,
+          birth_date_is_estimated: true,
+          is_anonymized: true,
+          anonymized_at: timestamp,
+          anonymized_by: currentUser.profile.id,
+          updated_at: timestamp,
+        };
+
+        const updatedStatuses = {
+          ...c.statuses,
+          engagement_status: {
+            valueCode: 'anonymized',
+            label: 'Anonimizada',
+            valid_from: timestamp,
+            reason: `Supresión y cancelación por ejercicio ARCO: ${reason}`,
+            isActiveCare: false,
+          },
+          record_status: {
+            valueCode: 'anonymized',
+            label: 'Anonimizado',
+            valid_from: timestamp,
+            reason: `Expediente cerrado permanentemente por anonimización.`,
+          },
+        };
+
+        const purgedEntries = (c.journal_entries || []).map((e) => ({
+          ...e,
+          body: '[CONTENIDO SUPRIMIDO POR EJERCICIO DE DERECHO ARCO DE CANCELACIÓN - ADR-0001]',
+        }));
+
+        const cancellationRequest: ArcoRequest = {
+          id: `arco-${Date.now()}`,
+          organization_id: DEMO_ORGANIZATION.id,
+          person_id: personId,
+          person_name: 'PERSONA ANONIMIZADA',
+          case_id: c.id,
+          case_number: c.case_number,
+          request_type: 'cancellation',
+          status: 'approved_executed',
+          details: 'Cancelación de expediente y anonimización irreversible (ADR-0001 / BV-5.3).',
+          reason,
+          requested_by_name: 'PERSONA ANONIMIZADA (Solicitud ARCO)',
+          is_legal_representative: false,
+          received_at: timestamp,
+          handled_by_user_id: currentUser.profile.id,
+          handled_by_name: currentUser.profile.full_name,
+          resolved_at: timestamp,
+          resolution_notes: `Anonimización irreversible ejecutada conforme a ADR-0001 por ${currentUser.profile.full_name}.`,
+          created_at: timestamp,
+        };
+
+        return {
+          ...c,
+          updated_at: timestamp,
+          person: anonymizedPerson,
+          statuses: updatedStatuses,
+          journal_entries: purgedEntries,
+          arco_requests: [cancellationRequest, ...(c.arco_requests || [])],
+        };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'ANONYMIZATION',
+      table_name: 'person',
+      record_id: personId,
+      old_values: null,
+      new_values: {
+        reason,
+        executed_by: currentUser.profile.full_name,
+        procedure: 'ADR-0001_anonymize_person',
+        timestamp,
+      },
+      created_at: timestamp,
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
+  const handleOpposeSecondary = (personId: string, reason: string) => {
+    const timestamp = new Date().toISOString();
+
+    setCasesList((prev) =>
+      prev.map((c) => {
+        if (c.person.id !== personId) return c;
+
+        const oppositionConsent: Consent = {
+          id: `cons-${Date.now()}`,
+          organization_id: DEMO_ORGANIZATION.id,
+          person_id: personId,
+          case_id: c.id,
+          consent_type: 'secondary_use_research',
+          status: 'opposed',
+          is_minor_assent: false,
+          granted_at: timestamp,
+          granted_by_user_id: currentUser.profile.id,
+          granted_by_name: currentUser.profile.full_name,
+          notes: `Oposición formal registrada: ${reason}`,
+          created_at: timestamp,
+        };
+
+        const existingConsents = (c.consents || []).filter(
+          (item) => item.consent_type !== 'secondary_use_research'
+        );
+
+        const oppositionRequest: ArcoRequest = {
+          id: `arco-${Date.now()}`,
+          organization_id: DEMO_ORGANIZATION.id,
+          person_id: personId,
+          person_name: `${c.person.given_name} ${c.person.paternal_family_name}`,
+          case_id: c.id,
+          case_number: c.case_number,
+          request_type: 'opposition',
+          status: 'approved_executed',
+          details: 'Oposición formal a tratamientos secundarios y reportes externos (BV-5.5).',
+          reason,
+          requested_by_name: `${c.person.given_name} ${c.person.paternal_family_name}`,
+          is_legal_representative: false,
+          received_at: timestamp,
+          handled_by_user_id: currentUser.profile.id,
+          handled_by_name: currentUser.profile.full_name,
+          resolved_at: timestamp,
+          resolution_notes: `Oposición asentada por ${currentUser.profile.full_name}.`,
+          created_at: timestamp,
+        };
+
+        return {
+          ...c,
+          updated_at: timestamp,
+          consents: [...existingConsents, oppositionConsent],
+          arco_requests: [oppositionRequest, ...(c.arco_requests || [])],
+        };
+      })
+    );
+
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'OPPOSITION',
+      table_name: 'consent',
+      record_id: personId,
+      old_values: null,
+      new_values: {
+        scope: 'secondary_use_research',
+        reason,
+        opposed_by: currentUser.profile.full_name,
+      },
+      created_at: timestamp,
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col text-carbon font-sans">
       {/* Header Superior con Branding Freejolitos */}
@@ -508,6 +827,10 @@ export const App: React.FC = () => {
             onAddJournalEntry={handleAddJournalEntry}
             onAddClarification={handleAddClarification}
             onShareJournalEntry={handleShareJournalEntry}
+            onSaveConsent={handleSaveConsent}
+            onRectifyPerson={handleRectifyPerson}
+            onAnonymizePerson={handleAnonymizePerson}
+            onOpposeSecondary={handleOpposeSecondary}
           />
         )}
 

@@ -16,14 +16,22 @@ import {
   Shield,
   CornerDownRight,
   Eye,
-  EyeOff
+  EyeOff,
+  ShieldCheck,
+  Edit3,
+  Trash2,
+  CheckCircle2,
+  Scale
 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { 
   CaseWithDetails, 
   RoleName, 
   StatusAxisCode,
-  JournalEntry
+  JournalEntry,
+  ConsentType,
+  ConsentStatus,
+  Person
 } from '../types/database';
 import { 
   DEMO_STATUS_AXES, 
@@ -33,6 +41,11 @@ import {
 import { NewJournalEntryModal } from './NewJournalEntryModal';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
 import { ShareEntryModal } from './ShareEntryModal';
+import { ConsentModal } from './ConsentModal';
+import { RectifyPersonModal } from './RectifyPersonModal';
+import { AnonymizePersonModal } from './AnonymizePersonModal';
+import { OpposeSecondaryTreatmentModal } from './OpposeSecondaryTreatmentModal';
+import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -52,6 +65,18 @@ interface CaseDetailViewProps {
   onAddJournalEntry?: (entry: JournalEntry) => void;
   onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;
   onShareJournalEntry?: (entryId: string, toAreaId: string, toAreaName: string, reason: string) => void;
+  onSaveConsent?: (consent: {
+    consent_type: ConsentType;
+    status: ConsentStatus;
+    is_minor_assent: boolean;
+    legal_guardian_name?: string;
+    legal_guardian_role?: string;
+    authority_letter_ref?: string;
+    notes?: string;
+  }) => void;
+  onRectifyPerson?: (updates: Partial<Person>, reason: string) => void;
+  onAnonymizePerson?: (personId: string, reason: string) => void;
+  onOpposeSecondary?: (personId: string, reason: string) => void;
 }
 
 export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
@@ -67,8 +92,12 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onAddJournalEntry,
   onAddClarification,
   onShareJournalEntry,
+  onSaveConsent,
+  onRectifyPerson,
+  onAnonymizePerson,
+  onOpposeSecondary,
 }) => {
-  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios'>('axes');
+  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy'>('axes');
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   const [targetValueCode, setTargetValueCode] = useState<string>('');
   const [transitionReason, setTransitionReason] = useState<string>('');
@@ -81,6 +110,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const [sharingEntry, setSharingEntry] = useState<JournalEntry | null>(null);
   const [expandedSuperseded, setExpandedSuperseded] = useState<Record<string, boolean>>({});
 
+  // Estados para Privacidad y Derechos ARCO (Épica E5)
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState<boolean>(false);
+  const [isRectifyModalOpen, setIsRectifyModalOpen] = useState<boolean>(false);
+  const [isAnonymizeModalOpen, setIsAnonymizeModalOpen] = useState<boolean>(false);
+  const [isOpposeModalOpen, setIsOpposeModalOpen] = useState<boolean>(false);
+  const [isAccessExtractModalOpen, setIsAccessExtractModalOpen] = useState<boolean>(false);
+
   const hasUnaccompaniedChild = caseData.vulnerabilities.some(
     (v) => v.marker_code === 'unaccompanied_child'
   );
@@ -88,6 +124,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const isDirector = activeRole === 'director';
   const isLegalCaseworker = activeRole === 'caseworker' && assignedAreaCode === 'legal';
   const canWriteJournal = activeRole === 'caseworker' || activeRole === 'intake_officer' || activeRole === 'director';
+  const canManageConsent = activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director';
+  const canRectify = activeRole === 'intake_officer' || activeRole === 'director';
+
+  const consents = caseData.consents || [];
+  const arcoRequests = caseData.arco_requests || [];
+  const hasSensitiveDataConsent = consents.some(
+    (c) => c.consent_type === 'sensitive_data' && c.status === 'granted'
+  );
 
   const journalEntries = caseData.journal_entries || [];
 
@@ -282,6 +326,20 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             {t('cases.tab_subfolios')} ({caseData.subfolios.length})
           </button>
         )}
+        <button
+          onClick={() => setActiveTab('privacy')}
+          className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
+            activeTab === 'privacy'
+              ? 'border-turquesa text-carbon'
+              : 'border-transparent text-gray-500 hover:text-carbon'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          {t('arco.tab_title')}
+          {!hasSensitiveDataConsent && (
+            <span className="w-2 h-2 rounded-full bg-amber-500" title={t('arco.sensitive_alert_missing')} />
+          )}
+        </button>
       </div>
 
       {/* Tab 1: Los 5 Ejes de Estatus (Regla Dura 7 / ME-02) */}
@@ -732,6 +790,309 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         </div>
       )}
 
+      {/* Tab 6: Privacidad, Consentimientos y Derechos ARCO (Épica E5) */}
+      {activeTab === 'privacy' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-turquesa" />
+                  <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                    {t('arco.section_consent_title')}
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {t('arco.section_consent_desc')}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-mono bg-claro text-carbon px-2.5 py-1 rounded-full border border-turquesa/30 font-semibold">
+                  {t('arco.privacy_notice_badge')}
+                </span>
+                {canManageConsent && onSaveConsent && (
+                  <button
+                    onClick={() => setIsConsentModalOpen(true)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-turquesa text-carbon hover:bg-turquesa-light transition flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t('arco.btn_manage_consents')}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Alerta de Consentimiento para Datos Sensibles (Control P-06) */}
+            {!hasSensitiveDataConsent ? (
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-xs text-amber-900">
+                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block mb-0.5">Control P-06 Activo</span>
+                  <p>{t('arco.sensitive_alert_missing')}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-medium">{t('arco.sensitive_alert_ok')}</span>
+              </div>
+            )}
+
+            {/* Tarjetas de Consentimientos */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {(['general_care', 'sensitive_data', 'internal_sharing', 'secondary_use_research'] as ConsentType[]).map((typeKey) => {
+                const consentItem = consents.find((c) => c.consent_type === typeKey);
+                const isGranted = consentItem?.status === 'granted';
+                const isOpposed = consentItem?.status === 'opposed';
+                const isRevoked = consentItem?.status === 'revoked';
+
+                return (
+                  <div
+                    key={typeKey}
+                    className={`p-4 rounded-xl border transition ${
+                      isGranted
+                        ? 'border-emerald-200 bg-emerald-50/20'
+                        : isOpposed
+                        ? 'border-amber-200 bg-amber-50/20'
+                        : 'border-gray-200 bg-gray-50/50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-bold text-xs text-carbon">
+                        {t(`arco.consent_types.${typeKey}`)}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isGranted
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : isOpposed
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : isRevoked
+                            ? 'bg-red-100 text-red-800 border border-red-300'
+                            : 'bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        {consentItem ? t(`arco.consent_status.${consentItem.status}`) : 'Pendiente'}
+                      </span>
+                    </div>
+
+                    {consentItem ? (
+                      <div className="text-[11px] text-gray-600 space-y-1 mt-2">
+                        {consentItem.is_minor_assent && (
+                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-semibold mb-1">
+                            <Scale className="w-3 h-3 text-amber-700" />
+                            <span>{t('arco.assent_label')}</span>
+                          </div>
+                        )}
+                        {consentItem.legal_guardian_name && (
+                          <p>
+                            <span className="font-medium text-gray-500">{t('arco.guardian_label')}</span> {consentItem.legal_guardian_name} ({consentItem.legal_guardian_role})
+                          </p>
+                        )}
+                        {consentItem.authority_letter_ref && (
+                          <p>
+                            <span className="font-medium text-gray-500">{t('arco.authority_ref_label')}</span> <span className="font-mono">{consentItem.authority_letter_ref}</span>
+                          </p>
+                        )}
+                        <p>
+                          <span className="font-medium text-gray-500">{t('arco.granted_at_label')}</span> {new Date(consentItem.granted_at).toLocaleDateString('es-MX')}
+                        </p>
+                        {consentItem.notes && (
+                          <p className="italic text-gray-500 text-[10px] bg-white/70 p-1.5 rounded border border-gray-100 mt-1">
+                            "{consentItem.notes}"
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-gray-400 italic mt-2">
+                        No se ha asentado registro para esta modalidad.
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sección: Ejercicio de Derechos ARCO */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-5">
+            <div className="border-b border-gray-100 pb-3">
+              <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                {t('arco.arco_section_title')}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                {t('arco.arco_section_desc')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Acceso */}
+              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
+                    <FileText className="w-4 h-4 text-turquesa-dark" />
+                    <span>Derecho de Acceso</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    Expedir extracto oficial depurado (excluye notas de trabajo profesional protegidas por Ethos E-02).
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAccessExtractModalOpen(true)}
+                  disabled={!isDirector}
+                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                    isDirector
+                      ? 'bg-carbon text-white hover:bg-carbon-muted cursor-pointer'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title={!isDirector ? 'Reservado a Dirección (BV-5.2)' : undefined}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>{t('arco.btn_access')}</span>
+                </button>
+              </div>
+
+              {/* Rectificación */}
+              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
+                    <Edit3 className="w-4 h-4 text-turquesa-dark" />
+                    <span>Derecho de Rectificación</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    Corregir datos biográficos de la ficha de identificación con motivo y auditoría obligatoria.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsRectifyModalOpen(true)}
+                  disabled={!canRectify || caseData.person.is_anonymized}
+                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                    canRectify && !caseData.person.is_anonymized
+                      ? 'bg-turquesa text-carbon hover:bg-turquesa-light cursor-pointer'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title={!canRectify ? 'Reservado a Ingreso y Dirección (BV-5.4)' : undefined}
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{t('arco.btn_rectify')}</span>
+                </button>
+              </div>
+
+              {/* Oposición */}
+              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
+                    <ShieldAlert className="w-4 h-4 text-amber-500" />
+                    <span>Derecho de Oposición</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    Restringir tratamientos secundarios y reportes externos sin afectar auxilio humanitario ni alojamiento.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsOpposeModalOpen(true)}
+                  disabled={!isDirector || caseData.person.is_anonymized}
+                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                    isDirector && !caseData.person.is_anonymized
+                      ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300 cursor-pointer'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title={!isDirector ? 'Reservado a Dirección (BV-5.5)' : undefined}
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>{t('arco.btn_oppose')}</span>
+                </button>
+              </div>
+
+              {/* Cancelación / Anonimización */}
+              <div className="p-4 rounded-xl border border-red-200 bg-red-50/30 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-700 mb-1">
+                    <Trash2 className="w-4 h-4 text-red-600" />
+                    <span>Derecho de Cancelación</span>
+                  </div>
+                  <p className="text-[11px] text-red-600/80 leading-relaxed">
+                    Procedimiento irreversible (ADR-0001): Destruye datos identificables, purga bitácoras y preserva esqueleto estadístico.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAnonymizeModalOpen(true)}
+                  disabled={!isDirector || caseData.person.is_anonymized}
+                  className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                    isDirector && !caseData.person.is_anonymized
+                      ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title={!isDirector ? 'Reservado a Dirección (ADR-0001 / BV-5.3)' : undefined}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>
+                    {caseData.person.is_anonymized ? 'Anonimizado' : t('arco.btn_cancel')}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Historial de Solicitudes ARCO */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+            <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
+              <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                {t('arco.history_title')}
+              </h3>
+              <span className="text-[11px] font-mono text-gray-400">
+                {arcoRequests.length} registros
+              </span>
+            </div>
+
+            {arcoRequests.length === 0 ? (
+              <p className="text-xs text-gray-400 italic py-3 text-center">
+                {t('arco.history_empty')}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-xs">
+                  <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-[10px]">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left">{t('arco.table_type')}</th>
+                      <th className="px-4 py-2.5 text-left">{t('arco.table_status')}</th>
+                      <th className="px-4 py-2.5 text-left">{t('arco.table_requested_by')}</th>
+                      <th className="px-4 py-2.5 text-left">{t('arco.table_reason')}</th>
+                      <th className="px-4 py-2.5 text-left">{t('arco.table_date')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {arcoRequests.map((req) => (
+                      <tr key={req.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-semibold text-carbon">
+                          <span className="px-2 py-0.5 rounded bg-gray-100 border text-[11px]">
+                            {t(`arco.types.${req.request_type}`)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium text-[10px]">
+                            {t(`arco.statuses.${req.status}`)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{req.requested_by_name}</td>
+                        <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={req.reason}>
+                          {req.reason}
+                        </td>
+                        <td className="px-4 py-3 text-gray-400 font-mono text-[11px]">
+                          {req.received_at.substring(0, 10)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Modal de Cambio de Estatus Multieje (Regla Dura 7) */}
       {transitioningAxis && (
         <div className="fixed inset-0 bg-carbon/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -859,6 +1220,51 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           authorUserId={authorUserId}
           authorFullName={authorFullName}
           onSubmitShare={onShareJournalEntry}
+        />
+      )}
+
+      {/* Modales de Épica E5: Consentimiento y Derechos ARCO */}
+      {isConsentModalOpen && onSaveConsent && (
+        <ConsentModal
+          isOpen={isConsentModalOpen}
+          onClose={() => setIsConsentModalOpen(false)}
+          caseData={caseData}
+          onSaveConsent={onSaveConsent}
+        />
+      )}
+
+      {isRectifyModalOpen && onRectifyPerson && (
+        <RectifyPersonModal
+          isOpen={isRectifyModalOpen}
+          onClose={() => setIsRectifyModalOpen(false)}
+          person={caseData.person}
+          onRectify={onRectifyPerson}
+        />
+      )}
+
+      {isAnonymizeModalOpen && onAnonymizePerson && (
+        <AnonymizePersonModal
+          isOpen={isAnonymizeModalOpen}
+          onClose={() => setIsAnonymizeModalOpen(false)}
+          caseData={caseData}
+          onAnonymize={onAnonymizePerson}
+        />
+      )}
+
+      {isOpposeModalOpen && onOpposeSecondary && (
+        <OpposeSecondaryTreatmentModal
+          isOpen={isOpposeModalOpen}
+          onClose={() => setIsOpposeModalOpen(false)}
+          caseData={caseData}
+          onOppose={onOpposeSecondary}
+        />
+      )}
+
+      {isAccessExtractModalOpen && (
+        <ArcoAccessExtractModal
+          isOpen={isAccessExtractModalOpen}
+          onClose={() => setIsAccessExtractModalOpen(false)}
+          caseData={caseData}
         />
       )}
     </div>
