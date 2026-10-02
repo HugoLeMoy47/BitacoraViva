@@ -1,7 +1,7 @@
 // ==============================================================================
 // Bitácora Viva — Tipos TypeScript para Base de Datos y Dominio
 // Fuente de verdad: 50_Productos/BitacoraViva/20_arquitectura/modelo-de-datos.md
-// Alineación: Ethos v1.2, RNF v1.0, MAP-OIM v3
+// Alineación: Ethos v1.2, RNF v1.0, MAP-OIM v3 (Épicas E1, E2 y E3)
 // ==============================================================================
 
 export type RoleName = 'viewer' | 'caseworker' | 'intake_officer' | 'director';
@@ -94,7 +94,7 @@ export interface Person {
   organization_id: string;
   given_name: string;
   paternal_family_name: string;
-  maternal_family_name: string;
+  maternal_family_name?: string | null;
   preferred_name?: string | null;
   birth_date: string;
   birth_date_is_estimated: boolean;
@@ -145,6 +145,8 @@ export interface Case {
   closure_reason?: string | null;
   assigned_area_id?: string | null;
   assigned_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export type VulnerabilityMarkerCode =
@@ -164,6 +166,7 @@ export type VulnerabilityMarkerCode =
 
 export interface CaseVulnerabilityMarker {
   id: string;
+  organization_id: string;
   case_id: string;
   marker_code: VulnerabilityMarkerCode;
   notes?: string | null;
@@ -171,4 +174,75 @@ export interface CaseVulnerabilityMarker {
   affirmed_at: string;
   removed_by?: string | null;
   removed_at?: string | null;
+  created_at: string;
+}
+
+// ------------------------------------------------------------------------------
+// Tipos de Estatus Multidimensional (Épica E2: 5 Ejes)
+// ------------------------------------------------------------------------------
+
+export type StatusAxisCode = 
+  | 'legal_status' 
+  | 'engagement_status' 
+  | 'shelter_status' 
+  | 'record_status' 
+  | 'case_stage';
+
+export interface StatusAxis {
+  id: string;
+  organization_id: string;
+  code: StatusAxisCode;
+  label_es: string;
+  is_primary: boolean;
+  is_system: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface StatusValue {
+  id: string;
+  organization_id: string;
+  axis_id: string;
+  code: string;
+  label_es: string;
+  sort_order: number;
+  is_active_care: boolean;
+  is_system: boolean;
+  is_terminal: boolean;
+  created_at: string;
+}
+
+export interface CaseStatus {
+  id: string;
+  organization_id: string;
+  case_id: string;
+  axis_id: string;
+  value_id: string;
+  valid_from: string;
+  valid_to: string | null;
+  reason: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface CaseCurrentStatusDetail {
+  valueCode: string;
+  label: string;
+  valid_from: string;
+  reason: string;
+  isActiveCare?: boolean;
+}
+
+export interface CaseWithDetails extends Case {
+  person: Person;
+  parentCaseNumber?: string | null;
+  subfolios?: CaseWithDetails[];
+  vulnerabilities: CaseVulnerabilityMarker[];
+  statuses: {
+    legal_status: CaseCurrentStatusDetail;
+    engagement_status: CaseCurrentStatusDetail;
+    shelter_status: CaseCurrentStatusDetail;
+    record_status: CaseCurrentStatusDetail;
+    case_stage: CaseCurrentStatusDetail;
+  };
 }

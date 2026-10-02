@@ -10,25 +10,107 @@ import {
   Database,
   History,
   Scale,
+  FolderOpen,
   FileText
 } from 'lucide-react';
 import { t } from './lib/i18n';
-import { RoleName } from './types/database';
+import { RoleName, StatusAxisCode, CaseWithDetails, AuditEvent } from './types/database';
 import { 
   DEMO_ORGANIZATION, 
   DEMO_ROLES, 
   DEMO_AREAS, 
   DEMO_USERS, 
   DEMO_AUDIT_EVENTS,
-  DEMO_AUTHORITY_REQUESTS
+  DEMO_AUTHORITY_REQUESTS,
+  DEMO_CASES,
+  DEMO_STATUS_VALUES
 } from './lib/mockData';
+import { CasesView } from './components/CasesView';
 
 export const App: React.FC = () => {
   const [activeRole, setActiveRole] = useState<RoleName>('director');
-  const [activeTab, setActiveTab] = useState<'overview' | 'areas' | 'audit' | 'authority_requests' | 'rules'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'cases' | 'areas' | 'audit' | 'authority_requests' | 'rules'>('cases');
+  const [casesList, setCasesList] = useState<CaseWithDetails[]>(DEMO_CASES);
+  const [auditEventsList, setAuditEventsList] = useState<AuditEvent[]>(DEMO_AUDIT_EVENTS);
 
   const currentUser = DEMO_USERS[activeRole];
   const isDirector = activeRole === 'director';
+
+  const handleCaseCreated = (newCase: CaseWithDetails) => {
+    setCasesList((prev) => [newCase, ...prev]);
+
+    // Generar evento de auditoría automática (BV-1.4 / Regla Dura 5)
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'INSERT',
+      table_name: 'case',
+      record_id: newCase.id,
+      old_values: null,
+      new_values: {
+        case_number: newCase.case_number,
+        titular: `${newCase.person.given_name} ${newCase.person.paternal_family_name}`,
+        created_by: currentUser.profile.full_name,
+      },
+      created_at: new Date().toISOString(),
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
+
+  const handleTransitionStatus = (
+    caseId: string,
+    axisCode: StatusAxisCode,
+    newValueCode: string,
+    reason: string
+  ) => {
+    const timestamp = new Date().toISOString();
+    const valueCatalog = DEMO_STATUS_VALUES[axisCode] || [];
+    const valObj = valueCatalog.find((v) => v.code === newValueCode);
+    const label = valObj?.label_es || newValueCode;
+
+    setCasesList((prev) =>
+      prev.map((c) => {
+        if (c.id !== caseId) return c;
+
+        return {
+          ...c,
+          updated_at: timestamp,
+          statuses: {
+            ...c.statuses,
+            [axisCode]: {
+              valueCode: newValueCode,
+              label,
+              valid_from: timestamp,
+              reason,
+            },
+          },
+        };
+      })
+    );
+
+    // Asentar en auditoría append-only en la misma transacción lógica
+    const newAuditEvent: AuditEvent = {
+      id: `e-${Date.now()}`,
+      organization_id: DEMO_ORGANIZATION.id,
+      user_id: currentUser.profile.id,
+      action: 'STATUS_CHANGE',
+      table_name: 'case_status',
+      record_id: caseId,
+      old_values: null,
+      new_values: {
+        axis: axisCode,
+        new_status: newValueCode,
+        label,
+        reason,
+        author: currentUser.profile.full_name,
+      },
+      created_at: timestamp,
+    };
+
+    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col text-carbon font-sans">
@@ -120,6 +202,20 @@ export const App: React.FC = () => {
         {/* Pestañas de Navegación */}
         <div className="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
           <button
+            onClick={() => setActiveTab('cases')}
+            className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'cases'
+                ? 'border-turquesa text-carbon'
+                : 'border-transparent text-gray-500 hover:text-carbon'
+            }`}
+          >
+            <FolderOpen className="w-4 h-4 text-turquesa-dark" />
+            <span className="font-bold">{t('navigation.cases')}</span>
+            <span className="bg-gray-200 text-carbon px-1.5 py-0.2 rounded-full text-[10px] font-mono">
+              {casesList.length}
+            </span>
+          </button>
+          <button
             onClick={() => setActiveTab('overview')}
             className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap ${
               activeTab === 'overview'
@@ -186,7 +282,20 @@ export const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Tab 1: Resumen de Tenancy y Seguridad */}
+        {/* Tab 1: Gestión de Expedientes y Casos (Épicas E2 y E3) */}
+        {activeTab === 'cases' && (
+          <CasesView
+            cases={casesList}
+            activeRole={activeRole}
+            assignedAreaCode={currentUser.assignedAreaCode}
+            authorUserId={currentUser.profile.id}
+            authorFullName={currentUser.profile.full_name}
+            onCaseCreated={handleCaseCreated}
+            onTransitionStatus={handleTransitionStatus}
+          />
+        )}
+
+        {/* Tab 2: Resumen de Tenancy y Seguridad */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
@@ -253,7 +362,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 2: Áreas del Albergue */}
+        {/* Tab 3: Áreas del Albergue */}
         {activeTab === 'areas' && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -280,7 +389,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 3: Registro de Auditoría Inmutable (Protegido por Ethos C4 y BV-1.3) */}
+        {/* Tab 4: Registro de Auditoría Inmutable (Protegido por Ethos C4 y BV-1.3) */}
         {activeTab === 'audit' && (
           <div>
             {isDirector ? (
@@ -291,7 +400,7 @@ export const App: React.FC = () => {
                     <p className="text-xs text-gray-500">Gobernanza C4: Append-only estricto por trigger en PostgreSQL · Solo Dirección</p>
                   </div>
                   <span className="text-xs font-mono bg-claro text-carbon px-2 py-1 rounded border border-turquesa/30">
-                    {DEMO_AUDIT_EVENTS.length} eventos
+                    {auditEventsList.length} eventos
                   </span>
                 </div>
                 <div className="overflow-x-auto">
@@ -305,7 +414,7 @@ export const App: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {DEMO_AUDIT_EVENTS.map((event) => (
+                      {auditEventsList.map((event) => (
                         <tr key={event.id} className="hover:bg-gray-50 font-mono">
                           <td className="px-6 py-3 whitespace-nowrap">
                             <span className="px-2 py-0.5 bg-gray-100 text-carbon font-bold rounded text-[11px] border border-gray-300">
@@ -349,7 +458,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 4: Requerimientos de Autoridad (Ethos E-03) */}
+        {/* Tab 5: Requerimientos de Autoridad (Ethos E-03) */}
         {activeTab === 'authority_requests' && (
           <div>
             {isDirector ? (
@@ -423,7 +532,7 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 5: 10 Reglas Duras */}
+        {/* Tab 6: 10 Reglas Duras */}
         {activeTab === 'rules' && (
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <h2 className="text-base font-bold text-carbon mb-2">Las 10 Reglas Duras de Supabase</h2>
