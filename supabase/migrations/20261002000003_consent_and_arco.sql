@@ -110,12 +110,12 @@ for each row execute function public.fn_prevent_delete_arco();
 drop trigger if exists trg_audit_consent on public.consent;
 create trigger trg_audit_consent
 after insert or update on public.consent
-for each row execute function public.fn_audit_log();
+for each row execute function public.fn_audit_trigger();
 
 drop trigger if exists trg_audit_arco_request on public.arco_request;
 create trigger trg_audit_arco_request
 after insert or update on public.arco_request
-for each row execute function public.fn_audit_log();
+for each row execute function public.fn_audit_trigger();
 
 -- ==============================================================================
 -- 5. Actualización del disparador de journal_entry para permitir purga por anonimización
