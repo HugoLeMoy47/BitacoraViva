@@ -8,5 +8,9 @@
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
+  },
+  "vars": {
+    "VITE_SUPABASE_URL": "https://fcvaaymvioiroxfyczlx.supabase.co",
+    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjdmFheW12aW9pcm94Znljemx4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5NTE2NjYsImV4cCI6MjEwNjUyNzY2Nn0.9wHTSZcztA3ul2ZBmNp36J-0WVDn7fSAoBLEVV11B6U"
   }
 }
