@@ -40,27 +40,33 @@
     "data_error": "No se pudieron cargar los datos.",
     "action_error": "La operación no se pudo completar:",
     "retry": "Reintentar",
-    "dismiss": "Cerrar"
+    "dismiss": "Cerrar",
+    "account": "Cuenta"
   },
   "navigation": {
     "overview": "Visión General",
-    "cases": "Gestión de Expedientes",
-    "areas": "Áreas del Albergue",
-    "audit_trail": "Registro de Auditoría",
-    "authority_requests": "Requerimientos de Autoridad",
+    "cases": "Expedientes",
+    "areas": "Áreas",
+    "audit_trail": "Auditoría",
+    "authority_requests": "Requerimientos de autoridad",
     "rules": "10 Reglas Duras",
     "indicators": "Indicadores",
-    "operations": "Operación"
+    "operations": "Operación",
+    "about": "Acerca de",
+    "admin": "Administración",
+    "more": "Más",
+    "primary": "Navegación principal",
+    "skip": "Saltar al contenido"
   },
   "dashboard": {
-    "organization_details": "Identidad del Albergue (Tenancy)",
-    "org_slug": "Identificador único (slug):",
-    "org_legal": "Razón Social:",
-    "org_display": "Nombre Público:",
+    "organization_details": "Identidad de la organización",
+    "org_slug": "Identificador único",
+    "org_legal": "Razón social",
+    "org_display": "Nombre público",
     "security_status": "Garantías de Seguridad RLS",
-    "security_status_desc": "La seguridad vive en la base de datos PostgreSQL. Se revocaron privilegios de DELETE y UPDATE sobre audit_event.",
-    "areas_title": "Áreas Operativas Habilitadas",
-    "audit_title": "Últimos Eventos de Auditoría (Append-Only)",
+    "security_status_desc": "La seguridad vive en la base de datos, no en la pantalla: cada regla de acceso se aplica ahí. Las personas que operan no pueden borrar datos de negocio ni modificar el registro de auditoría.",
+    "areas_title": "Áreas operativas",
+    "audit_title": "Registro de auditoría",
     "audit_empty": "No hay eventos registrados en este momento.",
     "table_column_action": "Acción",
     "table_column_table": "Tabla",
@@ -68,8 +74,8 @@
     "table_column_timestamp": "Marca Temporal",
     "table_column_record": "ID Registro",
     "active_badge": "Activa",
-    "total_areas": "Áreas operativas registradas:",
-    "total_roles": "Roles normativos soportados:"
+    "total_areas": "Áreas registradas",
+    "total_roles": "Roles de la plataforma"
   },
   "cases": {
     "title": "Expedientes Humanitarios",
@@ -129,7 +135,9 @@
     "transition_modal_title": "Cambiar estatus",
     "governance_error": "Error de gobernanza:",
     "rule7_note": "Regla Dura 7:",
-    "open_restricted": "Apertura exclusiva de ingreso y dirección"
+    "open_restricted": "Apertura exclusiva de ingreso y dirección",
+    "not_found_title": "No se encontró el expediente",
+    "not_found_body": "No existe un expediente con el folio {folio} o no tienes acceso a él."
   },
   "intake": {
     "modal_title": "Levantamiento de Expediente (Estándar MAP-OIM v3)",
@@ -222,7 +230,9 @@
     "restricted_message": "El registro global de auditoría inmutable es accesible exclusivamente para el rol Dirección. Los roles Operación de Caso, Ingreso y Observador tienen el acceso denegado por política RLS para preservar la compartimentación ética de la información.",
     "restricted_detail": "Cualquier intento de consulta desde un rol no directivo es bloqueado por la regla de seguridad a nivel de motor PostgreSQL.",
     "active_policy_label": "Política RLS activa:",
-    "active_policy_code": "create policy \"Solo directores leen auditoría de su organización\" on public.audit_event for select using (public.has_role('director'));"
+    "active_policy_code": "create policy \"Solo directores leen auditoría de su organización\" on public.audit_event for select using (public.has_role('director'));",
+    "subtitle": "Registro de sólo adición, protegido por la base de datos · Sólo Dirección",
+    "count": "{n} eventos"
   },
   "authority_requests": {
     "title": "Requerimientos de Autoridad (Ethos E-03)",
@@ -238,7 +248,8 @@
     "table_column_summary": "Resumen Institucional",
     "status_delivered": "Extracto Entregado",
     "status_pending": "Trámite Externo / En Proceso",
-    "governance_note": "Gobernanza Ethos E-02: En caso de requerimiento legal de entrega de expediente, las notas de trabajo protegidas (is_work_note) no forman parte de la titularidad de la persona y se excluyen por protocolo."
+    "governance_note": "Gobernanza Ethos E-02: En caso de requerimiento legal de entrega de expediente, las notas de trabajo protegidas (is_work_note) no forman parte de la titularidad de la persona y se excluyen por protocolo.",
+    "count": "{n} oficios registrados"
   },
   "journal": {
     "tab_title": "Bitácora de Intervenciones",
@@ -484,7 +495,11 @@
     "banner_title": "Entorno de demostración.",
     "banner_text": "Todos los datos son ficticios: no registres información de personas reales. La demo se reinicia sin previo aviso y se borra todo lo capturado, incluida la auditoría.",
     "login_notice": "Esto es una demostración con datos ficticios. No uses credenciales ni información reales.",
-    "modal_notice": "Demo: captura únicamente datos ficticios. Lo que registres aquí se borrará al reiniciar la demostración."
+    "modal_notice": "Demo: captura únicamente datos ficticios. Lo que registres aquí se borrará al reiniciar la demostración.",
+    "banner_short": "Datos ficticios.",
+    "banner_more": "No registres información de personas reales. La demo se reinicia sin previo aviso y se borra todo lo capturado, incluida la auditoría.",
+    "more": "Más",
+    "less": "Menos"
   },
   "indicators": {
     "title": "Indicadores agregados",
@@ -594,5 +609,18 @@
     "no": "No",
     "cancel": "Cancelar",
     "close": "Cerrar"
+  },
+  "about": {
+    "title": "Acerca de este sistema",
+    "subtitle": "Material de la demostración: la organización, cómo se protege la información y qué ve cada rol.",
+    "multi_tenant": "Estado multiorganización:",
+    "security_title": "Cómo se protege la información",
+    "audit_lock": "La base de datos mantiene un candado activo: ninguna persona, ni siquiera Dirección, puede alterar o eliminar registros de auditoría.",
+    "roles_title": "Qué ve cada rol",
+    "roles_note": "Las pantallas de cada rol se definen en un solo lugar. La protección real de los datos la impone la base de datos, no la interfaz.",
+    "sees": "Ve:",
+    "rules_title": "Las 10 reglas duras",
+    "rules_intro": "Contrato de handoff inmutable. Violarlas es un defecto estructural, no una diferencia de criterio.",
+    "tagline": "Bitácora Viva · Plataforma libre para la dignidad y la soberanía informativa de la sociedad civil."
   }
 }

@@ -46,3 +46,10 @@ export function formatMonth(yearMonth: string): string {
   const [y, m] = yearMonth.split('-').map(Number);
   return clean(new Intl.DateTimeFormat(LOCALE, { month: 'short', year: 'numeric' }).format(new Date(y, m - 1, 1)));
 }
+
+/** «may» (o «may 26» si se pide el año de dos dígitos) a partir de «YYYY-MM» */
+export function formatMonthShort(yearMonth: string, withYear = false): string {
+  const [y, m] = yearMonth.split('-').map(Number);
+  const mon = clean(new Intl.DateTimeFormat(LOCALE, { month: 'short' }).format(new Date(y, m - 1, 1)));
+  return withYear ? `${mon} ${String(y).slice(2)}` : mon;
+}

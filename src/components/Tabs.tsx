@@ -15,10 +15,13 @@ interface TabsProps {
   onChange: (id: string) => void;
   ariaLabel: string;
   className?: string;
+  /** Sin línea inferior propia (cuando la fila ya está dentro de un contenedor con borde) */
+  bare?: boolean;
 }
 
-export const Tabs: React.FC<TabsProps> = ({ items, value, onChange, ariaLabel, className = '' }) => {
+export const Tabs: React.FC<TabsProps> = ({ items, value, onChange, ariaLabel, className = '', bare = false }) => {
   const listRef = useRef<HTMLDivElement>(null);
+  const hasSelected = items.some((i) => i.id === value);
 
   // Mantiene la pestaña activa visible aunque la fila se desplace
   useEffect(() => {
@@ -45,7 +48,7 @@ export const Tabs: React.FC<TabsProps> = ({ items, value, onChange, ariaLabel, c
       role="tablist"
       aria-label={ariaLabel}
       onKeyDown={onKeyDown}
-      className={`flex gap-1 overflow-x-auto border-b border-gray-200 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
+      className={`flex gap-1 overflow-x-auto ${bare ? '' : 'border-b border-gray-200'} [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}
     >
       {items.map((item) => {
         const selected = item.id === value;
@@ -55,9 +58,9 @@ export const Tabs: React.FC<TabsProps> = ({ items, value, onChange, ariaLabel, c
             type="button"
             role="tab"
             aria-selected={selected}
-            tabIndex={selected ? 0 : -1}
+            tabIndex={selected || (!hasSelected && item.id === items[0].id) ? 0 : -1}
             onClick={() => onChange(item.id)}
-            className={`shrink-0 whitespace-nowrap px-4 py-3 text-sm font-semibold border-b-2 -mb-px flex items-center gap-2 transition ${
+            className={`shrink-0 whitespace-nowrap px-4 py-3 text-sm font-semibold border-b-2 flex items-center gap-2 transition ${
               selected ? 'border-turquesa text-carbon' : 'border-transparent text-gray-500 hover:text-carbon'
             }`}
           >

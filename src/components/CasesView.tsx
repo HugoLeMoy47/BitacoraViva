@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { 
   FolderPlus, 
   Search, 
@@ -49,8 +49,9 @@ interface CasesViewProps {
   onAnonymizePerson?: (personId: string, reason: string) => void;
   onOpposeSecondary?: (personId: string, reason: string) => void;
   // Expediente que debe abrirse al entrar (desde el tablero de operación)
-  openCaseId?: string | null;
-  onOpenCaseHandled?: () => void;
+  /** Folio del expediente abierto (viene de la URL) y cómo cambiarlo */
+  selectedCaseNumber?: string | null;
+  onSelectCase: (caseNumber: string | null) => void;
 }
 
 export const CasesView: React.FC<CasesViewProps> = ({
@@ -69,23 +70,16 @@ export const CasesView: React.FC<CasesViewProps> = ({
   onRectifyPerson,
   onAnonymizePerson,
   onOpposeSecondary,
-  openCaseId,
-  onOpenCaseHandled,
+  selectedCaseNumber,
+  onSelectCase,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (openCaseId) {
-      setSelectedCaseId(openCaseId);
-      onOpenCaseHandled?.();
-    }
-  }, [openCaseId]);
 
   const canOpenCase = activeRole === 'intake_officer' || activeRole === 'director';
 
-  const selectedCase = cases.find((c) => c.id === selectedCaseId);
+  const selectedCase = cases.find((c) => c.case_number === selectedCaseNumber);
 
   const filteredCases = cases.filter((c) => {
     const term = searchTerm.toLowerCase();
@@ -97,19 +91,36 @@ export const CasesView: React.FC<CasesViewProps> = ({
     return matchesNumber || matchesName || matchesPreferred || matchesCountry || matchesVulnerability;
   });
 
+  // Folio de la URL que no existe o que esta persona no puede ver
+  if (selectedCaseNumber && !selectedCase) {
+    return (
+      <div className="mx-auto max-w-lg rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+        <h2 className="text-base font-bold text-carbon">{t('cases.not_found_title')}</h2>
+        <p className="mt-2 text-sm text-carbon-muted">{t('cases.not_found_body').replace('{folio}', selectedCaseNumber)}</p>
+        <button
+          type="button"
+          onClick={() => onSelectCase(null)}
+          className="mt-5 rounded-lg bg-carbon px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+        >
+          {t('cases.btn_back')}
+        </button>
+      </div>
+    );
+  }
+
   // Si hay un caso seleccionado, mostrar la vista detallada
   if (selectedCase) {
     return (
       <CaseDetailView
         caseData={selectedCase}
-        onBack={() => setSelectedCaseId(null)}
+        onBack={() => onSelectCase(null)}
         activeRole={activeRole}
         assignedAreaCode={assignedAreaCode}
         assignedAreaId={assignedAreaId}
         authorUserId={authorUserId}
         authorFullName={authorFullName}
         onTransitionStatus={onTransitionStatus}
-        onSelectSubfolio={(subfolio) => setSelectedCaseId(subfolio.id)}
+        onSelectSubfolio={(subfolio) => onSelectCase(subfolio.case_number)}
         onAddJournalEntry={onAddJournalEntry}
         onAddClarification={onAddClarification}
         onShareJournalEntry={onShareJournalEntry}
@@ -257,7 +268,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
 
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <button
-                        onClick={() => setSelectedCaseId(c.id)}
+                        onClick={() => onSelectCase(c.case_number)}
                         className="px-3 py-1.5 text-xs font-semibold text-carbon bg-gray-100 hover:bg-claro border border-gray-200 rounded-lg inline-flex items-center gap-1 transition-colors"
                       >
                         <span>{t('cases.action_view_detail')}</span>

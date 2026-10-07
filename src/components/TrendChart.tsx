@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { t } from '../lib/i18n';
-import { formatMonth } from '../lib/format';
+import { formatMonth, formatMonthShort } from '../lib/format';
 
 // Gráfica de barras agrupadas: ingresos vs egresos por mes.
 // Colores: ranuras 1 y 2 de la paleta categórica validada (azul / naranja), en orden fijo.
@@ -32,9 +32,19 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
   const [hover, setHover] = useState<number | null>(null);
   const [asTable, setAsTable] = useState(false);
 
-  const W = 640;
-  const H = 230;
-  const m = { top: 24, right: 12, bottom: 30, left: 34 };
+  // El lienzo se mide en píxeles reales para que el texto conserve su tamaño en cualquier pantalla
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(640);
+  const H = 240;
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setW(Math.max(280, Math.round(el.clientWidth))));
+    ro.observe(el);
+    setW(Math.max(280, Math.round(el.clientWidth)));
+    return () => ro.disconnect();
+  }, []);
+  const m = { top: 24, right: 8, bottom: 30, left: 32 };
   const plotW = W - m.left - m.right;
   const plotH = H - m.top - m.bottom;
 
@@ -64,7 +74,7 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
   }
 
   return (
-    <div className="relative" style={{ ['--series-1' as string]: '#2a78d6', ['--series-2' as string]: '#eb6834' }}>
+    <div ref={wrapRef} className="relative" style={{ ['--series-1' as string]: '#2a78d6', ['--series-2' as string]: '#eb6834' }}>
       <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
         <ul className="flex items-center gap-4 text-xs text-gray-700">
           {SERIES.map((s) => (
@@ -109,14 +119,16 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
             viewBox={`0 0 ${W} ${H}`}
             role="img"
             aria-label={t('indicators.trend.title')}
-            className="w-full h-auto"
+            width={W}
+            height={H}
+            className="block"
             onPointerLeave={() => setHover(null)}
           >
             {/* Cuadrícula recesiva y eje */}
             {ticks.map((tv) => (
               <g key={tv}>
                 <line x1={m.left} x2={W - m.right} y1={y(tv)} y2={y(tv)} stroke="#e5e7eb" strokeWidth={1} />
-                <text x={m.left - 6} y={y(tv) + 3} textAnchor="end" fontSize={10} fill="#6b7280">{tv}</text>
+                <text x={m.left - 6} y={y(tv) + 3} textAnchor="end" fontSize={12} fill="#6b7280">{tv}</text>
               </g>
             ))}
 
@@ -143,12 +155,12 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
                           opacity={hover === null || hover === i ? 1 : 0.55}
                         />
                         {labelIdx[s.key] === i && (
-                          <text x={x + barW / 2} y={y(v) - 4} textAnchor="middle" fontSize={10} fontWeight={600} fill="#1f2937">{v}</text>
+                          <text x={x + barW / 2} y={y(v) - 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="#1f2937">{v}</text>
                         )}
                       </g>
                     )
                   )}
-                  <text x={cx} y={H - 10} textAnchor="middle" fontSize={10} fill="#6b7280">{monthLabel(p.month)}</text>
+                  <text x={cx} y={H - 10} textAnchor="middle" fontSize={12} fill="#6b7280">{colW < 70 ? formatMonthShort(p.month, i === 0 || p.month.endsWith('-01')) : monthLabel(p.month)}</text>
                   {/* Área de impacto: toda la columna, más grande que la marca */}
                   <rect
                     x={m.left + colW * i}
