@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "demo:reset": "node scripts/reset-demo.mjs",
     "test:rls": "node scripts/test-rls.mjs",
-    "check:i18n": "node scripts/check-i18n.mjs"
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "audit:ui": "node scripts/audit-ui.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
@@ -26,6 +27,7 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "playwright-core": "^1.63.0",
     "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.7.2",

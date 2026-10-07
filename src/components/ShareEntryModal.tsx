@@ -46,7 +46,7 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
       <div className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div className="flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-turquesa" />
+            <Share2 className="h-5 w-5 text-turquesa-dark" />
             <h3 className="font-title text-base font-bold text-carbon">
               {t('journal.share_modal.title')}
             </h3>
@@ -113,7 +113,7 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
             <button
               type="submit"
               disabled={!reason.trim()}
-              className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-semibold text-carbon hover:opacity-90 disabled:opacity-50"
             >
               <CheckCircle2 className="h-4 w-4" />
               <span>{t('journal.share_modal.btn_submit')}</span>

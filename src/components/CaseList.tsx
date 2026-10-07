@@ -216,7 +216,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
                 {visible.map((c) => (
                   <tr key={c.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-5 py-3 align-top">
-                      <a href={hrefFor('cases', c.case_number)} className="inline-block py-1.5 font-mono font-bold text-carbon hover:underline">{c.case_number}</a>
+                      <a href={hrefFor('cases', c.case_number)} className="inline-flex min-h-11 items-center font-mono font-bold text-carbon hover:underline">{c.case_number}</a>
                       <div className="mt-1 flex flex-wrap gap-1"><Badges c={c} /></div>
                     </td>
                     <td className="px-5 py-3 align-top">
@@ -237,7 +237,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
                     <td className="whitespace-nowrap px-5 py-3 text-right align-top">
                       <a
                         href={hrefFor('cases', c.case_number)}
-                        className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm font-semibold text-carbon hover:bg-claro"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm font-semibold text-carbon hover:bg-claro"
                       >
                         {t('cases.action_view_detail')}
                         <ChevronRight className="h-4 w-4 text-turquesa-dark" aria-hidden="true" />

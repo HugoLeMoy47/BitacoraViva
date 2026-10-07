@@ -53,7 +53,7 @@ export const AboutView: React.FC<{ organization: Organization | null; areasCount
             <h3 className="text-base font-bold text-carbon">{t('about.security_title')}</h3>
           </div>
           <p className="text-sm leading-relaxed text-carbon-muted">{t('dashboard.security_status_desc')}</p>
-          <p className="mt-4 rounded-lg border border-alerta/20 bg-alerta-bg p-3 text-xs text-alerta">{t('about.audit_lock')}</p>
+          <p className="mt-4 rounded-lg border border-alerta/20 bg-alerta-bg p-3 text-xs text-alerta-dark">{t('about.audit_lock')}</p>
         </div>
         <dl className="mt-6 grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 text-center">
           <div className="rounded-lg bg-gray-50 p-3">
@@ -98,7 +98,7 @@ export const AboutView: React.FC<{ organization: Organization | null; areasCount
       <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {Array.from({ length: 10 }).map((_, i) => (
           <li key={i} className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-turquesa" aria-hidden="true" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-turquesa-dark" aria-hidden="true" />
             <span className="text-xs font-medium text-carbon">{t(`rules_list.r${i + 1}`)}</span>
           </li>
         ))}

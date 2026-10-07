@@ -50,7 +50,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             key={x.id}
             role={x.kind === 'error' ? 'alert' : 'status'}
             className={`pointer-events-auto flex w-full max-w-md items-start gap-2 rounded-xl border px-4 py-3 text-sm shadow-lg ${
-              x.kind === 'error' ? 'border-alerta/30 bg-alerta-bg text-alerta' : 'border-turquesa/40 bg-white text-carbon'
+              x.kind === 'error' ? 'border-alerta/30 bg-alerta-bg text-alerta-dark' : 'border-turquesa/40 bg-white text-carbon'
             }`}
           >
             {x.kind === 'error' ? (

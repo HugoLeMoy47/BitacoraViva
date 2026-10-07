@@ -32,7 +32,7 @@ export const DemoBanner: React.FC = () => {
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded px-2 font-semibold underline"
+          className="inline-flex shrink-0 items-center justify-center rounded px-2 py-1 font-semibold underline"
         >
           {expanded ? t('demo.less') : t('demo.more')}
         </button>
@@ -47,7 +47,7 @@ export const DemoBanner: React.FC = () => {
             setDismissed(true);
           }}
           aria-label={t('common.close')}
-          className="inline-flex min-h-8 min-w-8 shrink-0 items-center justify-center rounded hover:bg-black/10"
+          className="inline-flex shrink-0 items-center justify-center rounded p-1 hover:bg-black/10"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

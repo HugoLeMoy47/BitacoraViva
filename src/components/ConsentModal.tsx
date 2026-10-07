@@ -55,7 +55,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
         {/* Encabezado */}
         <div className="bg-carbon px-6 py-4 flex items-center justify-between text-white border-b border-carbon-muted/20">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-turquesa" />
+            <ShieldCheck className="w-5 h-5 text-turquesa-dark" />
             <div>
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_consent.title')}

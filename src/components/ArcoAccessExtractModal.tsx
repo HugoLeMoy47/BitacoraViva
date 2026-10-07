@@ -92,7 +92,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
         {/* Encabezado */}
         <div className="bg-carbon px-6 py-4 flex items-center justify-between text-white border-b border-carbon-muted/20 shrink-0">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-turquesa" />
+            <FileText className="w-5 h-5 text-turquesa-dark" />
             <div>
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_access.title')}
@@ -113,7 +113,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
         {/* Contenido imprimible */}
         <div className="p-6 overflow-y-auto space-y-6 text-carbon print:p-0">
           {extractError && (
-            <div role="alert" className="rounded-lg border border-alerta/20 bg-alerta-bg p-3 text-xs text-alerta">
+            <div role="alert" className="rounded-lg border border-alerta/20 bg-alerta-bg p-3 text-xs text-alerta-dark">
               {extractError}
             </div>
           )}

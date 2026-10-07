@@ -140,7 +140,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             >
               <Bell className="h-5 w-5" aria-hidden="true" />
               {digestPending > 0 && (
-                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alerta px-1 text-xs font-bold leading-none text-white">
+                <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-alerta-dark px-1 text-xs font-bold leading-none text-white">
                   {digestPending}
                 </span>
               )}

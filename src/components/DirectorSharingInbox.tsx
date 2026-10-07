@@ -31,7 +31,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-turquesa/10 text-turquesa">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-turquesa/10 text-turquesa-dark">
               <Bell className="h-5 w-5" />
             </div>
             <div>
@@ -40,7 +40,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
                   {t('journal.director_digest.title')}
                 </h3>
                 {pendingEvents.length > 0 && (
-                  <span className="rounded-full bg-alerta px-2 py-0.5 text-xs font-bold text-white">
+                  <span className="rounded-full bg-alerta-dark px-2 py-0.5 text-xs font-bold text-white">
                     {pendingEvents.length} {t('journal.director_digest.badge_pending')}
                   </span>
                 )}
@@ -85,7 +85,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
                             {evt.from_area_name}
                           </span>
                           <ArrowRight className="h-3.5 w-3.5 text-gray-300" />
-                          <span className="text-xs font-semibold text-turquesa">
+                          <span className="text-xs font-semibold text-turquesa-dark">
                             {evt.to_area_name}
                           </span>
                         </div>
@@ -111,7 +111,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
                         <button
                           onClick={() => onAcknowledge(evt.id)}
                           disabled={busy}
-                          className="flex items-center gap-1.5 rounded-lg bg-turquesa px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded-lg bg-turquesa px-3 py-1.5 text-xs font-bold text-carbon shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Check className="h-3.5 w-3.5" />
                           <span>{t('journal.director_digest.btn_acknowledge')}</span>

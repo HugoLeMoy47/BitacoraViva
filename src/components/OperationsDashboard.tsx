@@ -31,7 +31,7 @@ const Kpi: React.FC<{
 }> = ({ icon, label, value, hint, onClick, tone = 'default' }) => {
   const body = (
     <>
-      <div className={`p-2 rounded-lg ${tone === 'attention' && value > 0 ? 'bg-alerta-bg text-alerta' : 'bg-claro text-turquesa-dark'}`}>
+      <div className={`p-2 rounded-lg ${tone === 'attention' && value > 0 ? 'bg-alerta-bg text-alerta-dark' : 'bg-claro text-turquesa-dark'}`}>
         {icon}
       </div>
       <div className="text-left">
@@ -210,7 +210,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
             <p className="text-xs text-gray-500">{t('operations.stage.subtitle')}</p>
           </div>
           {historyError ? (
-            <p role="alert" className="px-5 py-4 text-xs text-alerta">{historyError}</p>
+            <p role="alert" className="px-5 py-4 text-xs text-alerta-dark">{historyError}</p>
           ) : (
             <ul className="divide-y divide-gray-100 text-sm">
               {stageRows.map((r) => (
@@ -253,7 +253,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
                     <span className="font-mono font-bold text-turquesa-dark">{c.case_number}</span>{' '}
                     <span className="text-carbon">{c.person.given_name} {c.person.paternal_family_name}</span>
                   </span>
-                  <button type="button" onClick={() => onOpenCase(c.id)} className="font-semibold text-turquesa-dark underline shrink-0">
+                  <button type="button" onClick={() => onOpenCase(c.id)} className="inline-flex min-h-9 shrink-0 items-center px-2 font-semibold text-turquesa-dark underline">
                     {t('operations.open_case')}
                   </button>
                 </li>

@@ -137,7 +137,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
               <span>{t('cases.btn_new_case')}</span>
             </button>
           ) : (
-            <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-xl text-gray-300 text-xs border border-gray-200">
+            <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-xl text-gray-600 text-xs border border-gray-200">
               <Lock className="w-3.5 h-3.5" />
               <span>{t('cases.open_restricted')}</span>
             </div>

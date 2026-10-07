@@ -59,7 +59,7 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
         {/* Encabezado */}
         <div className="bg-carbon px-6 py-4 flex items-center justify-between text-white border-b border-carbon-muted/20">
           <div className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-turquesa" />
+            <Edit3 className="w-5 h-5 text-turquesa-dark" />
             <div>
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_rectify.title')}

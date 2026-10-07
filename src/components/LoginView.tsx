@@ -57,7 +57,7 @@ export const LoginView: React.FC = () => {
           )}
 
           {notice && (
-            <div role="alert" className="bg-alerta-bg border border-alerta/20 text-alerta text-xs rounded-lg p-3">
+            <div role="alert" className="bg-alerta-bg border border-alerta/20 text-alerta-dark text-xs rounded-lg p-3">
               {t(notice)}
             </div>
           )}

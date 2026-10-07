@@ -123,7 +123,7 @@ export const Menu: React.FC<MenuProps> = ({
                 item.onSelect();
               }}
               className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm hover:bg-gray-50 focus-visible:bg-gray-50 ${
-                item.danger ? 'text-alerta' : item.current ? 'font-semibold text-carbon' : 'text-gray-700'
+                item.danger ? 'text-alerta-dark' : item.current ? 'font-semibold text-carbon' : 'text-gray-700'
               }`}
             >
               {item.icon}

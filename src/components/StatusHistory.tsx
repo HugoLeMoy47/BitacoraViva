@@ -41,7 +41,7 @@ export const StatusHistory: React.FC<{ caseId: string }> = ({ caseId }) => {
       </h3>
       <p className="mb-3 text-xs text-gray-500">{t('cases.history.subtitle')}</p>
 
-      {error && <p role="alert" className="text-xs text-alerta">{error}</p>}
+      {error && <p role="alert" className="text-xs text-alerta-dark">{error}</p>}
       {!error && rows === null && <p className="text-xs text-gray-500">{t('session.loading')}</p>}
 
       {rows && (

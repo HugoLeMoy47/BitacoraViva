@@ -45,10 +45,10 @@ button, a, select, summary, [role="tab"] {
   summary,
   [role="tab"],
   input:not([type="checkbox"]):not([type="radio"]) {
-    min-height: 44px;
+    min-height: 44px !important;
   }
   button {
-    min-width: 44px;
+    min-width: 44px !important;
   }
   input[type="checkbox"],
   input[type="radio"] {

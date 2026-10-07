@@ -87,7 +87,7 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
         <button
           type="button"
           onClick={() => setAsTable((v) => !v)}
-          className="text-xs font-semibold text-turquesa-dark underline"
+          className="inline-flex min-h-9 items-center px-2 text-xs font-semibold text-turquesa-dark underline"
         >
           {asTable ? t('indicators.trend.view_chart') : t('indicators.trend.view_table')}
         </button>

@@ -220,12 +220,12 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               {caseData.person.preferred_name || `${caseData.person.given_name} ${caseData.person.paternal_family_name}`}
             </h2>
             {caseData.parent_case_id && (
-              <span className="text-xs bg-turquesa/15 text-turquesa px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+              <span className="text-xs bg-turquesa/15 text-turquesa-dark px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                 {t('cases.badge_subfolio')}
               </span>
             )}
             {hasUnaccompaniedChild && (
-              <span className="text-xs bg-alerta text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+              <span className="text-xs bg-alerta-dark text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                 {t('cases.badge_unaccompanied')}
               </span>
             )}
@@ -258,7 +258,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
       {/* Alerta de Niñez No Acompañada */}
       {hasUnaccompaniedChild && (
-        <div className="bg-alerta-bg border border-alerta/30 rounded-2xl p-4 flex items-start gap-3 text-alerta">
+        <div className="bg-alerta-bg border border-alerta/30 rounded-2xl p-4 flex items-start gap-3 text-alerta-dark">
           <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
           <div className="text-xs">
             <h4 className="font-bold">{t('cases.badge_unaccompanied')}</h4>
@@ -420,7 +420,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             {canWriteJournal && (
               <button
                 onClick={() => setIsNewJournalOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-white shadow-sm hover:opacity-90"
+                className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-carbon shadow-sm hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
                 <span>{t('journal.btn_new_entry')}</span>
@@ -457,7 +457,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
                           {entry.area_name || entry.area_code}
                         </span>
-                        <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa">
+                        <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa-dark">
                           {t(`journal.types.${entry.entry_type_key}`)}
                         </span>
 
@@ -477,7 +477,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                             {t('journal.visibility_shared')} {entry.sharing_event?.to_area_name || 'otra área'}
                           </span>
                         ) : (
-                          <span className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                          <span className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
                             <Lock className="h-3 w-3" />
                             {t('journal.visibility_area_private')}
                           </span>
@@ -500,7 +500,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         </div>
                         <button
                           onClick={() => toggleSuperseded(entry.id)}
-                          className="flex items-center gap-1 font-bold text-amber-800 underline hover:text-amber-950"
+                          className="flex min-h-9 items-center gap-1 px-2 font-bold text-amber-800 underline hover:text-amber-950"
                         >
                           {isExpanded ? (
                             <>
@@ -542,7 +542,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                             onClick={() => setClarifyingEntry(entry)}
                             className="flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:text-carbon"
                           >
-                            <CornerDownRight className="h-3 w-3 text-turquesa" />
+                            <CornerDownRight className="h-3 w-3 text-turquesa-dark" />
                             <span>{t('journal.btn_clarify')}</span>
                           </button>
 
@@ -669,7 +669,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-alerta flex-shrink-0" />
+                        <AlertCircle className="w-4 h-4 text-alerta-dark flex-shrink-0" />
                         <h4 className="text-xs font-bold text-carbon">
                           {def?.label || v.marker_code}
                         </h4>
@@ -730,7 +730,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 {onSelectSubfolio && (
                   <button
                     onClick={() => onSelectSubfolio(sub)}
-                    className="p-2 text-carbon hover:text-turquesa"
+                    aria-label={`${t('cases.tab_subfolios')}: ${sub.case_number}`}
+                    className="p-2 text-carbon hover:text-turquesa-dark"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -749,7 +750,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-turquesa" />
+                  <ShieldCheck className="w-5 h-5 text-turquesa-dark" />
                   <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
                     {t('arco.section_consent_title')}
                   </h3>
@@ -896,7 +897,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     isDirector
                       ? 'bg-carbon text-white hover:bg-carbon-muted cursor-pointer'
-                      : 'bg-gray-200 text-gray-300 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
                   title={!isDirector ? 'Reservado a Dirección (BV-5.2)' : undefined}
                 >
@@ -964,7 +965,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     <Trash2 className="w-4 h-4 text-red-600" />
                     <span>{t('arco.right_cancellation')}</span>
                   </div>
-                  <p className="text-xs text-red-600/80 leading-relaxed">
+                  <p className="text-xs text-red-700 leading-relaxed">
                     Procedimiento irreversible (ADR-0001): Destruye datos identificables, purga bitácoras y preserva esqueleto estadístico.
                   </p>
                 </div>
@@ -1068,7 +1069,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
             <div className="p-6 space-y-4 text-xs">
               {errorMessage && (
-                <div className="p-3 bg-alerta-bg text-alerta border border-alerta/30 rounded-xl flex items-start gap-2">
+                <div className="p-3 bg-alerta-bg text-alerta-dark border border-alerta/30 rounded-xl flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold">{t('cases.governance_error')}</span>

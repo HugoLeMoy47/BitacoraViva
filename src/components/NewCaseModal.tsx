@@ -220,8 +220,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   step === s.id
                     ? 'border-turquesa text-carbon font-bold bg-white'
                     : skipped
-                      ? 'border-transparent text-gray-300 line-through'
-                      : 'border-transparent text-gray-500'
+                      ? 'border-transparent text-gray-600 line-through'
+                      : 'border-transparent text-gray-600'
                 }`}
               >
                 {s.label}
@@ -247,7 +247,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 {!noticeLoaded ? (
                   <p className="text-gray-500">{t('session.loading')}</p>
                 ) : !notice ? (
-                  <p role="alert" className="text-alerta">{t('intake.consent.notice_missing')}</p>
+                  <p role="alert" className="text-alerta-dark">{t('intake.consent.notice_missing')}</p>
                 ) : (
                   <>
                     <p className="font-bold text-carbon">{notice.title}</p>
@@ -398,8 +398,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-carbon mb-1">{t('intake.field_intake_window')}</label>
-                <div className="grid grid-cols-3 gap-2">
+                <p id="window-label" className="block text-xs font-semibold text-carbon mb-1">{t('intake.field_intake_window')}</p>
+                <div role="group" aria-labelledby="window-label" className="grid grid-cols-3 gap-2">
                   {(['fija', 'movil', 'transaccional'] as const).map((wt) => (
                     <button
                       key={wt}
@@ -520,7 +520,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
               </div>
 
               {ageProblem && (
-                <p role="alert" className="rounded-lg border border-alerta/30 bg-alerta-bg p-2.5 text-xs text-alerta">
+                <p role="alert" className="rounded-lg border border-alerta/30 bg-alerta-bg p-2.5 text-xs text-alerta-dark">
                   {t(ageProblem)}
                 </p>
               )}
@@ -595,7 +595,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => toggleVulnerability(code)}
-                        className="mt-0.5 w-4 h-4 text-alerta rounded border-gray-300"
+                        className="mt-0.5 w-4 h-4 text-alerta-dark rounded border-gray-300"
                       />
                       <div className="flex-1 text-xs">
                         <span className="font-bold block text-carbon">{item.label}</span>
@@ -620,7 +620,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
               </div>
 
               {authorityProblem && (
-                <p role="alert" className="rounded-lg border border-alerta/30 bg-alerta-bg p-2.5 text-xs text-alerta">
+                <p role="alert" className="rounded-lg border border-alerta/30 bg-alerta-bg p-2.5 text-xs text-alerta-dark">
                   {t(authorityProblem)}
                 </p>
               )}
@@ -640,7 +640,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">{t('intake.summary.vulnerabilities')}</span>
-                  <span className="font-bold text-alerta">
+                  <span className="font-bold text-alerta-dark">
                     {sensitiveGranted ? `${selectedVulnerabilities.length} ${t('intake.summary.selected')}` : t('intake.consent.summary_none_sensitive')}
                   </span>
                 </div>

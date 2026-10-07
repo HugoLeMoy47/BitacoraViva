@@ -163,7 +163,7 @@ export const IndicatorsView: React.FC = () => {
     return (
       <div className="space-y-4">
         {filters}
-        <div role="alert" className="rounded-lg border border-alerta/20 bg-alerta-bg p-4 text-xs text-alerta">{error}</div>
+        <div role="alert" className="rounded-lg border border-alerta/20 bg-alerta-bg p-4 text-xs text-alerta-dark">{error}</div>
       </div>
     );
   }

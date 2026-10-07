@@ -84,7 +84,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="rounded bg-turquesa/10 px-2.5 py-0.5 text-xs font-bold text-turquesa">
+              <span className="rounded bg-turquesa/10 px-2.5 py-0.5 text-xs font-bold text-turquesa-dark">
                 {caseNumber}
               </span>
               <h3 className="font-title text-lg font-bold text-carbon">
@@ -105,11 +105,11 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
 
         {/* Step indicator */}
         <div className="flex border-b border-gray-100 bg-gray-50/70 px-6 py-2.5 text-xs font-medium">
-          <div className={`flex items-center gap-1.5 ${step === 'compose' ? 'font-bold text-turquesa' : 'text-gray-500'}`}>
+          <div className={`flex items-center gap-1.5 ${step === 'compose' ? 'font-bold text-turquesa-dark' : 'text-gray-500'}`}>
             <span>{t('journal.new_modal.step_compose')}</span>
           </div>
           <span className="mx-3 text-gray-300">/</span>
-          <div className={`flex items-center gap-1.5 ${step === 'preview' ? 'font-bold text-turquesa' : 'text-gray-500'}`}>
+          <div className={`flex items-center gap-1.5 ${step === 'preview' ? 'font-bold text-turquesa-dark' : 'text-gray-500'}`}>
             <Eye className="h-3.5 w-3.5" />
             <span>{t('journal.new_modal.step_preview')}</span>
           </div>
@@ -210,7 +210,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                 <button
                   type="submit"
                   disabled={!body.trim()}
-                  className="flex items-center gap-2 rounded-lg bg-turquesa px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-turquesa px-5 py-2.5 text-sm font-semibold text-carbon shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span>{t('journal.new_modal.btn_to_preview')}</span>
                   <ArrowRight className="h-4 w-4" />
@@ -237,7 +237,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                     <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
                       {currentArea.name}
                     </span>
-                    <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa">
+                    <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa-dark">
                       {getEntryTypeLabel(entryType)}
                     </span>
                     {isWorkNote && (
@@ -279,7 +279,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                   onClick={handleSave}
                   className="flex items-center gap-2 rounded-lg bg-carbon px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-gray-800"
                 >
-                  <CheckCircle2 className="h-4 w-4 text-turquesa" />
+                  <CheckCircle2 className="h-4 w-4 text-turquesa-dark" />
                   <span>{t('journal.new_modal.btn_save_entry')}</span>
                 </button>
               </div>

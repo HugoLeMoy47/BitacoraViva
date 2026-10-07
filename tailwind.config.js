@@ -16,7 +16,7 @@ export default {
         turquesa: {
           DEFAULT: '#01CFCB',
           hover: '#00b8b4',
-          dark: '#009e9a',
+          dark: '#007a77',
           light: '#5ce1df',
         },
         claro: {
@@ -27,6 +27,7 @@ export default {
           DEFAULT: '#D9644A',
           hover: '#c2533b',
           bg: '#fff5f3',
+          dark: '#a8412b',
         },
         borde: '#e5e7eb',
       },
