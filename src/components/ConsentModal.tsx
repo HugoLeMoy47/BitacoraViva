@@ -90,7 +90,6 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
               >
                 <option value="general_care">{t('arco.consent_types.general_care')}</option>
                 <option value="sensitive_data">{t('arco.consent_types.sensitive_data')}</option>
-                <option value="internal_sharing">{t('arco.consent_types.internal_sharing')}</option>
                 <option value="secondary_use_research">{t('arco.consent_types.secondary_use_research')}</option>
               </select>
             </div>

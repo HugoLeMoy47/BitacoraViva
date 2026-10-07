@@ -49,7 +49,8 @@
     "audit_trail": "Registro de Auditoría",
     "authority_requests": "Requerimientos de Autoridad",
     "rules": "10 Reglas Duras",
-    "indicators": "Indicadores"
+    "indicators": "Indicadores",
+    "operations": "Operación"
   },
   "dashboard": {
     "organization_details": "Identidad del Albergue (Tenancy)",
@@ -110,10 +111,10 @@
   },
   "intake": {
     "modal_title": "Levantamiento de Expediente (Estándar MAP-OIM v3)",
-    "step_context": "1. Contexto de Llegada",
-    "step_person": "2. Ficha Sociodemográfica",
-    "step_vulnerabilities": "3. Marcadores de Vulnerabilidad",
-    "step_confirm": "4. Confirmación y Folio",
+    "step_context": "1. Contexto",
+    "step_person": "2. Ficha",
+    "step_vulnerabilities": "3. Vulnerabilidades",
+    "step_confirm": "4. Confirmar",
     "restricted_title": "Acceso Restringido para Apertura de Casos",
     "restricted_message": "Por regla de negocio y RLS (BV-3.1), únicamente los roles Oficial de Ingreso y Dirección pueden levantar folios y abrir casos nuevos en ventanilla.",
     "field_given_name": "Nombres:",
@@ -132,7 +133,48 @@
     "btn_next": "Siguiente →",
     "btn_prev": "← Anterior",
     "btn_create_case": "Abrir Expediente y Asignar Folio",
-    "created_success": "¡Expediente levantado con éxito! Se asignó el folio:"
+    "created_success": "¡Expediente levantado con éxito! Se asignó el folio:",
+    "modal_subtitle": "Estándar humanitario MAP Fase 1 y 2 · Gobernanza BV-3.1 · Consentimiento BV-5.1",
+    "step_consent": "0. Aviso y consentimiento",
+    "travels_family_help": "Si viaja con NNA u otros parientes, se podrán abrir subfolios vinculados (BV-3.2).",
+    "vulnerabilities_title": "Evaluación objetiva humanitaria (BV-2.5)",
+    "vulnerabilities_intro": "Seleccione las condiciones aplicables. Todo marcador queda firmado con su identidad profesional y no puede ser asignado automáticamente por un algoritmo.",
+    "confirm_title": "Listo para apertura formal",
+    "confirm_body": "Al confirmar, el sistema asienta en una sola operación a la persona, el expediente, los consentimientos otorgados y los 5 ejes de estatus (Regla Dura 7, BV-2.2 y BV-5.1).",
+    "consent": {
+      "title": "Aviso de privacidad y consentimiento informado",
+      "intro": "Antes de registrar cualquier dato, entregue o lea a la persona el aviso de privacidad y registre, una por una, sus decisiones. Ninguna opción viene marcada: el sistema no presupone el consentimiento.",
+      "demo_notice": "Texto de demostración. Cada asociación cargará su propio aviso (por ejemplo, en PDF) desde la configuración de la organización.",
+      "notice_missing": "La organización no tiene un aviso de privacidad activo. No se puede abrir expediente sin él.",
+      "show_full": "Ver texto completo",
+      "hide_full": "Ocultar texto completo",
+      "version_label": "Versión del aviso:",
+      "delivered": "Entregué o leí el aviso de privacidad a la persona (o a su representante) y pudo resolver sus dudas.",
+      "choice_yes": "Otorga",
+      "choice_no": "No otorga",
+      "required": "obligatorio para abrir expediente",
+      "optional": "opcional",
+      "desc": {
+        "general_care": "Tratar sus datos para brindarle auxilio humanitario, alojamiento y acompañamiento.",
+        "sensitive_data": "Tratar datos sensibles (salud, violencia, orientación sexual, origen étnico) para protegerle. Sin este consentimiento no se registran marcadores de vulnerabilidad.",
+        "secondary_use_research": "Usar su información, sin identificarla, en estadística y reportes agregados."
+      },
+      "minor_check": "La persona titular es menor de 18 años",
+      "minor_assent_note": "Se registra el asentimiento de la persona menor de edad y la identidad de quien consiente por ella.",
+      "unaccompanied_check": "Niña, niño o adolescente no acompañado",
+      "guardian_name": "Nombre de quien consiente (madre, padre, tutor o autoridad)",
+      "guardian_role": "Calidad con la que consiente",
+      "authority_ref": "Referencia del oficio de la autoridad",
+      "refuse_general_title": "Sin consentimiento general no se abre expediente",
+      "refuse_general_body": "El auxilio humanitario inmediato no se condiciona: bríndelo igualmente. Simplemente no se registrarán sus datos.",
+      "skip_sensitive": "Sin consentimiento para datos sensibles se omite el paso de vulnerabilidades. Se podrá registrar más adelante, si la persona lo otorga.",
+      "age_mismatch_minor": "La fecha de nacimiento indica que es menor de 18 años, pero no se marcó así en el paso 0. Regrese y capture a su representante.",
+      "age_mismatch_adult": "Se marcó como menor de 18 años, pero la fecha de nacimiento indica que es mayor de edad. Corrija la fecha o el paso 0.",
+      "unaccompanied_marker_needs_authority": "Marcó niñez no acompañada: regrese al paso 0 y capture la autoridad o tutor y la referencia de su oficio.",
+      "summary_consents": "Consentimientos otorgados:",
+      "summary_none_sensitive": "Sin datos sensibles",
+      "recorded_note": "Registrado en el paso de consentimiento del alta."
+    }
   },
   "audit": {
     "restricted_title": "Acceso Restringido por Ethos C4 y BV-1.3",
@@ -387,7 +429,7 @@
   "indicators": {
     "title": "Indicadores agregados",
     "subtitle": "Estadística sin datos identificables de personas atendidas.",
-    "threshold_note": "Por el compromiso E-05 sólo se publican grupos de {n} o más personas; los menores se ocultan para evitar re-identificación. Los expedientes con oposición a usos secundarios no se cuentan.",
+    "threshold_note": "Por el compromiso E-05 sólo se publican grupos de {n} o más personas; los menores se ocultan para evitar re-identificación. La comparación con el periodo anterior sólo aparece cuando ambas cifras superan el umbral. Los expedientes con oposición a usos secundarios no se cuentan.",
     "all_suppressed": "Aún no hay grupos con {n} o más personas, por eso todas las cifras están ocultas. Es el comportamiento esperado con pocos expedientes.",
     "suppressed": "Menos de {n}",
     "suppressed_hint": "Cifra oculta por umbral de agregación",
@@ -403,7 +445,8 @@
       "shelter_status": "Alojamiento",
       "nationality": "Nacionalidad",
       "age_band": "Grupo de edad al ingreso",
-      "sex": "Sexo"
+      "sex": "Sexo",
+      "duration": "Tiempos de proceso"
     },
     "window": {
       "fija": "Ventanilla fija",
@@ -415,6 +458,75 @@
       "2": "Femenino",
       "3": "Otro / No binario"
     },
-    "age_years": "{band} años"
+    "age_years": "{band} años",
+    "period": {
+      "label": "Periodo de ingreso",
+      "all": "Todo",
+      "d30": "Últimos 30 días",
+      "d90": "Últimos 90 días",
+      "d180": "Últimos 6 meses",
+      "custom": "Personalizado",
+      "from": "Desde",
+      "to": "Hasta"
+    },
+    "compare": "Comparar con el periodo anterior",
+    "vs_previous": "Periodo anterior: {n}",
+    "vs_short": "vs {n}",
+    "days_avg": "días en promedio ({n} casos)",
+    "days_short": "d",
+    "duration": {
+      "to_case_plan": "Del ingreso al plan de acompañamiento",
+      "to_closure": "Del ingreso al cierre y egreso"
+    },
+    "trend": {
+      "title": "Tendencia: ingresos y egresos por mes",
+      "intake": "Ingresos",
+      "egress": "Egresos",
+      "month": "Mes",
+      "view_table": "Ver como tabla",
+      "view_chart": "Ver como gráfica",
+      "empty": "No hay meses con datos en este periodo."
+    }
+  },
+  "operations": {
+    "title": "Tablero de operación",
+    "subtitle": "Lo que requiere atención de Dirección hoy. Muestra expedientes identificables: es una vista de trabajo del rol director.",
+    "days": "días",
+    "days_short": "d",
+    "open_case": "Ver expediente",
+    "kpi": {
+      "active_care": "En acompañamiento activo",
+      "recent_intake": "Ingresos recientes",
+      "last_30": "Últimos 30 días",
+      "attention": "Requieren atención",
+      "attention_hint": "Sin avanzar ≥ {n} días",
+      "digest": "Pendientes del Digest",
+      "digest_hint": "Comparticiones sin acuse",
+      "p06": "Sin consentimiento sensible",
+      "p06_hint": "Control P-06"
+    },
+    "attention": {
+      "title": "Expedientes que requieren atención",
+      "subtitle": "En primer contacto, valoración o pausa, sin cambio de estatus durante el tiempo indicado.",
+      "threshold": "Umbral:",
+      "empty": "Ningún expediente lleva {n} días o más sin avanzar en esos estatus.",
+      "more": "Y {n} más con el mismo umbral."
+    },
+    "col": {
+      "folio": "Folio",
+      "person": "Persona",
+      "status": "Estatus",
+      "days": "Días en el estatus"
+    },
+    "stage": {
+      "title": "Permanencia por etapa",
+      "subtitle": "Promedio de días que los casos pasaron (o llevan) en cada etapa, y cuántos hay hoy.",
+      "now": "Casos hoy en esta etapa"
+    },
+    "p06": {
+      "title": "Sin consentimiento expreso para datos sensibles",
+      "subtitle": "Control P-06: en estos expedientes no deben existir marcadores de vulnerabilidad hasta recabarlo.",
+      "empty": "Todos los expedientes tienen consentimiento expreso para datos sensibles."
+    }
   }
 }

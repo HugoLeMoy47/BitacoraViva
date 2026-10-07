@@ -840,7 +840,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
             {/* Tarjetas de Consentimientos */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {(['general_care', 'sensitive_data', 'internal_sharing', 'secondary_use_research'] as ConsentType[]).map((typeKey) => {
+              {(['general_care', 'sensitive_data', 'secondary_use_research'] as ConsentType[]).map((typeKey) => {
                 const consentItem = consents.find((c) => c.consent_type === typeKey);
                 const isGranted = consentItem?.status === 'granted';
                 const isOpposed = consentItem?.status === 'opposed';

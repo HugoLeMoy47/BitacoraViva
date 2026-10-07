@@ -1,15 +1,42 @@
-import { useState } from 'react';
-import { X, CheckCircle2, HeartHandshake } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { CaseWithDetails, VulnerabilityMarkerCode } from '../types/database';
+import { PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
+import { useCatalog } from '../lib/catalog';
+import { ConsentInput, NewCaseInput, getActivePrivacyNotice } from '../lib/data';
+
+type Step = 0 | 1 | 2 | 3 | 4;
+type Choice = 'yes' | 'no' | null;
+// El intercambio entre áreas del propio albergue no se consiente por separado: lo cubre el aviso
+// de privacidad general (decisión de Producto, 07 oct 2026).
+type ConsentKey = Exclude<ConsentInput['consent_type'], 'internal_sharing'>;
+
+const CONSENT_KEYS: { key: ConsentKey; required: boolean }[] = [
+  { key: 'general_care', required: true },
+  { key: 'sensitive_data', required: false },
+  { key: 'secondary_use_research', required: false },
+];
+
+// Identificadores de país del estándar usados hasta ahora por la semilla; el resto va como "otro" (1).
+const COUNTRY_ID: Record<string, number> = { Honduras: 93, Guatemala: 86 };
+
+function ageYears(isoDate: string): number {
+  const b = new Date(isoDate);
+  if (Number.isNaN(b.getTime())) return 99;
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
 
 interface NewCaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCaseCreated: (newCase: CaseWithDetails) => void;
-  authorUserId: string;
+  onCaseCreated: (input: NewCaseInput) => void;
+  authorUserId?: string;
   authorFullName: string;
 }
 
@@ -17,11 +44,27 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   isOpen,
   onClose,
   onCaseCreated,
-  authorUserId,
   authorFullName,
 }) => {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<Step>(0);
   const { isDemo } = useEnvironment();
+  const { areas } = useCatalog();
+
+  // Paso 0: aviso de privacidad y consentimiento. Ninguna opción viene marcada.
+  const [notice, setNotice] = useState<PrivacyNotice | null>(null);
+  const [noticeLoaded, setNoticeLoaded] = useState(false);
+  const [showFullNotice, setShowFullNotice] = useState(false);
+  const [noticeDelivered, setNoticeDelivered] = useState(false);
+  const [choices, setChoices] = useState<Record<ConsentKey, Choice>>({
+    general_care: null,
+    sensitive_data: null,
+    secondary_use_research: null,
+  });
+  const [isMinor, setIsMinor] = useState(false);
+  const [isUnaccompanied, setIsUnaccompanied] = useState(false);
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianRole, setGuardianRole] = useState('');
+  const [authorityRef, setAuthorityRef] = useState('');
 
   // Paso 1: Contexto
   const [windowType, setWindowType] = useState<'fija' | 'movil' | 'transaccional'>('fija');
@@ -39,10 +82,40 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [primaryLanguage, setPrimaryLanguage] = useState('Español');
   const [phone, setPhone] = useState('');
 
-  // Paso 3: Vulnerabilidades (13 marcadores)
+  // Paso 3: Vulnerabilidades (13 marcadores) — sólo con consentimiento expreso para datos sensibles
   const [selectedVulnerabilities, setSelectedVulnerabilities] = useState<VulnerabilityMarkerCode[]>([]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    getActivePrivacyNotice()
+      .then((n) => { if (!cancelled) { setNotice(n); setNoticeLoaded(true); } })
+      .catch(() => { if (!cancelled) setNoticeLoaded(true); });
+    return () => { cancelled = true; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const sensitiveGranted = choices.sensitive_data === 'yes';
+  const generalRefused = choices.general_care === 'no';
+  const allDecided = CONSENT_KEYS.every(({ key }) => choices[key] !== null);
+
+  const step0Valid =
+    !!notice &&
+    noticeDelivered &&
+    allDecided &&
+    choices.general_care === 'yes' &&
+    (!isUnaccompanied || isMinor) &&
+    (!isMinor || (guardianName.trim() !== '' && guardianRole.trim() !== '')) &&
+    (!isUnaccompanied || authorityRef.trim() !== '');
+
+  const birthAge = ageYears(birthDate);
+  const ageProblem = step >= 2 && ((birthAge < 18 && !isMinor) ? 'intake.consent.age_mismatch_minor'
+    : (birthAge >= 18 && isMinor) ? 'intake.consent.age_mismatch_adult' : null);
+  const authorityProblem =
+    selectedVulnerabilities.includes('unaccompanied_child') && !(isUnaccompanied && authorityRef.trim() !== '')
+      ? 'intake.consent.unaccompanied_marker_needs_authority'
+      : null;
 
   const toggleVulnerability = (code: VulnerabilityMarkerCode) => {
     setSelectedVulnerabilities((prev) =>
@@ -50,137 +123,70 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
     );
   };
 
-  const handleFinish = () => {
-    const timestamp = new Date().toISOString();
-    const randomSeq = Math.floor(1000 + Math.random() * 9000);
-    const folio = `ASF-2026-${randomSeq}`;
-    const newPersonId = `p-${Date.now()}`;
-    const newCaseId = `c-${Date.now()}`;
+  const goNext = () => {
+    setStep((s) => {
+      if (s === 2) return sensitiveGranted ? 3 : 4;
+      return (s + 1) as Step;
+    });
+  };
+  const goPrev = () => {
+    setStep((s) => {
+      if (s === 4) return sensitiveGranted ? 3 : 2;
+      return (s - 1) as Step;
+    });
+  };
 
-    const newCase: CaseWithDetails = {
-      id: newCaseId,
-      organization_id: '00000000-0000-0000-0000-000000000001',
-      case_number: folio,
-      parent_case_id: null,
-      previous_case_id: null,
-      titular_person_id: newPersonId,
+  const buildConsents = (): ConsentInput[] =>
+    CONSENT_KEYS.filter(({ key }) => choices[key] === 'yes').map(({ key }) => ({
+      consent_type: key,
+      status: 'granted',
+      is_minor_assent: isMinor,
+      legal_guardian_name: isMinor ? guardianName.trim() : null,
+      legal_guardian_role: isMinor ? guardianRole.trim() : null,
+      authority_letter_ref: isUnaccompanied ? authorityRef.trim() : null,
+      notes: t('intake.consent.recorded_note'),
+    }));
+
+  const handleFinish = () => {
+    const input: NewCaseInput = {
+      given_name: givenName.trim() || 'Persona',
+      paternal_family_name: paternalName.trim() || 'Registrada',
+      maternal_family_name: maternalName.trim() || null,
+      preferred_name: preferredName.trim() || null,
+      birth_date: birthDate,
+      birth_date_is_estimated: birthDateEstimated,
+      sex_id: sexId,
+      nationality_country_id: COUNTRY_ID[nationalityCountry] ?? 1,
+      other_nationality: nationalityCountry,
+      primary_language_id: 1,
+      other_language: primaryLanguage || null,
+      phone_number: phone.trim() || null,
+      intake_window_type: windowType,
+      travels_with_family: travelsWithFamily,
       intake_state_id: 9,
       intake_municipality_id: 15,
       intake_channel_id: 1,
-      intake_window_type: windowType,
-      intake_date: timestamp.substring(0, 10),
       entry_route_id: 3,
-      entry_date_str: 'Octubre 2026',
-      travels_with_family: travelsWithFamily,
-      opened_at: timestamp,
-      opened_by: authorUserId,
-      assigned_area_id: '10000000-0000-0000-0000-000000000001',
-      assigned_user_id: authorUserId,
-      created_at: timestamp,
-      updated_at: timestamp,
-      person: {
-        id: newPersonId,
-        organization_id: '00000000-0000-0000-0000-000000000001',
-        given_name: givenName || 'Persona',
-        paternal_family_name: paternalName || 'Registrada',
-        maternal_family_name: maternalName || null,
-        preferred_name: preferredName || givenName || 'Persona',
-        birth_date: birthDate,
-        birth_date_is_estimated: birthDateEstimated,
-        sex_id: sexId,
-        nationality_country_id: 93,
-        other_nationality: nationalityCountry,
-        is_self_identified_migrant: true,
-        primary_language_id: 1,
-        other_language: primaryLanguage,
-        occupations: [],
-        phone_number: phone || null,
-        email: null,
-        is_anonymized: false,
-        created_at: timestamp,
-        updated_at: timestamp,
-      },
-      vulnerabilities: selectedVulnerabilities.map((vCode, i) => ({
-        id: `vm-${Date.now()}-${i}`,
-        organization_id: '00000000-0000-0000-0000-000000000001',
-        case_id: newCaseId,
-        marker_code: vCode,
-        notes: `Afirmado en ventanilla por ${authorFullName}`,
-        affirmed_by: authorFullName,
-        affirmed_at: timestamp,
-        created_at: timestamp,
-      })),
-      // Todo caso nace con los 5 ejes poblados (BV-2.2 / Regla Dura 7)
-      statuses: {
-        legal_status: {
-          valueCode: 'undetermined',
-          label: 'Sin determinar',
-          valid_from: timestamp,
-          reason: 'Apertura de expediente e ingreso en ventanilla',
-        },
-        engagement_status: {
-          valueCode: 'first_contact',
-          label: 'Primer contacto',
-          valid_from: timestamp,
-          reason: 'Apertura de expediente e ingreso en ventanilla',
-          isActiveCare: false,
-        },
-        shelter_status: {
-          valueCode: 'sheltered',
-          label: 'Albergada en el centro',
-          valid_from: timestamp,
-          reason: 'Registro inicial de estancia',
-        },
-        record_status: {
-          valueCode: 'open',
-          label: 'Abierto',
-          valid_from: timestamp,
-          reason: 'Expediente formalmente abierto y en trámite',
-        },
-        case_stage: {
-          valueCode: 'intake',
-          label: 'Recepción e Ingreso',
-          valid_from: timestamp,
-          reason: 'Paso 1 del ciclo estándar de gestión de caso',
-        },
-      },
-      journal_entries: [],
-      consents: [
-        {
-          id: `cons-${Date.now()}-1`,
-          organization_id: '00000000-0000-0000-0000-000000000001',
-          person_id: newPersonId,
-          case_id: newCaseId,
-          consent_type: 'general_care',
-          status: 'granted',
-          is_minor_assent: selectedVulnerabilities.includes('unaccompanied_child'),
-          granted_at: timestamp,
-          granted_by_user_id: authorUserId,
-          granted_by_name: authorFullName,
-          notes: 'Consentimiento informado general otorgado en proceso de ingreso (BV-5.1).',
-          created_at: timestamp,
-        },
-        {
-          id: `cons-${Date.now()}-2`,
-          organization_id: '00000000-0000-0000-0000-000000000001',
-          person_id: newPersonId,
-          case_id: newCaseId,
-          consent_type: 'sensitive_data',
-          status: 'granted',
-          is_minor_assent: selectedVulnerabilities.includes('unaccompanied_child'),
-          granted_at: timestamp,
-          granted_by_user_id: authorUserId,
-          granted_by_name: authorFullName,
-          notes: 'Consentimiento expreso para datos sensibles firmado en admisión (Control P-06).',
-          created_at: timestamp,
-        },
-      ],
-      arco_requests: [],
+      entry_date_str: null,
+      assigned_area_id: areas.find((a) => a.code === 'trabajo_social')?.id ?? null,
+      vulnerability_codes: sensitiveGranted ? selectedVulnerabilities : [],
+      consents: buildConsents(),
     };
-
-    onCaseCreated(newCase);
+    onCaseCreated(input);
     onClose();
   };
+
+  const stepLabels: { id: Step; label: string }[] = [
+    { id: 0, label: t('intake.step_consent') },
+    { id: 1, label: t('intake.step_context') },
+    { id: 2, label: t('intake.step_person') },
+    { id: 3, label: t('intake.step_vulnerabilities') },
+    { id: 4, label: t('intake.step_confirm') },
+  ];
+
+  const nextDisabled =
+    (step === 0 && !step0Valid) ||
+    (step === 2 && (!givenName.trim() || !paternalName.trim() || !!ageProblem));
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -189,9 +195,9 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
         <div className="px-6 py-4 bg-carbon text-white flex justify-between items-center border-b border-gray-700">
           <div>
             <h3 className="text-base font-bold">{t('intake.modal_title')}</h3>
-            <p className="text-xs text-gray-400">Estándar humanitario MAP Fase 1 y 2 · Gobernanza BV-3.1</p>
+            <p className="text-xs text-gray-400">{t('intake.modal_subtitle')}</p>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white">
+          <button onClick={onClose} aria-label={t('session.dismiss')} className="p-1 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -203,23 +209,190 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
         )}
 
         {/* Indicador de pasos */}
-        <div className="grid grid-cols-4 bg-gray-100 text-xs font-medium text-center border-b border-gray-200">
-          <div className={`py-2.5 px-2 border-b-2 ${step === 1 ? 'border-turquesa text-carbon font-bold bg-white' : 'border-transparent text-gray-500'}`}>
-            1. Contexto
-          </div>
-          <div className={`py-2.5 px-2 border-b-2 ${step === 2 ? 'border-turquesa text-carbon font-bold bg-white' : 'border-transparent text-gray-500'}`}>
-            2. Ficha Persona
-          </div>
-          <div className={`py-2.5 px-2 border-b-2 ${step === 3 ? 'border-turquesa text-carbon font-bold bg-white' : 'border-transparent text-gray-500'}`}>
-            3. Vulnerabilidades
-          </div>
-          <div className={`py-2.5 px-2 border-b-2 ${step === 4 ? 'border-turquesa text-carbon font-bold bg-white' : 'border-transparent text-gray-500'}`}>
-            4. Confirmar
-          </div>
+        <div className="grid grid-cols-5 bg-gray-100 text-[11px] font-medium text-center border-b border-gray-200">
+          {stepLabels.map((s) => {
+            const skipped = s.id === 3 && !sensitiveGranted && step > 0;
+            return (
+              <div
+                key={s.id}
+                className={`py-2.5 px-1 border-b-2 ${
+                  step === s.id
+                    ? 'border-turquesa text-carbon font-bold bg-white'
+                    : skipped
+                      ? 'border-transparent text-gray-300 line-through'
+                      : 'border-transparent text-gray-500'
+                }`}
+              >
+                {s.label}
+              </div>
+            );
+          })}
         </div>
 
         {/* Cuerpo del paso */}
         <div className="p-6 max-h-[65vh] overflow-y-auto space-y-4 text-sm">
+          {/* Paso 0: Aviso de privacidad y consentimiento informado */}
+          {step === 0 && (
+            <div className="space-y-4">
+              <div className="bg-claro/40 border border-turquesa/30 p-3 rounded-lg text-xs text-carbon flex items-start gap-2">
+                <ShieldCheck className="w-4 h-4 text-turquesa-dark shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-turquesa-dark mb-0.5">{t('intake.consent.title')}</p>
+                  <p className="text-gray-600">{t('intake.consent.intro')}</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 p-4 text-xs space-y-2">
+                {!noticeLoaded ? (
+                  <p className="text-gray-500">{t('session.loading')}</p>
+                ) : !notice ? (
+                  <p role="alert" className="text-alerta">{t('intake.consent.notice_missing')}</p>
+                ) : (
+                  <>
+                    <p className="font-bold text-carbon">{notice.title}</p>
+                    <p className="text-gray-600">{notice.summary}</p>
+                    <button
+                      type="button"
+                      onClick={() => setShowFullNotice((v) => !v)}
+                      className="text-turquesa-dark font-semibold underline"
+                    >
+                      {showFullNotice ? t('intake.consent.hide_full') : t('intake.consent.show_full')}
+                    </button>
+                    {showFullNotice && (
+                      <div className="max-h-40 overflow-y-auto whitespace-pre-line rounded-lg bg-gray-50 border border-gray-200 p-3 text-[11px] text-gray-700">
+                        {notice.full_text}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-gray-400">
+                      {t('intake.consent.version_label')} {notice.version}
+                    </p>
+                    {isDemo && <p className="text-[11px] text-amber-800">{t('intake.consent.demo_notice')}</p>}
+                  </>
+                )}
+                <label className="flex items-start gap-2 pt-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={noticeDelivered}
+                    onChange={(e) => setNoticeDelivered(e.target.checked)}
+                    className="mt-0.5 rounded border-gray-300 text-turquesa"
+                  />
+                  <span className="font-medium text-carbon">{t('intake.consent.delivered')}</span>
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                {CONSENT_KEYS.map(({ key, required }) => (
+                  <fieldset key={key} className="rounded-xl border border-gray-200 p-3">
+                    <legend className="px-1 text-xs font-bold text-carbon">
+                      {t(`arco.consent_types.${key}`)}{' '}
+                      <span className="font-normal text-gray-400">
+                        ({required ? t('intake.consent.required') : t('intake.consent.optional')})
+                      </span>
+                    </legend>
+                    <p className="text-[11px] text-gray-500 mb-2">{t(`intake.consent.desc.${key}`)}</p>
+                    <div className="flex gap-2">
+                      {(['yes', 'no'] as const).map((c) => (
+                        <label
+                          key={c}
+                          className={`flex-1 text-center text-xs font-semibold rounded-lg border px-3 py-2 cursor-pointer transition-all ${
+                            choices[key] === c
+                              ? c === 'yes'
+                                ? 'bg-claro border-turquesa text-carbon'
+                                : 'bg-gray-100 border-gray-400 text-carbon'
+                              : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={`consent-${key}`}
+                            value={c}
+                            checked={choices[key] === c}
+                            onChange={() => setChoices((prev) => ({ ...prev, [key]: c }))}
+                            className="sr-only"
+                          />
+                          {c === 'yes' ? t('intake.consent.choice_yes') : t('intake.consent.choice_no')}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+
+              {generalRefused && (
+                <div role="alert" className="flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">{t('intake.consent.refuse_general_title')}</p>
+                    <p>{t('intake.consent.refuse_general_body')}</p>
+                  </div>
+                </div>
+              )}
+              {choices.sensitive_data === 'no' && (
+                <p className="text-[11px] text-gray-600">{t('intake.consent.skip_sensitive')}</p>
+              )}
+
+              <div className="rounded-xl border border-gray-200 p-3 space-y-3">
+                <label className="flex items-center gap-2 text-xs font-semibold text-carbon cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isMinor}
+                    onChange={(e) => {
+                      setIsMinor(e.target.checked);
+                      if (!e.target.checked) setIsUnaccompanied(false);
+                    }}
+                    className="rounded border-gray-300 text-turquesa"
+                  />
+                  {t('intake.consent.minor_check')}
+                </label>
+                {isMinor && (
+                  <div className="space-y-3 pl-6">
+                    <p className="text-[11px] text-gray-500">{t('intake.consent.minor_assent_note')}</p>
+                    <label className="flex items-center gap-2 text-xs text-carbon cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isUnaccompanied}
+                        onChange={(e) => setIsUnaccompanied(e.target.checked)}
+                        className="rounded border-gray-300 text-turquesa"
+                      />
+                      {t('intake.consent.unaccompanied_check')}
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.consent.guardian_name')}</label>
+                        <input
+                          type="text"
+                          value={guardianName}
+                          onChange={(e) => setGuardianName(e.target.value)}
+                          className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.consent.guardian_role')}</label>
+                        <input
+                          type="text"
+                          value={guardianRole}
+                          onChange={(e) => setGuardianRole(e.target.value)}
+                          className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                        />
+                      </div>
+                    </div>
+                    {isUnaccompanied && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.consent.authority_ref')}</label>
+                        <input
+                          type="text"
+                          value={authorityRef}
+                          onChange={(e) => setAuthorityRef(e.target.value)}
+                          className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Paso 1: Contexto de Llegada */}
           {step === 1 && (
             <div className="space-y-4">
@@ -231,11 +404,11 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       key={wt}
                       type="button"
                       onClick={() => setWindowType(wt)}
-                      className={`p-2.5 text-xs font-medium rounded-lg border text-center capitalize transition-all ${
+                      className={`p-2.5 text-xs font-medium rounded-lg border text-center transition-all ${
                         windowType === wt ? 'bg-claro border-turquesa text-carbon font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
-                      Ventanilla {wt}
+                      {t(`indicators.window.${wt}`)}
                     </button>
                   ))}
                 </div>
@@ -251,9 +424,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   />
                   <div>
                     <span className="text-xs font-semibold text-carbon">{t('intake.field_travels_family')}</span>
-                    <p className="text-[11px] text-gray-500">
-                      Si viaja con NNA u otros parientes, se podrán abrir subfolios vinculados (BV-3.2).
-                    </p>
+                    <p className="text-[11px] text-gray-500">{t('intake.travels_family_help')}</p>
                   </div>
                 </label>
               </div>
@@ -347,6 +518,12 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
               </div>
 
+              {ageProblem && (
+                <p role="alert" className="rounded-lg border border-alerta/30 bg-alerta-bg p-2.5 text-xs text-alerta">
+                  {t(ageProblem)}
+                </p>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_nationality')}</label>
@@ -396,10 +573,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           {step === 3 && (
             <div className="space-y-3">
               <div className="bg-claro/40 border border-turquesa/30 p-3 rounded-lg text-xs text-carbon">
-                <p className="font-semibold text-turquesa-dark mb-0.5">Evaluación Objetiva Humanitaria (BV-2.5)</p>
-                <p className="text-gray-600">
-                  Seleccione las condiciones aplicables. Todo marcador queda firmado con tu identidad profesional y no puede ser asignado automáticamente por un algoritmo.
-                </p>
+                <p className="font-semibold text-turquesa-dark mb-0.5">{t('intake.vulnerabilities_title')}</p>
+                <p className="text-gray-600">{t('intake.vulnerabilities_intro')}</p>
               </div>
 
               <div className="grid grid-cols-1 gap-2">
@@ -409,7 +584,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   return (
                     <label
                       key={code}
-                      onClick={() => toggleVulnerability(code)}
                       className={`flex items-start space-x-3 p-3 rounded-xl border cursor-pointer transition-all ${
                         isChecked
                           ? 'bg-alerta-bg/40 border-alerta/40 text-carbon shadow-xs'
@@ -419,7 +593,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        onChange={() => {}}
+                        onChange={() => toggleVulnerability(code)}
                         className="mt-0.5 w-4 h-4 text-alerta rounded border-gray-300"
                       />
                       <div className="flex-1 text-xs">
@@ -439,12 +613,16 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
               <div className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-start space-x-3">
                 <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <h4 className="font-bold text-green-900">Listo para apertura formal</h4>
-                  <p className="text-green-700 mt-0.5">
-                    Al confirmar, el sistema generará un folio correlativo único e inicializará automáticamente los 5 ejes de estatus (Regla Dura 7 y BV-2.2).
-                  </p>
+                  <h4 className="font-bold text-green-900">{t('intake.confirm_title')}</h4>
+                  <p className="text-green-700 mt-0.5">{t('intake.confirm_body')}</p>
                 </div>
               </div>
+
+              {authorityProblem && (
+                <p role="alert" className="rounded-lg border border-alerta/30 bg-alerta-bg p-2.5 text-xs text-alerta">
+                  {t(authorityProblem)}
+                </p>
+              )}
 
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-2">
                 <div className="flex justify-between border-b pb-2">
@@ -461,7 +639,17 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">Vulnerabilidades marcadas:</span>
-                  <span className="font-bold text-alerta">{selectedVulnerabilities.length} seleccionadas</span>
+                  <span className="font-bold text-alerta">
+                    {sensitiveGranted ? `${selectedVulnerabilities.length} seleccionadas` : t('intake.consent.summary_none_sensitive')}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b pb-2">
+                  <span className="text-gray-500">{t('intake.consent.summary_consents')}</span>
+                  <span className="font-semibold text-carbon text-right">
+                    {CONSENT_KEYS.filter(({ key }) => choices[key] === 'yes')
+                      .map(({ key }) => t(`arco.consent_types.${key}`))
+                      .join(' · ')}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Oficial de Ingreso:</span>
@@ -474,10 +662,10 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
 
         {/* Botones de navegación del modal */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-xs">
-          {step > 1 ? (
+          {step > 0 ? (
             <button
               type="button"
-              onClick={() => setStep((s) => (s - 1) as any)}
+              onClick={goPrev}
               className="px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100"
             >
               {t('intake.btn_prev')}
@@ -489,8 +677,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           {step < 4 ? (
             <button
               type="button"
-              disabled={step === 2 && (!givenName.trim() || !paternalName.trim())}
-              onClick={() => setStep((s) => (s + 1) as any)}
+              disabled={nextDisabled}
+              onClick={goNext}
               className="px-4 py-2 font-semibold text-carbon bg-turquesa hover:bg-turquesa-hover rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t('intake.btn_next')}
@@ -498,8 +686,9 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           ) : (
             <button
               type="button"
+              disabled={!!authorityProblem}
               onClick={handleFinish}
-              className="px-5 py-2 font-bold text-white bg-carbon hover:bg-black rounded-lg shadow-md flex items-center gap-1.5"
+              className="px-5 py-2 font-bold text-white bg-carbon hover:bg-black rounded-lg shadow-md flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <HeartHandshake className="w-4 h-4 text-turquesa" />
               {t('intake.btn_create_case')}

@@ -15,25 +15,26 @@ import {
   Bell,
   LogOut,
   X,
-  BarChart3
+  BarChart3,
+  Gauge
 } from 'lucide-react';
 import { t } from './lib/i18n';
 import {
   RoleName,
   StatusAxisCode,
-  CaseWithDetails,
   JournalEntry,
   ConsentType,
   ConsentStatus,
   Person
 } from './types/database';
-import { api, EMPTY_ORG_DATA, getTitularPersonId, loadOrgData, OrgData } from './lib/data';
+import { api, EMPTY_ORG_DATA, loadOrgData, NewCaseInput, OrgData } from './lib/data';
 import { SessionProvider, SessionUser, useSession } from './lib/session';
 import { CatalogProvider } from './lib/catalog';
 import { CasesView } from './components/CasesView';
 import { DirectorSharingInbox } from './components/DirectorSharingInbox';
 import { LoginView } from './components/LoginView';
 import { IndicatorsView } from './components/IndicatorsView';
+import { OperationsDashboard } from './components/OperationsDashboard';
 import { DemoBanner, DemoChip } from './components/DemoBanner';
 import { EnvironmentProvider } from './lib/environment';
 
@@ -47,9 +48,10 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const isDirector = activeRole === 'director';
 
   const isViewer = activeRole === 'viewer';
-  const [activeTab, setActiveTab] = useState<'overview' | 'cases' | 'indicators' | 'areas' | 'audit' | 'authority_requests' | 'rules'>(
-    isViewer ? 'indicators' : 'cases'
+  const [activeTab, setActiveTab] = useState<'operations' | 'overview' | 'cases' | 'indicators' | 'areas' | 'audit' | 'authority_requests' | 'rules'>(
+    isViewer ? 'indicators' : isDirector ? 'operations' : 'cases'
   );
+  const [openCaseId, setOpenCaseId] = useState<string | null>(null);
   const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
   const [data, setData] = useState<OrgData>(EMPTY_ORG_DATA);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -89,44 +91,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
   const personIdOfCase = (caseId: string) => casesList.find((c) => c.id === caseId)?.titular_person_id;
 
-  const handleCaseCreated = (newCase: CaseWithDetails) =>
-    run(async () => {
-      const p = newCase.person;
-      const caseId = await api.createCaseWithPerson({
-        given_name: p.given_name,
-        paternal_family_name: p.paternal_family_name,
-        maternal_family_name: p.maternal_family_name ?? null,
-        preferred_name: p.preferred_name ?? null,
-        birth_date: p.birth_date,
-        birth_date_is_estimated: p.birth_date_is_estimated,
-        sex_id: p.sex_id,
-        nationality_country_id: p.nationality_country_id,
-        other_nationality: p.other_nationality ?? null,
-        primary_language_id: p.primary_language_id,
-        other_language: p.other_language ?? null,
-        phone_number: p.phone_number ?? null,
-        intake_window_type: newCase.intake_window_type,
-        travels_with_family: newCase.travels_with_family,
-        intake_state_id: newCase.intake_state_id,
-        intake_municipality_id: newCase.intake_municipality_id,
-        intake_channel_id: newCase.intake_channel_id,
-        entry_route_id: newCase.entry_route_id,
-        entry_date_str: newCase.entry_date_str ?? null,
-        assigned_area_id: newCase.assigned_area_id ?? null,
-        vulnerability_codes: newCase.vulnerabilities.map((v) => v.marker_code),
-      });
-      const personId = await getTitularPersonId(caseId);
-      for (const k of newCase.consents || []) {
-        await api.registerConsent({
-          person_id: personId,
-          case_id: caseId,
-          consent_type: k.consent_type,
-          status: k.status,
-          is_minor_assent: k.is_minor_assent,
-          notes: k.notes,
-        });
-      }
-    });
+  // El alta es atómica en la base: persona, caso, marcadores y consentimientos en una transacción.
+  const handleCaseCreated = (input: NewCaseInput) => run(() => api.createCaseWithPerson(input));
 
   const handleTransitionStatus = (
     caseId: string,
@@ -327,6 +293,19 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
         {/* Pestañas de Navegación */}
         <div className="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
+          {isDirector && (
+            <button
+              onClick={() => setActiveTab('operations')}
+              className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'operations'
+                  ? 'border-turquesa text-carbon'
+                  : 'border-transparent text-gray-500 hover:text-carbon'
+              }`}
+            >
+              <Gauge className="w-4 h-4 text-turquesa-dark" />
+              {t('navigation.operations')}
+            </button>
+          )}
           {!isViewer && (
           <button
             onClick={() => setActiveTab('cases')}
@@ -421,6 +400,16 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
           </button>
         </div>
 
+        {/* Tablero de operación (sólo Dirección): qué requiere atención hoy */}
+        {activeTab === 'operations' && isDirector && (
+          <OperationsDashboard
+            cases={casesList}
+            sharingEvents={sharingEventsList}
+            onOpenCase={(id) => { setOpenCaseId(id); setActiveTab('cases'); }}
+            onOpenDigest={() => setIsDirectorDigestOpen(true)}
+          />
+        )}
+
         {/* Indicadores agregados (única vista estadística del viewer; umbral n>=5, Ethos E-05) */}
         {activeTab === 'indicators' && <IndicatorsView />}
 
@@ -442,6 +431,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onRectifyPerson={handleRectifyPerson}
             onAnonymizePerson={handleAnonymizePerson}
             onOpposeSecondary={handleOpposeSecondary}
+            openCaseId={openCaseId}
+            onOpenCaseHandled={() => setOpenCaseId(null)}
           />
         )}
 

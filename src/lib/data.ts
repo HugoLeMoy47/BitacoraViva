@@ -12,6 +12,7 @@ import {
   JournalEntry,
   Organization,
   Person,
+  PrivacyNotice,
   SharingEvent,
   StatusAxis,
   StatusAxisCode,
@@ -225,6 +226,18 @@ async function rpc<T = unknown>(fn: string, args: Record<string, unknown>): Prom
   return data as T;
 }
 
+// Consentimiento que la persona otorga en el paso cero del alta. La base exige el general,
+// y el expreso para datos sensibles antes de aceptar marcadores de vulnerabilidad (P-06).
+export interface ConsentInput {
+  consent_type: 'general_care' | 'sensitive_data' | 'internal_sharing' | 'secondary_use_research';
+  status: 'granted';
+  is_minor_assent: boolean;
+  legal_guardian_name?: string | null;
+  legal_guardian_role?: string | null;
+  authority_letter_ref?: string | null;
+  notes?: string | null;
+}
+
 export interface NewCaseInput {
   given_name: string;
   paternal_family_name: string;
@@ -247,17 +260,43 @@ export interface NewCaseInput {
   entry_date_str: string | null;
   assigned_area_id: string | null;
   vulnerability_codes: string[];
+  consents: ConsentInput[];
 }
 
 // Indicadores agregados con supresión de celdas pequeñas (Ethos E-05): `count` llega
-// nulo cuando el grupo tiene menos de `min_group_size` personas.
+// nulo cuando el grupo tiene menos de `min_group_size` personas. `prev_*` son las cifras del
+// periodo inmediato anterior de igual duración (con su propia supresión), sólo si se dio un periodo.
+export interface AggregateMetricRow {
+  metric: string;
+  bucket: string;
+  count: number | null;
+  value: number | null;
+  suppressed: boolean;
+  prev_count: number | null;
+  prev_value: number | null;
+}
+
 export interface AggregateMetrics {
   min_group_size: number;
   generated_at: string;
-  rows: { metric: string; bucket: string; count: number | null; suppressed: boolean }[];
+  period: { from: string | null; to: string | null; prev_from: string | null; prev_to: string | null };
+  rows: AggregateMetricRow[];
+}
+
+// Historial de un eje de estatus (cada fila es un intervalo con su inicio y cierre).
+export interface StageHistoryRow {
+  case_id: string;
+  value_id: string;
+  valid_from: string;
+  valid_to: string | null;
 }
 
 export const api = {
+  loadStageHistory: (axisId: string) =>
+    rows<StageHistoryRow>(
+      supabase.from('case_status').select('case_id, value_id, valid_from, valid_to').eq('axis_id', axisId)
+    ),
+
   createCaseWithPerson: (i: NewCaseInput) =>
     rpc<string>('fn_create_case_with_person', {
       p_given_name: i.given_name,
@@ -281,6 +320,7 @@ export const api = {
       p_entry_date_str: i.entry_date_str,
       p_assigned_area_id: i.assigned_area_id,
       p_vulnerability_codes: i.vulnerability_codes,
+      p_consents: i.consents,
     }),
 
   changeCaseStatus: (caseId: string, axisCode: string, newValueCode: string, reason: string) =>
@@ -371,14 +411,23 @@ export const api = {
   applyOpposition: (personId: string, reason: string) =>
     rpc('fn_apply_opposition', { p_person_id: personId, p_reason: reason }),
 
-  aggregateMetrics: () => rpc<AggregateMetrics>('fn_aggregate_metrics', {}),
+  aggregateMetrics: (from: string | null = null, to: string | null = null) =>
+    rpc<AggregateMetrics>('fn_aggregate_metrics', { p_from: from, p_to: to }),
 
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),
 };
 
-export async function getTitularPersonId(caseId: string): Promise<string> {
-  const { data, error } = await supabase.from('case').select('titular_person_id').eq('id', caseId).single();
+// Aviso de privacidad vigente de la organización (P-13). Hoy es el texto de la semilla;
+// el objetivo es que cada asociación cargue el suyo (p. ej. un PDF) desde su configuración.
+export async function getActivePrivacyNotice(): Promise<PrivacyNotice | null> {
+  const { data, error } = await supabase
+    .from('privacy_notice')
+    .select('*')
+    .eq('active', true)
+    .order('effective_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (error) throw new Error(error.message);
-  return data.titular_person_id as string;
+  return (data as PrivacyNotice) || null;
 }

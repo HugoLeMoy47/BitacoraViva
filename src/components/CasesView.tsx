@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   FolderPlus, 
   Search, 
@@ -17,6 +17,7 @@ import {
 } from '../types/database';
 import { CaseDetailView } from './CaseDetailView';
 import { NewCaseModal } from './NewCaseModal';
+import { NewCaseInput } from '../lib/data';
 
 interface CasesViewProps {
   cases: CaseWithDetails[];
@@ -25,7 +26,7 @@ interface CasesViewProps {
   assignedAreaId?: string;
   authorUserId: string;
   authorFullName: string;
-  onCaseCreated: (newCase: CaseWithDetails) => void;
+  onCaseCreated: (input: NewCaseInput) => void;
   onTransitionStatus: (
     caseId: string, 
     axisCode: StatusAxisCode, 
@@ -47,6 +48,9 @@ interface CasesViewProps {
   onRectifyPerson?: (personId: string, updates: Partial<Person>, reason: string) => void;
   onAnonymizePerson?: (personId: string, reason: string) => void;
   onOpposeSecondary?: (personId: string, reason: string) => void;
+  // Expediente que debe abrirse al entrar (desde el tablero de operación)
+  openCaseId?: string | null;
+  onOpenCaseHandled?: () => void;
 }
 
 export const CasesView: React.FC<CasesViewProps> = ({
@@ -65,10 +69,19 @@ export const CasesView: React.FC<CasesViewProps> = ({
   onRectifyPerson,
   onAnonymizePerson,
   onOpposeSecondary,
+  openCaseId,
+  onOpenCaseHandled,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (openCaseId) {
+      setSelectedCaseId(openCaseId);
+      onOpenCaseHandled?.();
+    }
+  }, [openCaseId]);
 
   const canOpenCase = activeRole === 'intake_officer' || activeRole === 'director';
 
