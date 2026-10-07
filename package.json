@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "demo:reset": "node scripts/reset-demo.mjs",
+    "test:rls": "node scripts/test-rls.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
