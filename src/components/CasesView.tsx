@@ -140,9 +140,9 @@ export const CasesView: React.FC<CasesViewProps> = ({
               <span>{t('cases.btn_new_case')}</span>
             </button>
           ) : (
-            <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-xl text-gray-400 text-xs border border-gray-200">
+            <div className="flex items-center space-x-2 bg-gray-100 px-3 py-2 rounded-xl text-gray-300 text-xs border border-gray-200">
               <Lock className="w-3.5 h-3.5" />
-              <span>Apertura exclusiva Intake / Dirección</span>
+              <span>{t('cases.open_restricted')}</span>
             </div>
           )}
         </div>
@@ -151,7 +151,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
       {/* Barra de búsqueda y filtros */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+          <Search className="w-4 h-4 text-gray-500 absolute left-3 top-3" />
           <input
             type="text"
             value={searchTerm}
@@ -160,7 +160,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
             className="w-full text-xs pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-turquesa"
           />
         </div>
-        <span className="text-xs text-gray-400 font-mono whitespace-nowrap">
+        <span className="text-xs text-gray-500 font-mono whitespace-nowrap">
           {filteredCases.length} expedientes
         </span>
       </div>
@@ -169,7 +169,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-xs">
-            <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-[11px]">
+            <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs">
               <tr>
                 <th className="px-6 py-3.5 text-left">{t('cases.col_folio')}</th>
                 <th className="px-6 py-3.5 text-left">{t('cases.col_person')}</th>
@@ -193,17 +193,17 @@ export const CasesView: React.FC<CasesViewProps> = ({
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {isUnaccompanied && (
-                          <span className="bg-red-100 text-red-800 text-[10px] font-bold px-1.5 py-0.2 rounded">
+                          <span className="bg-red-100 text-red-800 text-xs font-bold px-1.5 py-0.2 rounded">
                             NNA No Acompañado
                           </span>
                         )}
                         {isSubfolio && (
-                          <span className="bg-purple-100 text-purple-800 text-[10px] font-medium px-1.5 py-0.2 rounded">
+                          <span className="bg-purple-100 text-purple-800 text-xs font-medium px-1.5 py-0.2 rounded">
                             Subfolio
                           </span>
                         )}
                         {isReentry && (
-                          <span className="bg-blue-100 text-blue-800 text-[10px] font-medium px-1.5 py-0.2 rounded">
+                          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-1.5 py-0.2 rounded">
                             Reingreso
                           </span>
                         )}
@@ -215,7 +215,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
                         {c.person.given_name} {c.person.paternal_family_name}
                       </div>
                       {c.person.preferred_name && (
-                        <div className="text-turquesa-dark italic text-[11px]">
+                        <div className="text-turquesa-dark italic text-xs">
                           "{c.person.preferred_name}"
                         </div>
                       )}
@@ -223,11 +223,11 @@ export const CasesView: React.FC<CasesViewProps> = ({
 
                     <td className="px-6 py-4 text-gray-600">
                       <div>{c.person.other_nationality || 'Honduras'}</div>
-                      <div className="text-[11px] text-gray-400">{c.person.other_language || 'Español'}</div>
+                      <div className="text-xs text-gray-500">{c.person.other_language || 'Español'}</div>
                     </td>
 
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-claro text-turquesa-dark border border-turquesa/30 rounded-full font-bold text-[11px] inline-block">
+                      <span className="px-2.5 py-1 bg-claro text-turquesa-dark border border-turquesa/30 rounded-full font-bold text-xs inline-block">
                         {c.statuses.engagement_status?.label || 'Primer contacto'}
                       </span>
                     </td>
@@ -237,7 +237,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
                         {c.vulnerabilities.map((v) => (
                           <span
                             key={v.id}
-                            className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[10px] border border-gray-200"
+                            className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs border border-gray-200"
                           >
                             {v.marker_code === 'unaccompanied_child'
                               ? 'Niñez no acompañada'

@@ -64,7 +64,7 @@ export const ClarificationNoteModal: React.FC<ClarificationNoteModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -86,10 +86,10 @@ export const ClarificationNoteModal: React.FC<ClarificationNoteModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700">
+            <label className="block text-xs font-semibold text-gray-700" htmlFor="clarif-1">
               {t('journal.clarification_modal.field_body')}
             </label>
-            <textarea
+            <textarea id="clarif-1" name="clarif-1" autoComplete="off"
               rows={4}
               value={body}
               onChange={(e) => setBody(e.target.value)}

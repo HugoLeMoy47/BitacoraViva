@@ -195,9 +195,9 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
         <div className="px-6 py-4 bg-carbon text-white flex justify-between items-center border-b border-gray-700">
           <div>
             <h3 className="text-base font-bold">{t('intake.modal_title')}</h3>
-            <p className="text-xs text-gray-400">{t('intake.modal_subtitle')}</p>
+            <p className="text-xs text-gray-300">{t('intake.modal_subtitle')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('session.dismiss')} className="p-1 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white">
+          <button onClick={onClose} aria-label={t('session.dismiss')} className="p-1 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -209,7 +209,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
         )}
 
         {/* Indicador de pasos */}
-        <div className="grid grid-cols-5 bg-gray-100 text-[11px] font-medium text-center border-b border-gray-200">
+        <div className="grid grid-cols-5 bg-gray-100 text-xs font-medium text-center border-b border-gray-200">
           {stepLabels.map((s) => {
             const skipped = s.id === 3 && !sensitiveGranted && step > 0;
             return (
@@ -259,14 +259,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       {showFullNotice ? t('intake.consent.hide_full') : t('intake.consent.show_full')}
                     </button>
                     {showFullNotice && (
-                      <div className="max-h-40 overflow-y-auto whitespace-pre-line rounded-lg bg-gray-50 border border-gray-200 p-3 text-[11px] text-gray-700">
+                      <div className="max-h-40 overflow-y-auto whitespace-pre-line rounded-lg bg-gray-50 border border-gray-200 p-3 text-xs text-gray-700">
                         {notice.full_text}
                       </div>
                     )}
-                    <p className="text-[10px] text-gray-400">
+                    <p className="text-xs text-gray-500">
                       {t('intake.consent.version_label')} {notice.version}
                     </p>
-                    {isDemo && <p className="text-[11px] text-amber-800">{t('intake.consent.demo_notice')}</p>}
+                    {isDemo && <p className="text-xs text-amber-800">{t('intake.consent.demo_notice')}</p>}
                   </>
                 )}
                 <label className="flex items-start gap-2 pt-2 cursor-pointer">
@@ -285,16 +285,16 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <fieldset key={key} className="rounded-xl border border-gray-200 p-3">
                     <legend className="px-1 text-xs font-bold text-carbon">
                       {t(`arco.consent_types.${key}`)}{' '}
-                      <span className="font-normal text-gray-400">
+                      <span className="font-normal text-gray-500">
                         ({required ? t('intake.consent.required') : t('intake.consent.optional')})
                       </span>
                     </legend>
-                    <p className="text-[11px] text-gray-500 mb-2">{t(`intake.consent.desc.${key}`)}</p>
+                    <p className="text-xs text-gray-500 mb-2">{t(`intake.consent.desc.${key}`)}</p>
                     <div className="flex gap-2">
                       {(['yes', 'no'] as const).map((c) => (
                         <label
                           key={c}
-                          className={`flex-1 text-center text-xs font-semibold rounded-lg border px-3 py-2 cursor-pointer transition-all ${
+                          className={`flex-1 text-center text-xs font-semibold rounded-lg border px-3 py-2 cursor-pointer transition ${
                             choices[key] === c
                               ? c === 'yes'
                                 ? 'bg-claro border-turquesa text-carbon'
@@ -328,7 +328,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
               )}
               {choices.sensitive_data === 'no' && (
-                <p className="text-[11px] text-gray-600">{t('intake.consent.skip_sensitive')}</p>
+                <p className="text-xs text-gray-600">{t('intake.consent.skip_sensitive')}</p>
               )}
 
               <div className="rounded-xl border border-gray-200 p-3 space-y-3">
@@ -346,7 +346,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </label>
                 {isMinor && (
                   <div className="space-y-3 pl-6">
-                    <p className="text-[11px] text-gray-500">{t('intake.consent.minor_assent_note')}</p>
+                    <p className="text-xs text-gray-500">{t('intake.consent.minor_assent_note')}</p>
                     <label className="flex items-center gap-2 text-xs text-carbon cursor-pointer">
                       <input
                         type="checkbox"
@@ -358,8 +358,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.consent.guardian_name')}</label>
-                        <input
+                        <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-1">{t('intake.consent.guardian_name')}</label>
+                        <input id="newcas-1" name="newcas-1" autoComplete="off"
                           type="text"
                           value={guardianName}
                           onChange={(e) => setGuardianName(e.target.value)}
@@ -367,8 +367,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.consent.guardian_role')}</label>
-                        <input
+                        <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-2">{t('intake.consent.guardian_role')}</label>
+                        <input id="newcas-2" name="newcas-2" autoComplete="off"
                           type="text"
                           value={guardianRole}
                           onChange={(e) => setGuardianRole(e.target.value)}
@@ -378,8 +378,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     </div>
                     {isUnaccompanied && (
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.consent.authority_ref')}</label>
-                        <input
+                        <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-3">{t('intake.consent.authority_ref')}</label>
+                        <input id="newcas-3" name="newcas-3" autoComplete="off"
                           type="text"
                           value={authorityRef}
                           onChange={(e) => setAuthorityRef(e.target.value)}
@@ -404,7 +404,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       key={wt}
                       type="button"
                       onClick={() => setWindowType(wt)}
-                      className={`p-2.5 text-xs font-medium rounded-lg border text-center transition-all ${
+                      className={`p-2.5 text-xs font-medium rounded-lg border text-center transition ${
                         windowType === wt ? 'bg-claro border-turquesa text-carbon font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
@@ -424,7 +424,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   />
                   <div>
                     <span className="text-xs font-semibold text-carbon">{t('intake.field_travels_family')}</span>
-                    <p className="text-[11px] text-gray-500">{t('intake.travels_family_help')}</p>
+                    <p className="text-xs text-gray-500">{t('intake.travels_family_help')}</p>
                   </div>
                 </label>
               </div>
@@ -436,24 +436,24 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_given_name')}</label>
-                  <input
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-4">{t('intake.field_given_name')}</label>
+                  <input id="newcas-4" name="newcas-4" autoComplete="off"
                     type="text"
                     required
                     value={givenName}
                     onChange={(e) => setGivenName(e.target.value)}
-                    placeholder="Ej. María Elena"
+                    placeholder={t('intake.ph_given')}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_paternal_name')}</label>
-                  <input
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-5">{t('intake.field_paternal_name')}</label>
+                  <input id="newcas-5" name="newcas-5" autoComplete="off"
                     type="text"
                     required
                     value={paternalName}
                     onChange={(e) => setPaternalName(e.target.value)}
-                    placeholder="Ej. González"
+                    placeholder={t('intake.ph_paternal')}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   />
                 </div>
@@ -461,24 +461,24 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_maternal_name')}</label>
-                  <input
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-6">{t('intake.field_maternal_name')}</label>
+                  <input id="newcas-6" name="newcas-6" autoComplete="off"
                     type="text"
                     value={maternalName}
                     onChange={(e) => setMaternalName(e.target.value)}
-                    placeholder="Opcional"
+                    placeholder={t('intake.ph_optional')}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-7">
                     {t('intake.field_preferred_name')} <span className="text-turquesa-dark font-semibold">(C1)</span>
                   </label>
-                  <input
+                  <input id="newcas-7" name="newcas-7" autoComplete="off"
                     type="text"
                     value={preferredName}
                     onChange={(e) => setPreferredName(e.target.value)}
-                    placeholder="Cómo pide que se le llame"
+                    placeholder={t('intake.ph_preferred')}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   />
                 </div>
@@ -486,8 +486,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_birth_date')}</label>
-                  <input
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-8">{t('intake.field_birth_date')}</label>
+                  <input id="newcas-8" name="newcas-8" autoComplete="off"
                     type="date"
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
@@ -500,20 +500,20 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       onChange={(e) => setBirthDateEstimated(e.target.checked)}
                       className="rounded text-turquesa border-gray-300"
                     />
-                    <span className="text-[11px]">{t('intake.field_birth_estimated')}</span>
+                    <span className="text-xs">{t('intake.field_birth_estimated')}</span>
                   </label>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_sex')}</label>
-                  <select
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-9">{t('intake.field_sex')}</label>
+                  <select id="newcas-9" name="newcas-9" autoComplete="off"
                     value={sexId}
                     onChange={(e) => setSexId(Number(e.target.value))}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   >
-                    <option value={1}>1. Masculino</option>
-                    <option value={2}>2. Femenino</option>
-                    <option value={3}>3. Otro / No binario</option>
+                    <option value={1}>{t('intake.sex_1')}</option>
+                    <option value={2}>{t('intake.sex_2')}</option>
+                    <option value={3}>{t('intake.sex_3')}</option>
                   </select>
                 </div>
               </div>
@@ -526,8 +526,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_nationality')}</label>
-                  <select
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-10">{t('intake.field_nationality')}</label>
+                  <select id="newcas-10" name="newcas-10" autoComplete="off"
                     value={nationalityCountry}
                     onChange={(e) => setNationalityCountry(e.target.value)}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
@@ -540,29 +540,29 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     <option value="Cuba">Cuba</option>
                     <option value="Colombia">Colombia</option>
                     <option value="México">México</option>
-                    <option value="Otro">Otro país</option>
+                    <option value="Otro">{t('intake.other_country')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_primary_language')}</label>
-                  <input
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-11">{t('intake.field_primary_language')}</label>
+                  <input id="newcas-11" name="newcas-11" autoComplete="off"
                     type="text"
                     value={primaryLanguage}
                     onChange={(e) => setPrimaryLanguage(e.target.value)}
-                    placeholder="Español, Creole, Maya..."
+                    placeholder={t('intake.ph_language')}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">{t('intake.field_phone')}</label>
-                <input
+                <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-12">{t('intake.field_phone')}</label>
+                <input id="newcas-12" name="newcas-12" autoComplete="off"
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+504 9999 9999"
+                  placeholder={t('intake.ph_phone')}
                   className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                 />
               </div>
@@ -584,7 +584,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   return (
                     <label
                       key={code}
-                      className={`flex items-start space-x-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                      className={`flex items-start space-x-3 p-3 rounded-xl border cursor-pointer transition ${
                         isChecked
                           ? 'bg-alerta-bg/40 border-alerta/40 text-carbon shadow-xs'
                           : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700'
@@ -598,7 +598,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                       />
                       <div className="flex-1 text-xs">
                         <span className="font-bold block text-carbon">{item.label}</span>
-                        <span className="text-[11px] text-gray-500">{item.description}</span>
+                        <span className="text-xs text-gray-500">{item.description}</span>
                       </div>
                     </label>
                   );
@@ -626,21 +626,21 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
 
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-2">
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-500">Persona:</span>
+                  <span className="text-gray-500">{t('intake.summary.person')}</span>
                   <span className="font-bold text-carbon">{givenName} {paternalName} {maternalName}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-500">Nombre Preferido:</span>
+                  <span className="text-gray-500">{t('intake.summary.preferred')}</span>
                   <span className="font-semibold text-turquesa-dark">{preferredName || givenName}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-500">Nacionalidad:</span>
+                  <span className="text-gray-500">{t('intake.summary.nationality')}</span>
                   <span className="font-semibold text-carbon">{nationalityCountry}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
-                  <span className="text-gray-500">Vulnerabilidades marcadas:</span>
+                  <span className="text-gray-500">{t('intake.summary.vulnerabilities')}</span>
                   <span className="font-bold text-alerta">
-                    {sensitiveGranted ? `${selectedVulnerabilities.length} seleccionadas` : t('intake.consent.summary_none_sensitive')}
+                    {sensitiveGranted ? `${selectedVulnerabilities.length} ${t('intake.summary.selected')}` : t('intake.consent.summary_none_sensitive')}
                   </span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
@@ -652,7 +652,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Oficial de Ingreso:</span>
+                  <span className="text-gray-500">{t('intake.summary.officer')}</span>
                   <span className="font-semibold text-carbon">{authorFullName}</span>
                 </div>
               </div>

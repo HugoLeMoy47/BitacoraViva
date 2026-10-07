@@ -37,6 +37,7 @@ import { IndicatorsView } from './components/IndicatorsView';
 import { OperationsDashboard } from './components/OperationsDashboard';
 import { DemoBanner, DemoChip } from './components/DemoBanner';
 import { EnvironmentProvider } from './lib/environment';
+import { formatDate, formatDateTime } from './lib/format';
 
 const ROLE_NAMES: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer'];
 
@@ -196,7 +197,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   }
 
   return (
-    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues }}>
+    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, organizationName: organization?.legal_name ?? '' }}>
     <div className="min-h-screen bg-gray-50 flex flex-col text-carbon font-sans">
       {/* Header Superior con Branding Freejolitos */}
       <header className="bg-carbon text-white border-b-4 border-turquesa sticky top-0 z-50">
@@ -209,11 +210,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
               <div className="flex items-center space-x-2">
                 <h1 className="text-xl font-bold tracking-tight text-white">{t('app.title')}</h1>
                 <DemoChip />
-                <span className="bg-turquesa/20 text-turquesa-light text-xs font-semibold px-2 py-0.5 rounded border border-turquesa/30">
-                  {t('app.badge_poc')}
-                </span>
               </div>
-              <p className="text-xs text-gray-400">{t('app.tagline')}</p>
+              <p className="text-xs text-gray-500">{t('app.tagline')}</p>
             </div>
           </div>
 
@@ -236,7 +234,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
                 <Bell className="w-3.5 h-3.5 text-turquesa" />
                 <span>Digest</span>
                 {sharingEventsList.filter(e => !e.acknowledged_at).length > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-alerta px-1 text-[10px] font-bold text-white">
+                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-alerta px-1 text-xs font-bold text-white">
                     {sharingEventsList.filter(e => !e.acknowledged_at).length}
                   </span>
                 )}
@@ -253,22 +251,22 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             <div className="flex items-center flex-wrap gap-2">
               <Users className="w-4 h-4 text-turquesa-dark" />
               <span className="font-semibold text-carbon">{currentUser.profile.full_name}</span>
-              <span className="text-gray-400">({currentUser.profile.email})</span>
-              <span className="bg-gray-200 text-carbon px-2 py-0.5 rounded font-mono text-[11px]">
+              <span className="text-gray-500">({currentUser.profile.email})</span>
+              <span className="bg-gray-200 text-carbon px-2 py-0.5 rounded font-mono text-xs">
                 {t(`roles.${activeRole}.badge`)}
               </span>
-              <span className="bg-claro text-turquesa-dark px-2 py-0.5 rounded text-[11px] font-medium border border-turquesa/30">
+              <span className="bg-claro text-turquesa-dark px-2 py-0.5 rounded text-xs font-medium border border-turquesa/30">
                 {t('session.assigned_area')}{' '}
                 {currentUser.assignedAreaName || t('session.transversal_role')}
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <p className="text-carbon-muted italic text-[11px]">
+              <p className="text-carbon-muted italic text-xs">
                 {t(`roles.${activeRole}.description`)}
               </p>
               <button
                 onClick={signOut}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-100"
+                className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 {t('session.sign_out')}
@@ -317,7 +315,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
           >
             <FolderOpen className="w-4 h-4 text-turquesa-dark" />
             <span className="font-bold">{t('navigation.cases')}</span>
-            <span className="bg-gray-200 text-carbon px-1.5 py-0.2 rounded-full text-[10px] font-mono">
+            <span className="bg-gray-200 text-carbon px-1.5 py-0.2 rounded-full text-xs font-mono">
               {casesList.length}
             </span>
           </button>
@@ -366,7 +364,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             <History className="w-4 h-4" />
             {t('navigation.audit_trail')}
             {!isDirector && (
-              <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.2 rounded font-mono">
+              <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.2 rounded font-mono">
                 RLS
               </span>
             )}
@@ -382,7 +380,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             <Scale className="w-4 h-4" />
             {t('navigation.authority_requests')}
             {!isDirector && (
-              <span className="bg-gray-200 text-gray-600 text-[10px] px-1.5 py-0.2 rounded font-mono">
+              <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.2 rounded font-mono">
                 E-03
               </span>
             )}
@@ -492,11 +490,11 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
               <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4 text-center">
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <span className="block text-2xl font-bold text-carbon">{data.areas.length}</span>
-                  <span className="text-[11px] text-gray-500">{t('dashboard.total_areas')}</span>
+                  <span className="text-xs text-gray-500">{t('dashboard.total_areas')}</span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
                   <span className="block text-2xl font-bold text-turquesa-dark">{ROLE_NAMES.length}</span>
-                  <span className="text-[11px] text-gray-500">{t('dashboard.total_roles')}</span>
+                  <span className="text-xs text-gray-500">{t('dashboard.total_roles')}</span>
                 </div>
               </div>
             </div>
@@ -518,7 +516,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold text-carbon">{area.name}</h3>
-                      <p className="text-xs text-gray-400 font-mono">code: {area.code}</p>
+                      <p className="text-xs text-gray-500 font-mono">code: {area.code}</p>
                     </div>
                   </div>
                   <span className="bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-medium">
@@ -558,13 +556,13 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
                       {data.auditEvents.map((event) => (
                         <tr key={event.id} className="hover:bg-gray-50 font-mono">
                           <td className="px-6 py-3 whitespace-nowrap">
-                            <span className="px-2 py-0.5 bg-gray-100 text-carbon font-bold rounded text-[11px] border border-gray-300">
+                            <span className="px-2 py-0.5 bg-gray-100 text-carbon font-bold rounded text-xs border border-gray-300">
                               {event.action}
                             </span>
                           </td>
                           <td className="px-6 py-3 text-carbon font-semibold">{event.table_name}</td>
                           <td className="px-6 py-3 text-gray-500 truncate max-w-xs">{event.record_id}</td>
-                          <td className="px-6 py-3 text-gray-400">{event.created_at}</td>
+                          <td className="px-6 py-3 text-gray-500">{formatDateTime(event.created_at)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -587,10 +585,10 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
                 </p>
                 <div className="bg-gray-50 rounded-lg p-4 text-left border border-gray-200 text-xs space-y-2">
                   <div className="font-semibold text-gray-700">{t('audit.active_policy_label')}</div>
-                  <code className="block bg-gray-100 p-2 rounded text-carbon font-mono text-[11px] overflow-x-auto">
+                  <code className="block bg-gray-100 p-2 rounded text-carbon font-mono text-xs overflow-x-auto">
                     {t('audit.active_policy_code')}
                   </code>
-                  <p className="text-gray-500 text-[11px]">
+                  <p className="text-gray-500 text-xs">
                     {t('audit.restricted_detail')}
                   </p>
                 </div>
@@ -631,9 +629,9 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
                           <td className="px-6 py-3 font-semibold text-carbon">{req.authority_name}</td>
                           <td className="px-6 py-3 font-mono text-gray-700">{req.official_letter_ref}</td>
                           <td className="px-6 py-3 text-gray-600">{req.request_type}</td>
-                          <td className="px-6 py-3 text-gray-500">{req.received_at.substring(0, 10)}</td>
+                          <td className="px-6 py-3 text-gray-500">{formatDate(req.received_at)}</td>
                           <td className="px-6 py-3">
-                            <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                               req.extract_delivered 
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-amber-100 text-amber-800'

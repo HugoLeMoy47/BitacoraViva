@@ -52,7 +52,7 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -64,16 +64,16 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
           </p>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs">
-            <span className="font-bold text-gray-600">Área de origen:</span>{' '}
+            <span className="font-bold text-gray-600">{t('journal.origin_area')}</span>{' '}
             <span className="text-gray-800">{entry.area_name}</span>
             <p className="mt-1 line-clamp-2 text-gray-500 italic">"{entry.body}"</p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700">
+            <label className="block text-xs font-semibold text-gray-700" htmlFor="sharee-1">
               {t('journal.share_modal.field_target_area')}
             </label>
-            <select
+            <select id="sharee-1" name="sharee-1" autoComplete="off"
               value={targetAreaId}
               onChange={(e) => setTargetAreaId(e.target.value)}
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none"
@@ -85,10 +85,10 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700">
+            <label className="block text-xs font-semibold text-gray-700" htmlFor="sharee-2">
               {t('journal.share_modal.field_reason')}
             </label>
-            <textarea
+            <textarea id="sharee-2" name="sharee-2" autoComplete="off"
               rows={4}
               value={reason}
               onChange={(e) => setReason(e.target.value)}

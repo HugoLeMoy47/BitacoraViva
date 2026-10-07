@@ -43,6 +43,7 @@ import { RectifyPersonModal } from './RectifyPersonModal';
 import { AnonymizePersonModal } from './AnonymizePersonModal';
 import { OpposeSecondaryTreatmentModal } from './OpposeSecondaryTreatmentModal';
 import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
+import { formatDate, formatDateTime, formatTime } from '../lib/format';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -216,12 +217,12 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               {caseData.person.preferred_name || `${caseData.person.given_name} ${caseData.person.paternal_family_name}`}
             </h1>
             {caseData.parent_case_id && (
-              <span className="text-[11px] bg-turquesa/15 text-turquesa px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+              <span className="text-xs bg-turquesa/15 text-turquesa px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                 {t('cases.badge_subfolio')}
               </span>
             )}
             {hasUnaccompaniedChild && (
-              <span className="text-[11px] bg-alerta text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+              <span className="text-xs bg-alerta text-white px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                 {t('cases.badge_unaccompanied')}
               </span>
             )}
@@ -238,14 +239,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             <span>·</span>
             <span>{caseData.person.other_nationality || 'Honduras'}</span>
             <span>·</span>
-            <span>Apertura: {caseData.opened_at.substring(0, 10)}</span>
+            <span>Apertura: {formatDate(caseData.opened_at)}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {caseData.parentCaseNumber && (
             <div className="text-xs bg-gray-50 p-2.5 rounded-xl border border-gray-200">
-              <span className="text-gray-400 block">{t('cases.subfolio_of')}</span>
+              <span className="text-gray-500 block">{t('cases.subfolio_of')}</span>
               <span className="font-mono font-bold text-carbon">{caseData.parentCaseNumber}</span>
             </div>
           )}
@@ -364,11 +365,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
                         {axis.label_es}
                       </span>
                       {isPrimary && (
-                        <span className="text-[10px] bg-turquesa/20 text-carbon font-extrabold px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-turquesa/20 text-carbon font-extrabold px-2 py-0.5 rounded-full">
                           {t('cases.axis_primary')}
                         </span>
                       )}
@@ -378,9 +379,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       <h4 className="text-base font-bold text-carbon">
                         {currentStatus?.label || 'Sin Asignar'}
                       </h4>
-                      <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                      <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>{t('cases.status_since')}: {currentStatus?.valid_from ? new Date(currentStatus.valid_from).toLocaleDateString() : '—'}</span>
+                        <span>{t('cases.status_since')}: {formatDate(currentStatus?.valid_from)}</span>
                       </p>
                     </div>
 
@@ -395,7 +396,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   </div>
 
                   <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-[11px] text-gray-400 font-mono">
+                    <span className="text-xs text-gray-500 font-mono">
                       {axis.code}
                     </span>
                     <button
@@ -531,9 +532,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span title={`Capturado: ${new Date(entry.created_at).toLocaleString()}`}>
-                          <strong>{t('journal.occurred_at')}</strong> {new Date(entry.occurred_at).toLocaleDateString()}
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span title={`${t('journal.captured')} ${formatDateTime(entry.created_at)}`}>
+                          <strong>{t('journal.occurred_at')}</strong> {formatDate(entry.occurred_at)}
                         </span>
                       </div>
                     </div>
@@ -574,11 +575,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     )}
 
                     {/* Footer y Acciones */}
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs text-gray-400">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs text-gray-500">
                       <div>
                         <span>{t('journal.author_by')} <strong className="text-gray-700">{entry.author_name || 'Personal Operativo'}</strong></span>
                         <span className="mx-2">·</span>
-                        <span>{t('journal.created_at')} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{t('journal.created_at')} {formatTime(entry.created_at)}</span>
                       </div>
 
                       {/* Botones de Acción (solo en entradas activas) */}
@@ -623,41 +624,41 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="text-gray-400 block">{t('cases.field_given_name')}</span>
+                <span className="text-gray-500 block">{t('cases.field_given_name')}</span>
                 <span className="font-semibold text-carbon text-sm">{caseData.person.given_name}</span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_family_names')}</span>
+                <span className="text-gray-500 block">{t('cases.field_family_names')}</span>
                 <span className="font-semibold text-carbon text-sm">
                   {caseData.person.paternal_family_name} {caseData.person.maternal_family_name || ''}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_preferred_name')}</span>
+                <span className="text-gray-500 block">{t('cases.field_preferred_name')}</span>
                 <span className="font-semibold text-turquesa-dark text-sm">
                   {caseData.person.preferred_name || 'No especificado'}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_birth_date')}</span>
+                <span className="text-gray-500 block">{t('cases.field_birth_date')}</span>
                 <span className="font-semibold text-carbon text-sm">
-                  {caseData.person.birth_date} {caseData.person.birth_date_is_estimated && `(${t('cases.estimated_birth')})`}
+                  {formatDate(caseData.person.birth_date)} {caseData.person.birth_date_is_estimated && `(${t('cases.estimated_birth')})`}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_nationality')}</span>
+                <span className="text-gray-500 block">{t('cases.field_nationality')}</span>
                 <span className="font-semibold text-carbon text-sm">
                   {caseData.person.other_nationality || 'Honduras'}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_language')}</span>
+                <span className="text-gray-500 block">{t('cases.field_language')}</span>
                 <span className="font-semibold text-carbon text-sm">
                   {caseData.person.other_language || 'Español'}
                 </span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_phone')}</span>
+                <span className="text-gray-500 block">{t('cases.field_phone')}</span>
                 <span className="font-semibold text-carbon text-sm">
                   {caseData.person.phone_number || 'Sin teléfono'}
                 </span>
@@ -671,15 +672,15 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="text-gray-400 block">{t('cases.field_window_type')}</span>
+                <span className="text-gray-500 block">{t('cases.field_window_type')}</span>
                 <span className="font-semibold text-carbon text-sm capitalize">{caseData.intake_window_type}</span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_entry_date')}</span>
+                <span className="text-gray-500 block">{t('cases.field_entry_date')}</span>
                 <span className="font-semibold text-carbon text-sm">{caseData.entry_date_str || 'Septiembre 2026'}</span>
               </div>
               <div>
-                <span className="text-gray-400 block">{t('cases.field_family_travel')}</span>
+                <span className="text-gray-500 block">{t('cases.field_family_travel')}</span>
                 <span className="font-semibold text-carbon text-sm">
                   {caseData.travels_with_family ? t('common.yes') : t('common.no')}
                 </span>
@@ -702,7 +703,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           </div>
 
           {caseData.vulnerabilities.length === 0 ? (
-            <div className="text-xs text-gray-400 italic p-4 text-center">
+            <div className="text-xs text-gray-500 italic p-4 text-center">
               No se han afirmado marcadores de vulnerabilidad para este caso.
             </div>
           ) : (
@@ -730,9 +731,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         </div>
                       )}
                     </div>
-                    <div className="mt-3 pt-2 border-t border-gray-200/60 text-[11px] text-gray-400 flex items-center justify-between">
+                    <div className="mt-3 pt-2 border-t border-gray-200/60 text-xs text-gray-500 flex items-center justify-between">
                       <span>Afirmado por: {v.affirmed_by}</span>
-                      <span>{new Date(v.affirmed_at).toLocaleDateString()}</span>
+                      <span>{formatDate(v.affirmed_at)}</span>
                     </div>
                   </div>
                 );
@@ -771,7 +772,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   </div>
                   <span className="text-xs text-gray-500 mt-1 block">
                     {sub.person.preferred_name && `"${sub.person.preferred_name}" · `}
-                    {sub.person.birth_date} ({sub.statuses.engagement_status?.label})
+                    {formatDate(sub.person.birth_date)} ({sub.statuses.engagement_status?.label})
                   </span>
                 </div>
                 {onSelectSubfolio && (
@@ -807,7 +808,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono bg-claro text-carbon px-2.5 py-1 rounded-full border border-turquesa/30 font-semibold">
+                <span className="text-xs font-mono bg-claro text-carbon px-2.5 py-1 rounded-full border border-turquesa/30 font-semibold">
                   {t('arco.privacy_notice_badge')}
                 </span>
                 {canManageConsent && onSaveConsent && (
@@ -827,7 +828,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-xs text-amber-900">
                 <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold block mb-0.5">Control P-06 Activo</span>
+                  <span className="font-bold block mb-0.5">{t('arco.p06_active')}</span>
                   <p>{t('arco.sensitive_alert_missing')}</p>
                 </div>
               </div>
@@ -862,7 +863,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         {t(`arco.consent_types.${typeKey}`)}
                       </span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                           isGranted
                             ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                             : isOpposed
@@ -877,9 +878,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     </div>
 
                     {consentItem ? (
-                      <div className="text-[11px] text-gray-600 space-y-1 mt-2">
+                      <div className="text-xs text-gray-600 space-y-1 mt-2">
                         {consentItem.is_minor_assent && (
-                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-semibold mb-1">
+                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-semibold mb-1">
                             <Scale className="w-3 h-3 text-amber-700" />
                             <span>{t('arco.assent_label')}</span>
                           </div>
@@ -895,16 +896,16 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                           </p>
                         )}
                         <p>
-                          <span className="font-medium text-gray-500">{t('arco.granted_at_label')}</span> {new Date(consentItem.granted_at).toLocaleDateString('es-MX')}
+                          <span className="font-medium text-gray-500">{t('arco.granted_at_label')}</span> {formatDate(consentItem.granted_at)}
                         </p>
                         {consentItem.notes && (
-                          <p className="italic text-gray-500 text-[10px] bg-white/70 p-1.5 rounded border border-gray-100 mt-1">
+                          <p className="italic text-gray-500 text-xs bg-white/70 p-1.5 rounded border border-gray-100 mt-1">
                             "{consentItem.notes}"
                           </p>
                         )}
                       </div>
                     ) : (
-                      <p className="text-[11px] text-gray-400 italic mt-2">
+                      <p className="text-xs text-gray-500 italic mt-2">
                         No se ha asentado registro para esta modalidad.
                       </p>
                     )}
@@ -931,9 +932,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
                     <FileText className="w-4 h-4 text-turquesa-dark" />
-                    <span>Derecho de Acceso</span>
+                    <span>{t('arco.right_access')}</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                  <p className="text-xs text-gray-500 leading-relaxed">
                     Expedir extracto oficial depurado (excluye notas de trabajo profesional protegidas por Ethos E-02).
                   </p>
                 </div>
@@ -943,7 +944,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     isDirector
                       ? 'bg-carbon text-white hover:bg-carbon-muted cursor-pointer'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-300 cursor-not-allowed'
                   }`}
                   title={!isDirector ? 'Reservado a Dirección (BV-5.2)' : undefined}
                 >
@@ -957,9 +958,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
                     <Edit3 className="w-4 h-4 text-turquesa-dark" />
-                    <span>Derecho de Rectificación</span>
+                    <span>{t('arco.right_rectification')}</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                  <p className="text-xs text-gray-500 leading-relaxed">
                     Corregir datos biográficos de la ficha de identificación con motivo y auditoría obligatoria.
                   </p>
                 </div>
@@ -969,7 +970,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     canRectify && !caseData.person.is_anonymized
                       ? 'bg-turquesa text-carbon hover:bg-turquesa-light cursor-pointer'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
                   title={!canRectify ? 'Reservado a Ingreso y Dirección (BV-5.4)' : undefined}
                 >
@@ -983,9 +984,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
                     <ShieldAlert className="w-4 h-4 text-amber-500" />
-                    <span>Derecho de Oposición</span>
+                    <span>{t('arco.right_opposition')}</span>
                   </div>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                  <p className="text-xs text-gray-500 leading-relaxed">
                     Restringir tratamientos secundarios y reportes externos sin afectar auxilio humanitario ni alojamiento.
                   </p>
                 </div>
@@ -995,7 +996,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     isDirector && !caseData.person.is_anonymized
                       ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300 cursor-pointer'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
                   title={!isDirector ? 'Reservado a Dirección (BV-5.5)' : undefined}
                 >
@@ -1009,9 +1010,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-bold text-red-700 mb-1">
                     <Trash2 className="w-4 h-4 text-red-600" />
-                    <span>Derecho de Cancelación</span>
+                    <span>{t('arco.right_cancellation')}</span>
                   </div>
-                  <p className="text-[11px] text-red-600/80 leading-relaxed">
+                  <p className="text-xs text-red-600/80 leading-relaxed">
                     Procedimiento irreversible (ADR-0001): Destruye datos identificables, purga bitácoras y preserva esqueleto estadístico.
                   </p>
                 </div>
@@ -1021,7 +1022,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     isDirector && !caseData.person.is_anonymized
                       ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
                   title={!isDirector ? 'Reservado a Dirección (ADR-0001 / BV-5.3)' : undefined}
                 >
@@ -1040,19 +1041,19 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
                 {t('arco.history_title')}
               </h3>
-              <span className="text-[11px] font-mono text-gray-400">
+              <span className="text-xs font-mono text-gray-500">
                 {arcoRequests.length} registros
               </span>
             </div>
 
             {arcoRequests.length === 0 ? (
-              <p className="text-xs text-gray-400 italic py-3 text-center">
+              <p className="text-xs text-gray-500 italic py-3 text-center">
                 {t('arco.history_empty')}
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 text-xs">
-                  <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-[10px]">
+                  <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-xs">
                     <tr>
                       <th className="px-4 py-2.5 text-left">{t('arco.table_type')}</th>
                       <th className="px-4 py-2.5 text-left">{t('arco.table_status')}</th>
@@ -1065,12 +1066,12 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     {arcoRequests.map((req) => (
                       <tr key={req.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 font-semibold text-carbon">
-                          <span className="px-2 py-0.5 rounded bg-gray-100 border text-[11px]">
+                          <span className="px-2 py-0.5 rounded bg-gray-100 border text-xs">
                             {t(`arco.types.${req.request_type}`)}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium text-[10px]">
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium text-xs">
                             {t(`arco.statuses.${req.status}`)}
                           </span>
                         </td>
@@ -1078,8 +1079,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={req.reason}>
                           {req.reason}
                         </td>
-                        <td className="px-4 py-3 text-gray-400 font-mono text-[11px]">
-                          {req.received_at.substring(0, 10)}
+                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                          {formatDate(req.received_at)}
                         </td>
                       </tr>
                     ))}
@@ -1106,7 +1107,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </div>
               <button
                 onClick={() => setTransitioningAxis(null)}
-                className="text-gray-400 hover:text-white text-sm"
+                className="text-gray-500 hover:text-white text-sm"
               >
                 ✕
               </button>
@@ -1117,17 +1118,17 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <div className="p-3 bg-alerta-bg text-alerta border border-alerta/30 rounded-xl flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-bold">Error de gobernanza:</span>
+                    <span className="font-bold">{t('cases.governance_error')}</span>
                     <p>{errorMessage}</p>
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block font-semibold text-carbon mb-1">
+                <label className="block font-semibold text-carbon mb-1" htmlFor="casede-1">
                   {t('cases.field_target_status')}
                 </label>
-                <select
+                <select id="casede-1" name="casede-1" autoComplete="off"
                   value={targetValueCode}
                   onChange={(e) => setTargetValueCode(e.target.value)}
                   className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
@@ -1141,10 +1142,10 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </div>
 
               <div>
-                <label className="block font-semibold text-carbon mb-1">
+                <label className="block font-semibold text-carbon mb-1" htmlFor="casede-2">
                   {t('cases.field_reason')}
                 </label>
-                <textarea
+                <textarea id="casede-2" name="casede-2" autoComplete="off"
                   rows={3}
                   required
                   value={transitionReason}
@@ -1154,8 +1155,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 />
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-[11px] text-gray-500 space-y-1">
-                <p className="font-semibold text-carbon">Regla Dura 7 de Supabase:</p>
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-500 space-y-1">
+                <p className="font-semibold text-carbon">{t('cases.rule7_note')}</p>
                 <p>
                   Esta acción cerrará el registro anterior con marca de tiempo actual y abrirá el nuevo estado de manera transaccional. No es posible sobrescribir ni revertir sin dejar un nuevo rastro auditable.
                 </p>

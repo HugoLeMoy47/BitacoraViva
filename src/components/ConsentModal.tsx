@@ -59,14 +59,14 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_consent.title')}
               </h3>
-              <p className="text-[11px] text-gray-300">
+              <p className="text-xs text-gray-300">
                 {caseData.case_number} — {caseData.person.given_name} {caseData.person.paternal_family_name}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded transition"
+            className="text-gray-500 hover:text-white p-1 rounded transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -80,10 +80,10 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="consen-1">
                 {t('arco.modal_consent.type_label')}
               </label>
-              <select
+              <select id="consen-1" name="consen-1" autoComplete="off"
                 value={consentType}
                 onChange={(e) => setConsentType(e.target.value as ConsentType)}
                 className="w-full text-xs rounded-lg border-gray-300 border p-2 focus:ring-1 focus:ring-turquesa focus:outline-none"
@@ -95,10 +95,10 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="consen-2">
                 {t('arco.modal_consent.status_label')}
               </label>
-              <select
+              <select id="consen-2" name="consen-2" autoComplete="off"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as ConsentStatus)}
                 className="w-full text-xs rounded-lg border-gray-300 border p-2 focus:ring-1 focus:ring-turquesa focus:outline-none"
@@ -129,40 +129,40 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
               <div className="space-y-2 pt-2 border-t border-amber-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-medium text-amber-800 mb-0.5">
+                    <label className="block text-xs font-medium text-amber-800 mb-0.5" htmlFor="consen-3">
                       {t('arco.modal_consent.guardian_name')}
                     </label>
-                    <input
+                    <input id="consen-3" name="consen-3" autoComplete="off"
                       type="text"
                       value={guardianName}
                       onChange={(e) => setGuardianName(e.target.value)}
-                      placeholder="Ej. Lic. Sofía Calderón"
+                      placeholder={t('arco.modal_consent.ph_guardian_name')}
                       className="w-full text-xs rounded border border-amber-300 p-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-turquesa"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-amber-800 mb-0.5">
+                    <label className="block text-xs font-medium text-amber-800 mb-0.5" htmlFor="consen-4">
                       {t('arco.modal_consent.guardian_role')}
                     </label>
-                    <input
+                    <input id="consen-4" name="consen-4" autoComplete="off"
                       type="text"
                       value={guardianRole}
                       onChange={(e) => setGuardianRole(e.target.value)}
-                      placeholder="Ej. Procuraduría de Protección NNA"
+                      placeholder={t('arco.modal_consent.ph_guardian_role')}
                       className="w-full text-xs rounded border border-amber-300 p-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-turquesa"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-medium text-amber-800 mb-0.5">
+                  <label className="block text-xs font-medium text-amber-800 mb-0.5" htmlFor="consen-5">
                     {t('arco.modal_consent.authority_letter')}
                   </label>
-                  <input
+                  <input id="consen-5" name="consen-5" autoComplete="off"
                     type="text"
                     value={authorityRef}
                     onChange={(e) => setAuthorityRef(e.target.value)}
-                    placeholder="Ej. DIF/PPNNA/2026/0491"
+                    placeholder={t('arco.modal_consent.ph_authority_ref')}
                     className="w-full text-xs rounded border border-amber-300 p-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-turquesa"
                   />
                 </div>
@@ -171,10 +171,10 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-carbon mb-1">
+            <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="consen-6">
               {t('arco.modal_consent.notes')}
             </label>
-            <textarea
+            <textarea id="consen-6" name="consen-6" autoComplete="off"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}

@@ -74,7 +74,7 @@
   "cases": {
     "title": "Expedientes Humanitarios",
     "subtitle": "Ficha sociodemográfica estandarizada (MAP-OIM v3) y máquina de 5 ejes de estatus",
-    "search_placeholder": "Buscar por folio, nombre, nacionalidad o marcador...",
+    "search_placeholder": "Buscar por folio, nombre, nacionalidad o marcador…",
     "btn_new_case": "+ Levantar Nuevo Expediente",
     "filter_all": "Todos los casos",
     "badge_primary_case": "Caso Principal",
@@ -102,12 +102,34 @@
     "change_modal_notice": "Regla Dura 7: El estatus no se sobrescribe. Se cierra el vigente y se crea uno nuevo con fecha y motivo en la misma transacción.",
     "field_target_status": "Nuevo Estatus Destino:",
     "field_reason": "Motivo de la Transición (Obligatorio por Ethos C8):",
-    "field_reason_placeholder": "Documente la circunstancia, valoración o auxilio que motiva el cambio...",
+    "field_reason_placeholder": "Documente la circunstancia, valoración o auxilio que motiva el cambio…",
     "btn_confirm_transition": "Confirmar Transición y Auditar",
     "btn_cancel": "Cancelar",
     "err_legal_restricted": "Permiso denegado por RLS: Solo personal adscrito al Área Jurídica o Dirección puede modificar la situación jurídico-migratoria.",
     "err_closed_restricted": "Permiso denegado por RLS: El cierre administrativo definitivo del expediente es facultad exclusiva de Dirección.",
-    "err_reason_required": "Debe especificar un motivo en texto antes de proceder."
+    "err_reason_required": "Debe especificar un motivo en texto antes de proceder.",
+    "btn_back": "Volver a expedientes",
+    "axes_section_desc": "Cada eje se registra como un hecho con fecha: al cambiar un estatus se cierra el vigente y se abre uno nuevo, nunca se sobrescribe.",
+    "axis_primary": "Estatus prioritario",
+    "status_since": "Desde",
+    "last_reason": "Último motivo",
+    "section_identity": "Identidad de la persona",
+    "field_given_name": "Nombres",
+    "field_family_names": "Apellidos",
+    "field_preferred_name": "Nombre preferido",
+    "field_birth_date": "Fecha de nacimiento",
+    "estimated_birth": "aproximada",
+    "field_nationality": "Nacionalidad",
+    "field_language": "Idioma principal",
+    "field_phone": "Teléfono",
+    "section_intake_context": "Contexto de ingreso",
+    "field_window_type": "Tipo de ventanilla",
+    "field_entry_date": "Entrada al país",
+    "field_family_travel": "Viaja con su núcleo familiar",
+    "transition_modal_title": "Cambiar estatus",
+    "governance_error": "Error de gobernanza:",
+    "rule7_note": "Regla Dura 7:",
+    "open_restricted": "Apertura exclusiva de ingreso y dirección"
   },
   "intake": {
     "modal_title": "Levantamiento de Expediente (Estándar MAP-OIM v3)",
@@ -174,6 +196,24 @@
       "summary_consents": "Consentimientos otorgados:",
       "summary_none_sensitive": "Sin datos sensibles",
       "recorded_note": "Registrado en el paso de consentimiento del alta."
+    },
+    "ph_given": "Ej. María Elena",
+    "ph_paternal": "Ej. González",
+    "ph_optional": "Opcional",
+    "ph_preferred": "Cómo pide que se le llame",
+    "ph_language": "Español, criollo, maya…",
+    "ph_phone": "+504 9999 9999",
+    "sex_1": "Masculino",
+    "sex_2": "Femenino",
+    "sex_3": "Otro / no binario",
+    "other_country": "Otro país",
+    "summary": {
+      "preferred": "Nombre preferido:",
+      "vulnerabilities": "Vulnerabilidades marcadas:",
+      "officer": "Oficial de ingreso:",
+      "person": "Persona:",
+      "nationality": "Nacionalidad:",
+      "selected": "seleccionadas"
     }
   },
   "audit": {
@@ -240,7 +280,7 @@
       "field_work_note": "¿Es una nota de trabajo o deliberación protegida?",
       "field_work_note_help": "Las notas protegidas documentan hipótesis clínicas o jurídicas internas y quedan excluidas por defecto del extracto de acceso ARCO (Ethos E-02 / MD-04).",
       "field_body": "Cuerpo de la Intervención:",
-      "field_body_placeholder": "Describa detalladamente las acciones realizadas, acuerdos y observaciones...",
+      "field_body_placeholder": "Describa detalladamente las acciones realizadas, acuerdos y observaciones…",
       "preview_title": "Confirmación de Inmutabilidad (Mitigación UX 5.1)",
       "preview_warning": "Por diseño ético (ADR-0005 y Regla Dura 3), este registro no podrá ser modificado ni borrado una vez guardado. Si requiere corregir después, deberá asentar una fe de erratas.",
       "btn_to_preview": "Revisar Vista Previa →",
@@ -252,7 +292,7 @@
       "subtitle": "Flujo de corrección no punitivo. El registro original se preserva intacto y se vincula a esta aclaración.",
       "original_label": "Texto original que se aclara:",
       "field_body": "Texto de la aclaración o fe de erratas:",
-      "field_body_placeholder": "Indique con precisión qué dato se rectifica o amplía...",
+      "field_body_placeholder": "Indique con precisión qué dato se rectifica o amplía…",
       "field_work_note": "Mantener como nota de deliberación protegida",
       "btn_submit": "Asentar Aclaración"
     },
@@ -261,7 +301,7 @@
       "subtitle": "La bitácora es privada por omisión. Compartir con otra área exige asentar un motivo explícito y genera una alerta directiva.",
       "field_target_area": "Área destino:",
       "field_reason": "Motivo de la compartición (Obligatorio por Ethos C3):",
-      "field_reason_placeholder": "Explique por qué otra área requiere acceso a esta información confidencial...",
+      "field_reason_placeholder": "Explique por qué otra área requiere acceso a esta información confidencial…",
       "btn_submit": "Confirmar y Notificar a Dirección"
     },
     "director_digest": {
@@ -274,8 +314,11 @@
       "shared_by": "Compartido por:",
       "reason_label": "Motivo asentado:",
       "btn_acknowledge": "Acusar Recibo",
-      "acknowledged_notice": "Acuse de recibo registrado en auditoría."
-    }
+      "acknowledged_notice": "Acuse de recibo registrado en auditoría.",
+      "acknowledged_on": "Acusado el"
+    },
+    "captured": "Capturado:",
+    "origin_area": "Área de origen:"
   },
   "arco": {
     "tab_title": "Privacidad y Derechos ARCO",
@@ -336,8 +379,11 @@
       "guardian_role": "Cargo o Relación de la Autoridad / Tutor:",
       "authority_letter": "Número de Oficio o Referencia Institucional:",
       "notes": "Observaciones adicionales:",
-      "notes_placeholder": "Detalles sobre la explicación brindada a la persona atendida...",
-      "btn_save": "Asentar Consentimiento"
+      "notes_placeholder": "Detalles sobre la explicación brindada a la persona atendida…",
+      "btn_save": "Asentar Consentimiento",
+      "ph_guardian_name": "Ej. Lic. Sofía Calderón",
+      "ph_guardian_role": "Ej. Procuraduría de Protección NNA",
+      "ph_authority_ref": "Ej. DIF/PPNNA/2026/0491"
     },
     "modal_rectify": {
       "title": "Rectificación de Ficha Biográfica (BV-5.4)",
@@ -351,8 +397,9 @@
       "phone": "Teléfono de Contacto:",
       "email": "Correo Electrónico:",
       "reason": "Motivo Obligatorio de la Rectificación (Ethos C8):",
-      "reason_placeholder": "Especifique el documento o aclaración que justifica el cambio...",
-      "btn_save": "Aplicar Rectificación y Auditar"
+      "reason_placeholder": "Especifique el documento o aclaración que justifica el cambio…",
+      "btn_save": "Aplicar Rectificación y Auditar",
+      "ph_phone": "+52 55 1234 5678"
     },
     "modal_access": {
       "title": "Extracto Estructurado de Expediente — Derecho de Acceso (BV-5.2)",
@@ -377,7 +424,7 @@
       "guarantee_title": "Garantía Humanitaria Inquebrantable:",
       "guarantee_text": "El ejercicio del derecho de oposición NO afectará la entrega de alimentos, alojamiento, atención médica de urgencia ni defensa jurídica en el albergue.",
       "reason": "Motivo Obligatorio de la Oposición (Ethos C8):",
-      "reason_placeholder": "Indique las razones manifestadas por la persona atendida...",
+      "reason_placeholder": "Indique las razones manifestadas por la persona atendida…",
       "btn_save": "Asentar Oposición Formal"
     },
     "modal_anonymize": {
@@ -388,12 +435,25 @@
       "retained_skeleton_title": "Lo que sobrevive (Esqueleto Estadístico No Identificable):",
       "retained_skeleton_items": "Año de ingreso, edad aproximada, sexo, nacionalidad y los eventos de auditoría que prueban que la supresión se ejecutó en regla.",
       "reason": "Motivo Institucional de la Cancelación (Obligatorio por ADR-0001):",
-      "reason_placeholder": "Especifique el número de solicitud ARCO o requerimiento que motiva la anonimización...",
+      "reason_placeholder": "Especifique el número de solicitud ARCO o requerimiento que motiva la anonimización…",
       "confirm_challenge": "Para confirmar, escriba la palabra ANONIMIZAR a continuación:",
       "challenge_placeholder": "ANONIMIZAR",
       "btn_cancel": "Cancelar y Regresar",
       "btn_execute": "Destruir Identificadores y Anonimizar"
-    }
+    },
+    "extract": {
+      "full_name": "Nombre completo:",
+      "preferred": "Nombre social o preferido:",
+      "birth": "Fecha de nacimiento:",
+      "engagement": "Estatus de acompañamiento:",
+      "legal": "Situación migratoria:",
+      "shelter": "Situación de alojamiento:"
+    },
+    "p06_active": "Control P-06 activo",
+    "right_access": "Derecho de acceso",
+    "right_rectification": "Derecho de rectificación",
+    "right_opposition": "Derecho de oposición",
+    "right_cancellation": "Derecho de cancelación"
   },
   "rules_list": {
     "r1": "1. La seguridad vive en la base de datos (RLS en toda tabla)",
@@ -528,5 +588,10 @@
       "subtitle": "Control P-06: en estos expedientes no deben existir marcadores de vulnerabilidad hasta recabarlo.",
       "empty": "Todos los expedientes tienen consentimiento expreso para datos sensibles."
     }
+  },
+  "common": {
+    "yes": "Sí",
+    "no": "No",
+    "cancel": "Cancelar"
   }
 }

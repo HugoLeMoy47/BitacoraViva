@@ -26,7 +26,7 @@ export const DemoChip: React.FC = () => {
   const { isDemo } = useEnvironment();
   if (!isDemo) return null;
   return (
-    <span className="bg-amber-400 text-carbon text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
+    <span className="bg-amber-400 text-carbon text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded">
       {t('demo.chip')}
     </span>
   );

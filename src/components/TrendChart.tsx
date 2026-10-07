@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { t } from '../lib/i18n';
+import { formatMonth } from '../lib/format';
 
 // Gráfica de barras agrupadas: ingresos vs egresos por mes.
 // Colores: ranuras 1 y 2 de la paleta categórica validada (azul / naranja), en orden fijo.
@@ -18,9 +19,7 @@ const SERIES = [
 ];
 
 function monthLabel(m: string): string {
-  const [y, mo] = m.split('-').map(Number);
-  const label = new Date(y, mo - 1, 1).toLocaleDateString('es-MX', { month: 'short' }).replace('.', '');
-  return `${label} ${String(y).slice(2)}`;
+  return formatMonth(m);
 }
 
 function niceMax(v: number): number {
@@ -78,7 +77,7 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
         <button
           type="button"
           onClick={() => setAsTable((v) => !v)}
-          className="text-[11px] font-semibold text-turquesa-dark underline"
+          className="text-xs font-semibold text-turquesa-dark underline"
         >
           {asTable ? t('indicators.trend.view_chart') : t('indicators.trend.view_table')}
         </button>

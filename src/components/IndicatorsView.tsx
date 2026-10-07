@@ -57,17 +57,17 @@ const Delta: React.FC<{ current: number | null; previous: number | null; unit?: 
   if (current === null || previous === null) return null;
   const diff = Math.round((current - previous) * 10) / 10;
   if (diff === 0) {
-    return <span className="text-[11px] text-gray-400 font-mono">= {previous}{unit}</span>;
+    return <span className="text-xs text-gray-500 font-mono">= {previous}{unit}</span>;
   }
   const Icon = diff > 0 ? ArrowUp : ArrowDown;
   return (
     <span
-      className="inline-flex items-center gap-0.5 text-[11px] text-gray-500 font-mono"
+      className="inline-flex items-center gap-0.5 text-xs text-gray-500 font-mono"
       title={t('indicators.vs_previous').replace('{n}', `${previous}${unit}`)}
     >
       <Icon className="w-3 h-3" aria-hidden="true" />
       {diff > 0 ? '+' : '−'}{Math.abs(diff)}{unit}
-      <span className="text-gray-400">{t('indicators.vs_short').replace('{n}', `${previous}${unit}`)}</span>
+      <span className="text-gray-500">{t('indicators.vs_short').replace('{n}', `${previous}${unit}`)}</span>
     </span>
   );
 };
@@ -136,7 +136,7 @@ export const IndicatorsView: React.FC = () => {
             aria-label={t('indicators.period.from')}
             className="p-1.5 border rounded-lg border-gray-300"
           />
-          <span className="text-gray-400">→</span>
+          <span className="text-gray-500">→</span>
           <input
             type="date"
             value={customTo}
@@ -146,7 +146,7 @@ export const IndicatorsView: React.FC = () => {
           />
         </div>
       )}
-      <label className={`ml-auto flex items-center gap-2 text-xs ${range.from ? 'text-carbon' : 'text-gray-400'}`}>
+      <label className={`ml-auto flex items-center gap-2 text-xs ${range.from ? 'text-carbon' : 'text-gray-500'}`}>
         <input
           type="checkbox"
           checked={compare && !!range.from}
@@ -220,7 +220,7 @@ export const IndicatorsView: React.FC = () => {
               <span className="block text-3xl font-bold text-carbon leading-none">
                 {total && !total.suppressed ? total.count : '—'}
               </span>
-              <span className="text-[11px] text-gray-500 block">{t('indicators.metric.total_cases')}</span>
+              <span className="text-xs text-gray-500 block">{t('indicators.metric.total_cases')}</span>
               {showPrev && total && <Delta current={total.count} previous={total.prev_count} />}
             </div>
           </div>
@@ -250,7 +250,7 @@ export const IndicatorsView: React.FC = () => {
                 <li key={bucket} className="px-5 py-3">
                   <p className="text-xs text-gray-500">{t(`indicators.duration.${bucket}`)}</p>
                   {!r || r.suppressed ? (
-                    <span className="flex items-center gap-1 text-xs text-gray-400 mt-1">
+                    <span className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                       <EyeOff className="w-3.5 h-3.5" />
                       {t('indicators.suppressed').replace('{n}', String(min))}
                     </span>
@@ -282,7 +282,7 @@ export const IndicatorsView: React.FC = () => {
                         <span className="text-carbon">{bucketLabel(g.metric, r.bucket)}</span>
                         {r.suppressed ? (
                           <span
-                            className="flex items-center gap-1 text-xs text-gray-400 shrink-0"
+                            className="flex items-center gap-1 text-xs text-gray-500 shrink-0"
                             title={t('indicators.suppressed_hint')}
                           >
                             <EyeOff className="w-3.5 h-3.5" />

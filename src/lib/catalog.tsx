@@ -6,9 +6,11 @@ export interface Catalog {
   areas: Area[];
   statusAxes: StatusAxis[];
   statusValues: Record<StatusAxisCode, StatusValue[]>;
+  organizationName: string;
 }
 
 const EMPTY: Catalog = {
+  organizationName: '',
   areas: [],
   statusAxes: [],
   statusValues: {

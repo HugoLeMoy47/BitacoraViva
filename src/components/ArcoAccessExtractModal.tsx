@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { X, Printer, Copy, Check, FileText, ShieldAlert } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails } from '../types/database';
+import { useCatalog } from '../lib/catalog';
 import { api } from '../lib/data';
+import { formatDate } from '../lib/format';
 
 interface ArcoAccessExtractModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
   caseData,
 }) => {
   const [copied, setCopied] = useState(false);
+  const { organizationName } = useCatalog();
   const [serverExtract, setServerExtract] = useState<Record<string, unknown> | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
 
@@ -41,7 +44,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
   );
 
   const extractData = {
-    institution: 'Albergue Santa Fe A.C.',
+    institution: organizationName,
     emitted_at: new Date().toISOString(),
     titular_person: {
       given_name: caseData.person.given_name,
@@ -93,14 +96,14 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_access.title')}
               </h3>
-              <p className="text-[11px] text-gray-300">
+              <p className="text-xs text-gray-300">
                 {caseData.case_number} — {caseData.person.given_name} {caseData.person.paternal_family_name}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded transition"
+            className="text-gray-500 hover:text-white p-1 rounded transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -116,15 +119,15 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
           {/* Cabecera institucional */}
           <div className="border-b border-gray-200 pb-4 flex justify-between items-start">
             <div>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-turquesa-dark">
+              <span className="text-xs uppercase font-bold tracking-wider text-turquesa-dark">
                 {t('arco.modal_access.org_custodian')}
               </span>
-              <h2 className="text-base font-bold text-carbon">Albergue Santa Fe A.C.</h2>
+              <h2 className="text-base font-bold text-carbon">{organizationName}</h2>
               <p className="text-xs text-gray-500">
                 Extracto oficial para ejercicio de derecho de Acceso conforme a la Ley de Protección de Datos Personales
               </p>
             </div>
-            <div className="text-right text-[11px] text-gray-400">
+            <div className="text-right text-xs text-gray-500">
               <span>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
           </div>
@@ -144,32 +147,32 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs bg-gray-50 p-3 rounded-lg">
               <div>
-                <span className="text-gray-400 block text-[10px]">Nombre Completo:</span>
+                <span className="text-gray-500 block text-xs">{t('arco.extract.full_name')}</span>
                 <span className="font-semibold">
                   {caseData.person.given_name} {caseData.person.paternal_family_name} {caseData.person.maternal_family_name || ''}
                 </span>
               </div>
               {caseData.person.preferred_name && (
                 <div>
-                  <span className="text-gray-400 block text-[10px]">Nombre Social / Preferido:</span>
+                  <span className="text-gray-500 block text-xs">{t('arco.extract.preferred')}</span>
                   <span>{caseData.person.preferred_name}</span>
                 </div>
               )}
               <div>
-                <span className="text-gray-400 block text-[10px]">Fecha de Nacimiento:</span>
+                <span className="text-gray-500 block text-xs">{t('arco.extract.birth')}</span>
                 <span>
-                  {caseData.person.birth_date} {caseData.person.birth_date_is_estimated && '(Aproximada)'}
+                  {formatDate(caseData.person.birth_date)} {caseData.person.birth_date_is_estimated && '(Aproximada)'}
                 </span>
               </div>
               {caseData.person.phone_number && (
                 <div>
-                  <span className="text-gray-400 block text-[10px]">Teléfono:</span>
+                  <span className="text-gray-500 block text-xs">Teléfono:</span>
                   <span>{caseData.person.phone_number}</span>
                 </div>
               )}
               {caseData.person.email && (
                 <div>
-                  <span className="text-gray-400 block text-[10px]">Correo:</span>
+                  <span className="text-gray-500 block text-xs">Correo:</span>
                   <span>{caseData.person.email}</span>
                 </div>
               )}
@@ -184,19 +187,19 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
             <div className="border border-gray-200 rounded-lg p-3 space-y-2 text-xs">
               <div className="flex justify-between items-center">
                 <span className="font-mono font-bold text-turquesa-dark">{caseData.case_number}</span>
-                <span className="text-gray-500 text-[11px]">Apertura: {new Date(caseData.opened_at).toLocaleDateString('es-MX')}</span>
+                <span className="text-gray-500 text-xs">Apertura: {formatDate(caseData.opened_at)}</span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t text-[11px]">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t text-xs">
                 <div>
-                  <span className="text-gray-400 block">Estatus de Acompañamiento:</span>
+                  <span className="text-gray-500 block">{t('arco.extract.engagement')}</span>
                   <span className="font-semibold">{caseData.statuses.engagement_status.label}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block">Situación Migratoria:</span>
+                  <span className="text-gray-500 block">{t('arco.extract.legal')}</span>
                   <span className="font-semibold">{caseData.statuses.legal_status.label}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block">Situación de Alojamiento:</span>
+                  <span className="text-gray-500 block">{t('arco.extract.shelter')}</span>
                   <span className="font-semibold">{caseData.statuses.shelter_status.label}</span>
                 </div>
               </div>
@@ -209,13 +212,13 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
               <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
                 {t('arco.modal_access.journal_header')}
               </h4>
-              <span className="text-[11px] text-gray-400">
+              <span className="text-xs text-gray-500">
                 ({accessibleEntries.length} hechos registrados)
               </span>
             </div>
 
             {accessibleEntries.length === 0 ? (
-              <p className="text-xs text-gray-400 italic py-2">
+              <p className="text-xs text-gray-500 italic py-2">
                 {t('arco.modal_access.no_entries')}
               </p>
             ) : (
@@ -225,7 +228,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
                     key={entry.id}
                     className="p-3 rounded-lg border border-gray-200 bg-white text-xs space-y-1.5"
                   >
-                    <div className="flex justify-between items-center text-[11px] text-gray-500">
+                    <div className="flex justify-between items-center text-xs text-gray-500">
                       <span className="font-semibold text-carbon">
                         {entry.area_name || entry.area_code || 'Área Operativa'}
                       </span>
@@ -255,7 +258,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
                     <span className="font-medium text-carbon">
                       {t(`arco.consent_types.${c.consent_type}`)}
                     </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
+                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
                       {t(`arco.consent_status.${c.status}`)}
                     </span>
                   </div>

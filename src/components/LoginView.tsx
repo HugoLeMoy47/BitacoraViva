@@ -101,7 +101,7 @@ export const LoginView: React.FC = () => {
             <Zap className="w-3.5 h-3.5 text-turquesa-dark" />
             {t('login.demo_title')}
           </p>
-          <p className="text-[11px] text-gray-500 mb-3">{t('login.demo_hint')}</p>
+          <p className="text-xs text-gray-500 mb-3">{t('login.demo_hint')}</p>
           <div className="grid grid-cols-2 gap-2">
             {DEMO_ACCOUNTS.map((a) => (
               <button

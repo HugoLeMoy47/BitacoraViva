@@ -37,7 +37,7 @@ const Kpi: React.FC<{
       <div className="text-left">
         <span className="block text-2xl font-bold text-carbon leading-none">{value}</span>
         <span className="block text-xs font-semibold text-carbon mt-1">{label}</span>
-        {hint && <span className="block text-[11px] text-gray-500">{hint}</span>}
+        {hint && <span className="block text-xs text-gray-500">{hint}</span>}
       </div>
     </>
   );
@@ -151,7 +151,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
         <div className="px-5 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-2">
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-600">{t('operations.attention.title')}</h3>
-            <p className="text-[11px] text-gray-500">{t('operations.attention.subtitle')}</p>
+            <p className="text-xs text-gray-500">{t('operations.attention.subtitle')}</p>
           </div>
           <label className="flex items-center gap-2 text-xs text-gray-600">
             {t('operations.attention.threshold')}
@@ -197,7 +197,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
               </tbody>
             </table>
             {attention.length > 12 && (
-              <p className="px-5 py-2 text-[11px] text-gray-500">{t('operations.attention.more').replace('{n}', String(attention.length - 12))}</p>
+              <p className="px-5 py-2 text-xs text-gray-500">{t('operations.attention.more').replace('{n}', String(attention.length - 12))}</p>
             )}
           </div>
         )}
@@ -207,7 +207,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-600">{t('operations.stage.title')}</h3>
-            <p className="text-[11px] text-gray-500">{t('operations.stage.subtitle')}</p>
+            <p className="text-xs text-gray-500">{t('operations.stage.subtitle')}</p>
           </div>
           {historyError ? (
             <p role="alert" className="px-5 py-4 text-xs text-alerta">{historyError}</p>
@@ -241,7 +241,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-200 bg-gray-50">
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-600">{t('operations.p06.title')}</h3>
-            <p className="text-[11px] text-gray-500">{t('operations.p06.subtitle')}</p>
+            <p className="text-xs text-gray-500">{t('operations.p06.subtitle')}</p>
           </div>
           {missingSensitive.length === 0 ? (
             <p className="px-5 py-6 text-xs text-gray-500">{t('operations.p06.empty')}</p>

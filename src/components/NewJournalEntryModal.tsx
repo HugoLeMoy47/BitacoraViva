@@ -3,6 +3,7 @@ import { X, Calendar, Shield, Clock, AlertTriangle, Eye, ArrowRight, ArrowLeft, 
 import { t } from '../lib/i18n';
 import { JournalEntry, JournalEntryType } from '../types/database';
 import { useCatalog } from '../lib/catalog';
+import { formatDateTime } from '../lib/format';
 
 interface NewJournalEntryModalProps {
   isOpen: boolean;
@@ -95,7 +96,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -103,11 +104,11 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
 
         {/* Step indicator */}
         <div className="flex border-b border-gray-100 bg-gray-50/70 px-6 py-2.5 text-xs font-medium">
-          <div className={`flex items-center gap-1.5 ${step === 'compose' ? 'font-bold text-turquesa' : 'text-gray-400'}`}>
+          <div className={`flex items-center gap-1.5 ${step === 'compose' ? 'font-bold text-turquesa' : 'text-gray-500'}`}>
             <span>{t('journal.new_modal.step_compose')}</span>
           </div>
           <span className="mx-3 text-gray-300">/</span>
-          <div className={`flex items-center gap-1.5 ${step === 'preview' ? 'font-bold text-turquesa' : 'text-gray-400'}`}>
+          <div className={`flex items-center gap-1.5 ${step === 'preview' ? 'font-bold text-turquesa' : 'text-gray-500'}`}>
             <Eye className="h-3.5 w-3.5" />
             <span>{t('journal.new_modal.step_preview')}</span>
           </div>
@@ -119,10 +120,10 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
             <form onSubmit={handleProceedToPreview} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700">
+                  <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-1">
                     {t('journal.new_modal.field_type')}
                   </label>
-                  <select
+                  <select id="newjou-1" name="newjou-1" autoComplete="off"
                     value={entryType}
                     onChange={(e) => setEntryType(e.target.value as JournalEntryType)}
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none"
@@ -137,10 +138,10 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700">
+                  <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-2">
                     {t('journal.new_modal.field_area')}
                   </label>
-                  <select
+                  <select id="newjou-2" name="newjou-2" autoComplete="off"
                     value={areaId}
                     onChange={(e) => setAreaId(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none"
@@ -153,11 +154,11 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700" htmlFor="newjou-3">
                   <Calendar className="h-3.5 w-3.5 text-gray-500" />
                   {t('journal.new_modal.field_occurred_at')}
                 </label>
-                <input
+                <input id="newjou-3" name="newjou-3" autoComplete="off"
                   type="datetime-local"
                   value={occurredAt}
                   onChange={(e) => setOccurredAt(e.target.value)}
@@ -191,10 +192,10 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
 
               {/* Body */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700">
+                <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-4">
                   {t('journal.new_modal.field_body')}
                 </label>
-                <textarea
+                <textarea id="newjou-4" name="newjou-4" autoComplete="off"
                   rows={5}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
@@ -247,7 +248,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
                     <Clock className="h-3.5 w-3.5" />
-                    <span>{t('journal.occurred_at')} {new Date(occurredAt).toLocaleString()}</span>
+                    <span>{t('journal.occurred_at')} {formatDateTime(occurredAt)}</span>
                   </div>
                 </div>
 
@@ -255,7 +256,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                   {body}
                 </div>
 
-                <div className="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400">
+                <div className="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-500">
                   <span>{t('journal.author_by')} {authorFullName}</span>
                   <span className="mx-2">·</span>
                   <span className="font-medium text-gray-500">{t('journal.visibility_area_private')}</span>

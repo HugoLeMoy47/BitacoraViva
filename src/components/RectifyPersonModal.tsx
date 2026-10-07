@@ -63,14 +63,14 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_rectify.title')}
               </h3>
-              <p className="text-[11px] text-gray-300">
+              <p className="text-xs text-gray-300">
                 {person.given_name} {person.paternal_family_name}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded transition"
+            className="text-gray-500 hover:text-white p-1 rounded transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -91,10 +91,10 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="rectif-1">
                 {t('arco.modal_rectify.given_name')}
               </label>
-              <input
+              <input id="rectif-1" name="rectif-1" autoComplete="off"
                 type="text"
                 required
                 value={givenName}
@@ -103,10 +103,10 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="rectif-2">
                 {t('arco.modal_rectify.paternal_name')}
               </label>
-              <input
+              <input id="rectif-2" name="rectif-2" autoComplete="off"
                 type="text"
                 required
                 value={paternalName}
@@ -118,10 +118,10 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="rectif-3">
                 {t('arco.modal_rectify.maternal_name')}
               </label>
-              <input
+              <input id="rectif-3" name="rectif-3" autoComplete="off"
                 type="text"
                 value={maternalName}
                 onChange={(e) => setMaternalName(e.target.value)}
@@ -129,10 +129,10 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="rectif-4">
                 {t('arco.modal_rectify.preferred_name')}
               </label>
-              <input
+              <input id="rectif-4" name="rectif-4" autoComplete="off"
                 type="text"
                 value={preferredName}
                 onChange={(e) => setPreferredName(e.target.value)}
@@ -143,10 +143,10 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="rectif-5">
                 {t('arco.modal_rectify.birth_date')}
               </label>
-              <input
+              <input id="rectif-5" name="rectif-5" autoComplete="off"
                 type="date"
                 required
                 value={birthDate}
@@ -161,31 +161,31 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
                   onChange={(e) => setBirthEstimated(e.target.checked)}
                   className="rounded text-turquesa focus:ring-turquesa"
                 />
-                <label htmlFor="rect_est_birth" className="text-[11px] text-gray-500 cursor-pointer">
+                <label htmlFor="rect_est_birth" className="text-xs text-gray-500 cursor-pointer">
                   {t('arco.modal_rectify.birth_estimated')}
                 </label>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-carbon mb-1">
+              <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="rectif-6">
                 {t('arco.modal_rectify.phone')}
               </label>
-              <input
+              <input id="rectif-6" name="rectif-6" autoComplete="off"
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+52 ..."
+                placeholder={t('arco.modal_rectify.ph_phone')}
                 className="w-full text-xs rounded-lg border-gray-300 border p-2 focus:ring-1 focus:ring-turquesa focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-carbon mb-1">
+            <label className="block text-xs font-semibold text-carbon mb-1" htmlFor="rectif-7">
               {t('arco.modal_rectify.email')}
             </label>
-            <input
+            <input id="rectif-7" name="rectif-7" autoComplete="off"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -194,10 +194,10 @@ export const RectifyPersonModal: React.FC<RectifyPersonModalProps> = ({
           </div>
 
           <div className="pt-2">
-            <label className="block text-xs font-bold text-carbon mb-1">
+            <label className="block text-xs font-bold text-carbon mb-1" htmlFor="rectif-8">
               {t('arco.modal_rectify.reason')} <span className="text-red-500">*</span>
             </label>
-            <textarea
+            <textarea id="rectif-8" name="rectif-8" autoComplete="off"
               rows={2}
               required
               value={reason}

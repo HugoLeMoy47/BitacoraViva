@@ -1,6 +1,7 @@
 import { X, Bell, Check, ArrowRight, Clock } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { SharingEvent } from '../types/database';
+import { formatDate, formatDateTime } from '../lib/format';
 
 interface DirectorSharingInboxProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -79,14 +80,14 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
                           <span className="text-xs font-semibold text-carbon">
                             {evt.from_area_name}
                           </span>
-                          <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
+                          <ArrowRight className="h-3.5 w-3.5 text-gray-300" />
                           <span className="text-xs font-semibold text-turquesa">
                             {evt.to_area_name}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                           <Clock className="h-3 w-3" />
-                          <span>{new Date(evt.shared_at).toLocaleString()}</span>
+                          <span>{formatDateTime(evt.shared_at)}</span>
                         </div>
                       </div>
 
@@ -118,7 +119,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
 
               {acknowledgedEvents.length > 0 && (
                 <div className="space-y-3 pt-3 border-t border-gray-100">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
                     Acusadas Previamente ({acknowledgedEvents.length})
                   </h4>
                   {acknowledgedEvents.map((evt) => (
@@ -131,11 +132,11 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
                           <span className="font-semibold text-carbon">{evt.case_number}</span>
                           <span>{evt.from_area_name} → {evt.to_area_name}</span>
                         </div>
-                        <span className="text-gray-400">{new Date(evt.shared_at).toLocaleDateString()}</span>
+                        <span className="text-gray-500">{formatDate(evt.shared_at)}</span>
                       </div>
                       <p className="mt-1 italic text-gray-600">"{evt.reason}"</p>
-                      <div className="mt-2 text-xs text-gray-400">
-                        Acusado el {new Date(evt.acknowledged_at!).toLocaleString()}
+                      <div className="mt-2 text-xs text-gray-500">
+                        {t('journal.director_digest.acknowledged_on')} {formatDateTime(evt.acknowledged_at)}
                       </div>
                     </div>
                   ))}

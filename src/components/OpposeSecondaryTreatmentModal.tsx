@@ -43,14 +43,14 @@ export const OpposeSecondaryTreatmentModal: React.FC<OpposeSecondaryTreatmentMod
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_oppose.title')}
               </h3>
-              <p className="text-[11px] text-gray-300">
+              <p className="text-xs text-gray-300">
                 {caseData.case_number} — {caseData.person.given_name} {caseData.person.paternal_family_name}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white p-1 rounded transition"
+            className="text-gray-500 hover:text-white p-1 rounded transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -68,14 +68,14 @@ export const OpposeSecondaryTreatmentModal: React.FC<OpposeSecondaryTreatmentMod
               <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{t('arco.modal_oppose.guarantee_title')}</span>
             </div>
-            <p className="text-[11px] text-emerald-700 leading-relaxed">
+            <p className="text-xs text-emerald-700 leading-relaxed">
               {t('arco.modal_oppose.guarantee_text')}
             </p>
           </div>
 
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-carbon space-y-1">
             <span className="font-semibold">{t('arco.modal_oppose.scope_label')}</span>
-            <p className="text-[11px] text-gray-600">
+            <p className="text-xs text-gray-600">
               {t('arco.modal_oppose.scope_research')}
             </p>
           </div>
@@ -87,10 +87,10 @@ export const OpposeSecondaryTreatmentModal: React.FC<OpposeSecondaryTreatmentMod
           )}
 
           <div>
-            <label className="block text-xs font-bold text-carbon mb-1">
+            <label className="block text-xs font-bold text-carbon mb-1" htmlFor="oppose-1">
               {t('arco.modal_oppose.reason')} <span className="text-red-500">*</span>
             </label>
-            <textarea
+            <textarea id="oppose-1" name="oppose-1" autoComplete="off"
               rows={3}
               required
               value={reason}

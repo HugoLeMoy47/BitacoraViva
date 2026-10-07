@@ -50,7 +50,7 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
               <h3 className="text-sm font-bold tracking-wide">
                 {t('arco.modal_anonymize.title')}
               </h3>
-              <p className="text-[11px] text-red-200">
+              <p className="text-xs text-red-200">
                 {caseData.case_number} — {caseData.person.given_name} {caseData.person.paternal_family_name}
               </p>
             </div>
@@ -71,17 +71,17 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
               <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
               <span>{t('arco.modal_anonymize.alert_destructive_title')}</span>
             </div>
-            <p className="text-[11px] text-red-700 leading-relaxed">
+            <p className="text-xs text-red-700 leading-relaxed">
               {t('arco.modal_anonymize.alert_destructive_text')}
             </p>
           </div>
 
           {/* Lo que sobrevive */}
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-1">
-            <span className="text-[11px] font-bold text-carbon">
+            <span className="text-xs font-bold text-carbon">
               {t('arco.modal_anonymize.retained_skeleton_title')}
             </span>
-            <p className="text-[11px] text-gray-600">
+            <p className="text-xs text-gray-600">
               {t('arco.modal_anonymize.retained_skeleton_items')}
             </p>
           </div>
@@ -93,10 +93,10 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-bold text-carbon mb-1">
+            <label className="block text-xs font-bold text-carbon mb-1" htmlFor="anonym-1">
               {t('arco.modal_anonymize.reason')} <span className="text-red-500">*</span>
             </label>
-            <textarea
+            <textarea id="anonym-1" name="anonym-1" autoComplete="off"
               rows={2}
               required
               value={reason}
@@ -111,10 +111,10 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
 
           {/* Reto de doble confirmación */}
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-            <label className="block text-[11px] font-bold text-amber-900">
+            <label className="block text-xs font-bold text-amber-900" htmlFor="anonym-2">
               {t('arco.modal_anonymize.confirm_challenge')}
             </label>
-            <input
+            <input id="anonym-2" name="anonym-2" autoComplete="off"
               type="text"
               value={challengeText}
               onChange={(e) => {
@@ -140,7 +140,7 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
               className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 shadow-sm transition ${
                 isChallengeMatched && reason.trim()
                   ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
               }`}
             >
               <Trash2 className="w-4 h-4" />
