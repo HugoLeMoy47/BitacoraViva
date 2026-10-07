@@ -14,7 +14,8 @@ import {
   FileText,
   Bell,
   LogOut,
-  X
+  X,
+  BarChart3
 } from 'lucide-react';
 import { t } from './lib/i18n';
 import {
@@ -32,6 +33,9 @@ import { CatalogProvider } from './lib/catalog';
 import { CasesView } from './components/CasesView';
 import { DirectorSharingInbox } from './components/DirectorSharingInbox';
 import { LoginView } from './components/LoginView';
+import { IndicatorsView } from './components/IndicatorsView';
+import { DemoBanner, DemoChip } from './components/DemoBanner';
+import { EnvironmentProvider } from './lib/environment';
 
 const ROLE_NAMES: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer'];
 
@@ -42,7 +46,10 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const activeRole = currentUser.role;
   const isDirector = activeRole === 'director';
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'cases' | 'areas' | 'audit' | 'authority_requests' | 'rules'>('cases');
+  const isViewer = activeRole === 'viewer';
+  const [activeTab, setActiveTab] = useState<'overview' | 'cases' | 'indicators' | 'areas' | 'audit' | 'authority_requests' | 'rules'>(
+    isViewer ? 'indicators' : 'cases'
+  );
   const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
   const [data, setData] = useState<OrgData>(EMPTY_ORG_DATA);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -235,6 +242,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             <div>
               <div className="flex items-center space-x-2">
                 <h1 className="text-xl font-bold tracking-tight text-white">{t('app.title')}</h1>
+                <DemoChip />
                 <span className="bg-turquesa/20 text-turquesa-light text-xs font-semibold px-2 py-0.5 rounded border border-turquesa/30">
                   {t('app.badge_poc')}
                 </span>
@@ -319,6 +327,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
         {/* Pestañas de Navegación */}
         <div className="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
+          {!isViewer && (
           <button
             onClick={() => setActiveTab('cases')}
             className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap ${
@@ -332,6 +341,18 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             <span className="bg-gray-200 text-carbon px-1.5 py-0.2 rounded-full text-[10px] font-mono">
               {casesList.length}
             </span>
+          </button>
+          )}
+          <button
+            onClick={() => setActiveTab('indicators')}
+            className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 whitespace-nowrap ${
+              activeTab === 'indicators'
+                ? 'border-turquesa text-carbon'
+                : 'border-transparent text-gray-500 hover:text-carbon'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 text-turquesa-dark" />
+            {t('navigation.indicators')}
           </button>
           <button
             onClick={() => setActiveTab('overview')}
@@ -399,6 +420,9 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             {t('navigation.rules')}
           </button>
         </div>
+
+        {/* Indicadores agregados (única vista estadística del viewer; umbral n>=5, Ethos E-05) */}
+        {activeTab === 'indicators' && <IndicatorsView />}
 
         {/* Tab 1: Gestión de Expedientes y Casos (Épicas E2, E3 y E4) */}
         {activeTab === 'cases' && (
@@ -715,9 +739,12 @@ const Gate: React.FC = () => {
 };
 
 export const App: React.FC = () => (
-  <SessionProvider>
-    <Gate />
-  </SessionProvider>
+  <EnvironmentProvider>
+    <SessionProvider>
+      <DemoBanner />
+      <Gate />
+    </SessionProvider>
+  </EnvironmentProvider>
 );
 
 export default App;

@@ -249,6 +249,14 @@ export interface NewCaseInput {
   vulnerability_codes: string[];
 }
 
+// Indicadores agregados con supresión de celdas pequeñas (Ethos E-05): `count` llega
+// nulo cuando el grupo tiene menos de `min_group_size` personas.
+export interface AggregateMetrics {
+  min_group_size: number;
+  generated_at: string;
+  rows: { metric: string; bucket: string; count: number | null; suppressed: boolean }[];
+}
+
 export const api = {
   createCaseWithPerson: (i: NewCaseInput) =>
     rpc<string>('fn_create_case_with_person', {
@@ -362,6 +370,8 @@ export const api = {
 
   applyOpposition: (personId: string, reason: string) =>
     rpc('fn_apply_opposition', { p_person_id: personId, p_reason: reason }),
+
+  aggregateMetrics: () => rpc<AggregateMetrics>('fn_aggregate_metrics', {}),
 
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),

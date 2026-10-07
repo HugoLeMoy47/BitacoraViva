@@ -48,7 +48,8 @@
     "areas": "Áreas del Albergue",
     "audit_trail": "Registro de Auditoría",
     "authority_requests": "Requerimientos de Autoridad",
-    "rules": "10 Reglas Duras"
+    "rules": "10 Reglas Duras",
+    "indicators": "Indicadores"
   },
   "dashboard": {
     "organization_details": "Identidad del Albergue (Tenancy)",
@@ -375,5 +376,45 @@
     "notice_expired": "Tu sesión se cerró por inactividad (30 min). Vuelve a iniciar sesión.",
     "demo_title": "Acceso rápido de demostración",
     "demo_hint": "Entra con una cuenta semilla para ver cada rol con sus permisos reales (RLS)."
+  },
+  "demo": {
+    "chip": "Demo",
+    "banner_title": "Entorno de demostración.",
+    "banner_text": "Todos los datos son ficticios: no registres información de personas reales. La demo se reinicia sin previo aviso y se borra todo lo capturado, incluida la auditoría.",
+    "login_notice": "Esto es una demostración con datos ficticios. No uses credenciales ni información reales.",
+    "modal_notice": "Demo: captura únicamente datos ficticios. Lo que registres aquí se borrará al reiniciar la demostración."
+  },
+  "indicators": {
+    "title": "Indicadores agregados",
+    "subtitle": "Estadística sin datos identificables de personas atendidas.",
+    "threshold_note": "Por el compromiso E-05 sólo se publican grupos de {n} o más personas; los menores se ocultan para evitar re-identificación. Los expedientes con oposición a usos secundarios no se cuentan.",
+    "all_suppressed": "Aún no hay grupos con {n} o más personas, por eso todas las cifras están ocultas. Es el comportamiento esperado con pocos expedientes.",
+    "suppressed": "Menos de {n}",
+    "suppressed_hint": "Cifra oculta por umbral de agregación",
+    "bucket_all": "Expedientes",
+    "metric": {
+      "total_cases": "Total de expedientes",
+      "intake_window_type": "Tipo de ventanilla de ingreso",
+      "case_stage": "Etapa del caso",
+      "legal_status": "Situación jurídica",
+      "vulnerability": "Marcadores de vulnerabilidad",
+      "intake_month": "Ingresos por mes",
+      "engagement_status": "Situación ante la organización",
+      "shelter_status": "Alojamiento",
+      "nationality": "Nacionalidad",
+      "age_band": "Grupo de edad al ingreso",
+      "sex": "Sexo"
+    },
+    "window": {
+      "fija": "Ventanilla fija",
+      "movil": "Ventanilla móvil",
+      "transaccional": "Ventanilla transaccional"
+    },
+    "sex": {
+      "1": "Masculino",
+      "2": "Femenino",
+      "3": "Otro / No binario"
+    },
+    "age_years": "{band} años"
   }
 }

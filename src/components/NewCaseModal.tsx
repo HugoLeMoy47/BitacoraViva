@@ -3,6 +3,7 @@ import { X, CheckCircle2, HeartHandshake } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails, VulnerabilityMarkerCode } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
+import { useEnvironment } from '../lib/environment';
 
 interface NewCaseModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   authorFullName,
 }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const { isDemo } = useEnvironment();
 
   // Paso 1: Contexto
   const [windowType, setWindowType] = useState<'fija' | 'movil' | 'transaccional'>('fija');
@@ -193,6 +195,12 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {isDemo && (
+          <p role="note" className="bg-amber-50 border-b border-amber-300 px-6 py-2 text-xs text-amber-900">
+            {t('demo.modal_notice')}
+          </p>
+        )}
 
         {/* Indicador de pasos */}
         <div className="grid grid-cols-4 bg-gray-100 text-xs font-medium text-center border-b border-gray-200">
