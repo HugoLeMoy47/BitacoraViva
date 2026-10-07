@@ -155,6 +155,113 @@ if (!process.env.AUDIT_URL) {
   if (!(await waitFor(BASE))) { console.error('No arrancó el servidor de vista previa.'); server.kill(); process.exit(1); }
 }
 
+// Recorrido completo sólo con teclado: login → alta de expediente → entrada de bitácora.
+// Se llega a los botones finales (Abrir expediente / Asentar) pero no se pulsan: la auditoría no escribe datos.
+const activeInfo = (page) => page.evaluate(() => {
+  const e = document.activeElement;
+  if (!e || e === document.body) return null;
+  const label = e.labels && e.labels[0] ? e.labels[0].textContent : '';
+  return {
+    text: ((e.getAttribute('aria-label') || label || e.textContent || e.value || '') + '').replace(/\s+/g, ' ').trim(),
+    tag: e.tagName, type: e.type || '', role: e.getAttribute('role') || '', value: e.value || '', name: e.name || '',
+    checked: !!e.checked, inMain: !!e.closest('main'), outside: !!document.querySelector('[role=dialog]') && !e.closest('[role=dialog]'),
+  };
+});
+async function tabTo(page, re, { max = 60, each } = {}) {
+  for (let i = 0; i < max; i++) {
+    await page.keyboard.press('Tab');
+    const a = await activeInfo(page);
+    if (process.env.AUDIT_DEBUG) console.log('  tab →', a && (a.tag + ':' + a.type + ':' + a.text.slice(0, 40)));
+    if (a && re.test(a.text)) return a;
+    if (a && each) await each(a);
+  }
+  return null;
+}
+async function keyboardJourney(page) {
+  const out = [];
+  const fail = (detail) => out.push({ rule: 'recorrido-teclado', detail });
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.activeElement?.blur?.());
+  if (!(await tabTo(page, /^Dirección$/))) return [{ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Dirección con Tab' }];
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('header', { timeout: 20000 });
+  await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
+
+  // Alta de expediente
+  await page.evaluate(() => { location.hash = '#/expedientes'; document.activeElement?.blur?.(); });
+  await page.waitForTimeout(900);
+  if (!(await tabTo(page, /Levantar nuevo/i))) return [...out, { rule: 'recorrido-teclado', detail: 'alta: no se llega a «Levantar nuevo expediente» con Tab' }];
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[role=dialog]');
+  const seen = new Set();
+  const answer = async (a) => {
+    if (a.type === 'checkbox' && !a.checked && /Entregué/.test(a.text)) await page.keyboard.press('Space');
+    if (a.type === 'radio' && !seen.has(a.name)) {
+      seen.add(a.name);
+      for (let k = 0; k < 4; k++) {
+        const cur = await activeInfo(page);
+        if (cur && cur.value === 'yes' && cur.checked) break;
+        if (cur && cur.value === 'yes') { await page.keyboard.press('Space'); break; }
+        await page.keyboard.press('ArrowRight');
+      }
+    }
+  };
+  if (!(await tabTo(page, /Siguiente/, { each: answer }))) return [...out, { rule: 'recorrido-teclado', detail: 'alta paso 0: no se llega a «Siguiente» con Tab' }];
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(250);
+  if (!(await tabTo(page, /Siguiente/))) fail('alta paso 1: no se llega a «Siguiente»');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(250);
+  if (!(await tabTo(page, /Nombres/))) fail('alta paso 2: no se llega al campo Nombres');
+  await page.keyboard.type('Prueba');
+  if (!(await tabTo(page, /Primer apellido/i))) fail('alta paso 2: no se llega a Primer apellido');
+  await page.keyboard.type('Auditoria');
+  for (let k = 0; k < 2; k++) {
+    if (!(await tabTo(page, /Siguiente/))) fail('alta paso ' + (k + 2) + ': no se llega a «Siguiente»');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(250);
+  }
+  if (!(await tabTo(page, /Abrir expediente/i))) fail('alta paso 4: no se llega a «Abrir expediente» con Tab');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  if (await page.locator('[role=dialog]').count()) fail('alta: el modal no se cierra con Escape');
+
+  // Entrada de bitácora en un expediente
+  await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; document.activeElement?.blur?.(); });
+  await page.waitForTimeout(1200);
+  let found = false;
+  for (let i = 0; i < 40 && !found; i++) {
+    const a = await activeInfo(page);
+    if (process.env.AUDIT_DEBUG) console.log('  bit →', a && (a.tag + ':' + a.role + ':' + a.text.slice(0, 40)));
+    if (a && a.role === 'tab' && a.inMain) {
+      for (let k = 0; k < 10; k++) {
+        const c = await activeInfo(page);
+        if (c && /Bitácora/i.test(c.text)) { found = true; break; }
+        await page.keyboard.press('ArrowRight');
+      }
+      break;
+    }
+    await page.keyboard.press('Tab');
+  }
+  if (!found) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega a la pestaña Bitácora con teclado' }];
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(500);
+  if (!(await tabTo(page, /Nueva entrada de bitácora/i))) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega a «Nueva entrada de bitácora» con Tab' }];
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[role=dialog]');
+  const body = await tabTo(page, /Cuerpo de la intervención/i);
+  if (!body) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega al cuerpo de la intervención' }];
+  await page.keyboard.type('Entrada de prueba de auditoría de teclado.');
+  if (!(await tabTo(page, /Revisar vista previa/i))) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega a «Revisar vista previa»' }];
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(300);
+  if (!(await tabTo(page, /Asentar definitivamente/i))) fail('bitácora: no se llega a «Asentar definitivamente» con Tab');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  if (await page.locator('[role=dialog]').count()) fail('bitácora: el modal no se cierra con Escape');
+  return out;
+}
+
 const findings = [];
 const record = (role, vp, route, items) => items.forEach((f) => findings.push({ role, vp, route, ...f }));
 
@@ -277,6 +384,15 @@ try {
       }
       await ctx.close();
     }
+  }
+
+  // ---- Recorrido por teclado ----
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    record('director', '1280', '(recorrido por teclado)', await keyboardJourney(page).catch((e) => [{ rule: 'recorrido-teclado', detail: 'error: ' + String(e.message).slice(0, 120) }]));
+    await ctx.close();
+    pages++;
   }
 
   // ---- Informe ----

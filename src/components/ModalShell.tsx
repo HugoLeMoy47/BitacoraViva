@@ -57,6 +57,12 @@ export const ModalShell: React.FC<ModalShellProps> = ({ onClose, className = '',
       }
       const firstEl = items[0];
       const lastEl = items[items.length - 1];
+      // Si el control enfocado desapareció (p. ej. al cambiar de paso) el foco cae al <body>: se recupera dentro del modal
+      if (!root.contains(document.activeElement) || document.activeElement === root) {
+        e.preventDefault();
+        (e.shiftKey ? lastEl : firstEl).focus();
+        return;
+      }
       if (e.shiftKey && document.activeElement === firstEl) {
         e.preventDefault();
         lastEl.focus();

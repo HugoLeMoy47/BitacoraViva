@@ -198,7 +198,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
             <h3 className="text-base font-bold">{t('intake.modal_title')}</h3>
             <p className="text-xs text-gray-300">{t('intake.modal_subtitle')}</p>
           </div>
-          <button onClick={onClose} aria-label={t('session.dismiss')} className="p-1 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white">
+          <button type="button" onClick={onClose} aria-label={t('session.dismiss')} className="p-1 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
