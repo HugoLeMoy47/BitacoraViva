@@ -9,6 +9,8 @@ interface DirectorSharingInboxProps {
   onClose: () => void;
   sharingEvents: SharingEvent[];
   onAcknowledge: (sharingEventId: string) => void;
+  /** Hay una acción en curso: se deshabilita el acuse para evitar envíos dobles */
+  busy?: boolean;
 }
 
 export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
@@ -16,6 +18,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
   onClose,
   sharingEvents,
   onAcknowledge,
+  busy = false,
 }) => {
   if (!isOpen) return null;
 
@@ -107,7 +110,8 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
                         </span>
                         <button
                           onClick={() => onAcknowledge(evt.id)}
-                          className="flex items-center gap-1.5 rounded-lg bg-turquesa px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90"
+                          disabled={busy}
+                          className="flex items-center gap-1.5 rounded-lg bg-turquesa px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Check className="h-3.5 w-3.5" />
                           <span>{t('journal.director_digest.btn_acknowledge')}</span>

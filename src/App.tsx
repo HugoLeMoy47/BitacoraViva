@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { X } from 'lucide-react';
 import { t } from './lib/i18n';
 import {
   StatusAxisCode,
@@ -23,6 +22,8 @@ import { OperationsDashboard } from './components/OperationsDashboard';
 import { AreasView, AuditView, AuthorityView } from './components/AdminViews';
 import { AboutView } from './components/AboutView';
 import { DemoBanner } from './components/DemoBanner';
+import { ToastProvider, useToast } from './lib/toast';
+import { friendlyError } from './lib/errors';
 
 const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -39,22 +40,26 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const [data, setData] = useState<OrgData>(EMPTY_ORG_DATA);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [loadError, setLoadError] = useState<string>('');
-  const [actionError, setActionError] = useState<string | null>(null);
+  const toast = useToast();
+  const [pending, setPending] = useState(0);
 
   const casesList = data.cases;
   const sharingEventsList = data.sharingEvents;
   const organization = data.organization;
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (): Promise<OrgData | null> => {
     try {
-      setData(await loadOrgData());
+      const fresh = await loadOrgData();
+      setData(fresh);
       setLoadState('ready');
+      return fresh;
     } catch (e) {
       setLoadError(errorMessage(e));
-      setLoadState((s) => (s === 'ready' ? 'ready' : 'error'));
-      setActionError(errorMessage(e));
+      setLoadState((prev) => (prev === 'ready' ? 'ready' : 'error'));
+      toast.error(friendlyError(errorMessage(e)));
+      return null;
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     reload();
@@ -66,27 +71,40 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
   // Toda escritura es una función de la base (valida rol, audita y es transaccional).
   // La interfaz sólo informa el resultado y vuelve a leer lo que RLS permite ver.
-  const run = async (action: () => Promise<unknown>) => {
-    setActionError(null);
+  // Cada acción muestra «Guardando…», confirma o explica el error con el siguiente paso, y vuelve
+  // a leer lo que RLS permite ver. Devuelve el resultado para quien necesite encadenar (p. ej. abrir lo creado).
+  const run = async <T,>(action: () => Promise<T>, successKey?: string) => {
+    setPending((n) => n + 1);
+    let ok = false;
+    let value: T | undefined;
     try {
-      await action();
+      value = await action();
+      ok = true;
+      if (successKey) toast.success(t(successKey));
     } catch (e) {
-      setActionError(errorMessage(e));
+      toast.error(friendlyError(errorMessage(e)));
     }
-    await reload();
+    const fresh = await reload();
+    setPending((n) => n - 1);
+    return { ok, value, data: fresh };
   };
 
   const personIdOfCase = (caseId: string) => casesList.find((c) => c.id === caseId)?.titular_person_id;
 
   // El alta es atómica en la base: persona, caso, marcadores y consentimientos en una transacción.
-  const handleCaseCreated = (input: NewCaseInput) => run(() => api.createCaseWithPerson(input));
+  const handleCaseCreated = async (input: NewCaseInput) => {
+    const r = await run(() => api.createCaseWithPerson(input), 'toast.case_created');
+    // Lleva a quien capturó directamente al expediente recién abierto
+    const created = r.ok && r.data ? r.data.cases.find((c) => c.id === r.value) : undefined;
+    if (created) navigate('cases', created.case_number);
+  };
 
   const handleTransitionStatus = (
     caseId: string,
     axisCode: StatusAxisCode,
     newValueCode: string,
     reason: string
-  ) => run(() => api.changeCaseStatus(caseId, axisCode, newValueCode, reason));
+  ) => run(() => api.changeCaseStatus(caseId, axisCode, newValueCode, reason), 'toast.status_changed');
 
   // Handlers para Bitácora de Área (Épica E4)
   const handleAddJournalEntry = (entry: JournalEntry) =>
@@ -98,7 +116,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
         occurred_at: entry.occurred_at,
         is_work_note: entry.is_work_note,
         area_id: entry.area_id || null,
-      })
+      }),
+      'toast.journal_created'
     );
 
   const handleAddClarification = (originalEntryId: string, clarification: JournalEntry) =>
@@ -108,7 +127,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
         clarification.body,
         clarification.occurred_at,
         clarification.is_work_note
-      )
+      ),
+      'toast.clarification_created'
     );
 
   const handleShareJournalEntry = (
@@ -116,10 +136,10 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     toAreaId: string,
     _toAreaName: string,
     reason: string
-  ) => run(() => api.shareJournalEntry(entryId, toAreaId, reason));
+  ) => run(() => api.shareJournalEntry(entryId, toAreaId, reason), 'toast.shared');
 
   const handleAcknowledgeSharing = (sharingEventId: string) =>
-    run(() => api.acknowledgeSharing(sharingEventId));
+    run(() => api.acknowledgeSharing(sharingEventId), 'toast.acknowledged');
 
   const handleSaveConsent = (
     caseId: string,
@@ -137,20 +157,20 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
       const personId = personIdOfCase(caseId);
       if (!personId) throw new Error('Expediente no encontrado.');
       await api.registerConsent({ person_id: personId, case_id: caseId, ...consentData });
-    });
+    }, 'toast.consent_saved');
 
   const handleRectifyPerson = (personId: string, updates: Partial<Person>, reason: string) =>
     run(async () => {
       const current = casesList.find((c) => c.titular_person_id === personId)?.person;
       if (!current) throw new Error('Persona no encontrada.');
       await api.rectifyPerson({ ...current, ...updates }, reason);
-    });
+    }, 'toast.rectified');
 
   const handleAnonymizePerson = (personId: string, reason: string) =>
-    run(() => api.anonymizePerson(personId, reason));
+    run(() => api.anonymizePerson(personId, reason), 'toast.anonymized');
 
   const handleOpposeSecondary = (personId: string, reason: string) =>
-    run(() => api.applyOpposition(personId, reason));
+    run(() => api.applyOpposition(personId, reason), 'toast.opposition');
 
   if (loadState === 'loading') {
     return (
@@ -186,6 +206,11 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
   return (
     <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, organizationName: organization?.legal_name ?? '', userNames: data.userNames }}>
+      {pending > 0 && (
+        <div role="status" className="fixed left-1/2 top-16 z-[55] -translate-x-1/2 rounded-full bg-carbon px-4 py-1.5 text-sm font-semibold text-white shadow-lg">
+          {t('toast.saving')}
+        </div>
+      )}
       <AppShell
         user={currentUser}
         organizationName={organization?.display_name ?? ''}
@@ -196,17 +221,6 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
         onOpenDigest={() => setIsDirectorDigestOpen(true)}
         onSignOut={signOut}
       >
-        {actionError && (
-          <div role="alert" className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-alerta/20 bg-alerta-bg p-3 text-xs text-alerta">
-            <span>
-              <strong>{t('session.action_error')}</strong> {actionError}
-            </span>
-            <button onClick={() => setActionError(null)} aria-label={t('session.dismiss')} className="shrink-0">
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
-        )}
-
         {current === 'operations' && (
           <OperationsDashboard
             cases={casesList}
@@ -252,6 +266,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
           onClose={() => setIsDirectorDigestOpen(false)}
           sharingEvents={sharingEventsList}
           onAcknowledge={handleAcknowledgeSharing}
+          busy={pending > 0}
         />
       )}
     </CatalogProvider>
@@ -274,8 +289,10 @@ const Gate: React.FC = () => {
 export const App: React.FC = () => (
   <EnvironmentProvider>
     <SessionProvider>
-      <DemoBanner />
-      <Gate />
+      <ToastProvider>
+        <DemoBanner />
+        <Gate />
+      </ToastProvider>
     </SessionProvider>
   </EnvironmentProvider>
 );

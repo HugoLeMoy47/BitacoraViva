@@ -664,5 +664,26 @@
     "rules_title": "Las 10 reglas duras",
     "rules_intro": "Contrato de handoff inmutable. Violarlas es un defecto estructural, no una diferencia de criterio.",
     "tagline": "Bitácora Viva · Plataforma libre para la dignidad y la soberanía informativa de la sociedad civil."
+  },
+  "toast": {
+    "saving": "Guardando…",
+    "case_created": "Expediente creado.",
+    "status_changed": "Estatus actualizado.",
+    "journal_created": "Registro agregado a la bitácora.",
+    "clarification_created": "Aclaración registrada.",
+    "shared": "Registro compartido con el área.",
+    "acknowledged": "Acuse de recibo registrado.",
+    "consent_saved": "Consentimiento registrado.",
+    "rectified": "Datos rectificados.",
+    "anonymized": "Persona anonimizada.",
+    "opposition": "Oposición registrada."
+  },
+  "errors": {
+    "network": "No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.",
+    "session": "Tu sesión expiró. Vuelve a iniciar sesión.",
+    "duplicate": "Otra persona hizo un cambio al mismo tiempo. Actualiza la pantalla e inténtalo de nuevo.",
+    "permission": "Tu rol no permite esta acción. {detail}",
+    "not_found": "El registro ya no existe o no tienes acceso a él.",
+    "generic": "No se pudo completar la acción. {detail}"
   }
 }
