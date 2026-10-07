@@ -13,6 +13,7 @@ import {
   Organization,
   Person,
   PrivacyNotice,
+  ConsentText,
   SharingEvent,
   StatusAxis,
   StatusAxisCode,
@@ -452,3 +453,45 @@ export async function getActivePrivacyNotice(): Promise<PrivacyNotice | null> {
   if (error) throw new Error(error.message);
   return (data as PrivacyNotice) || null;
 }
+
+// Versiones del aviso de privacidad de la organización, de la más reciente a la más antigua.
+export async function listPrivacyNotices(): Promise<PrivacyNotice[]> {
+  return rows<PrivacyNotice>(supabase.from('privacy_notice').select('*').order('created_at', { ascending: false }));
+}
+
+// Textos de consentimiento: todas las versiones (historial) o solo las vigentes (alta de expedientes).
+export async function listConsentTexts(onlyActive = false): Promise<ConsentText[]> {
+  let q = supabase.from('consent_text').select('*');
+  if (onlyActive) q = q.eq('active', true);
+  return rows<ConsentText>(q.order('consent_type').order('version', { ascending: false }));
+}
+
+// Configuración de la organización (E9): solo dirección; la base lo vuelve a exigir.
+export interface OrganizationIdentityInput {
+  display_name: string;
+  legal_name: string;
+  folio_prefix: string;
+  about_text: string;
+  responsible_name: string;
+  responsible_address: string;
+  responsible_contact: string;
+  arco_contact: string;
+}
+
+export const configApi = {
+  updateIdentity: (i: OrganizationIdentityInput) =>
+    rpc<string>('fn_update_organization_identity', {
+      p_display_name: i.display_name,
+      p_legal_name: i.legal_name,
+      p_folio_prefix: i.folio_prefix,
+      p_about_text: i.about_text,
+      p_responsible_name: i.responsible_name,
+      p_responsible_address: i.responsible_address,
+      p_responsible_contact: i.responsible_contact,
+      p_arco_contact: i.arco_contact,
+    }),
+  publishPrivacyNotice: (title: string, summary: string, fullText: string) =>
+    rpc<string>('fn_publish_privacy_notice', { p_title: title, p_summary: summary, p_full_text: fullText }),
+  publishConsentText: (type: string, title: string, description: string, required: boolean) =>
+    rpc<string>('fn_publish_consent_text', { p_consent_type: type, p_title: title, p_description: description, p_required: required }),
+};

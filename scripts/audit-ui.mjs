@@ -28,7 +28,7 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'areas', 'auditoria', 'autoridad', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
   { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
@@ -304,6 +304,16 @@ try {
           await page.locator('main [role=tab]').nth(i).click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'expediente/sección ' + (i + 1), await auditNow());
+        }
+
+        // Configuración de la organización: cada sección
+        await page.evaluate(() => { location.hash = '#/configuracion'; });
+        await page.waitForTimeout(1200);
+        const cfgTabs = await page.locator('main [role=tab]').count();
+        for (let i = 0; i < cfgTabs; i++) {
+          await page.locator('main [role=tab]').nth(i).click();
+          await page.waitForTimeout(500);
+          record(role.key, vp.name, 'configuracion/sección ' + (i + 1), await auditNow());
         }
 
         await page.evaluate(() => { location.hash = '#/expedientes'; });

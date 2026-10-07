@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { X, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
+import { ConsentText, PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
-import { ConsentInput, NewCaseInput, getActivePrivacyNotice } from '../lib/data';
+import { ConsentInput, NewCaseInput, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
 import { ModalShell } from './ModalShell';
 
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -54,6 +54,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   // Paso 0: aviso de privacidad y consentimiento. Ninguna opción viene marcada.
   const [notice, setNotice] = useState<PrivacyNotice | null>(null);
   const [noticeLoaded, setNoticeLoaded] = useState(false);
+  // Textos de consentimiento que la asociación publicó (si no hay, se usa el texto base de la plataforma)
+  const [texts, setTexts] = useState<Partial<Record<ConsentKey, ConsentText>>>({});
   const [showFullNotice, setShowFullNotice] = useState(false);
   const [noticeDelivered, setNoticeDelivered] = useState(false);
   const [choices, setChoices] = useState<Record<ConsentKey, Choice>>({
@@ -92,10 +94,17 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
     getActivePrivacyNotice()
       .then((n) => { if (!cancelled) { setNotice(n); setNoticeLoaded(true); } })
       .catch(() => { if (!cancelled) setNoticeLoaded(true); });
+    listConsentTexts(true)
+      .then((list) => { if (!cancelled) setTexts(Object.fromEntries(list.map((x) => [x.consent_type, x]))); })
+      .catch(() => { /* sin textos publicados: se usan los de la plataforma */ });
     return () => { cancelled = true; };
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const consentTitle = (key: ConsentKey) => texts[key]?.title ?? t(`arco.consent_types.${key}`);
+  const consentDesc = (key: ConsentKey) => texts[key]?.description ?? t(`intake.consent.desc.${key}`);
+  const consentRequired = (key: ConsentKey) => key === 'general_care' || (texts[key]?.required ?? CONSENT_KEYS.find((c) => c.key === key)!.required);
 
   const sensitiveGranted = choices.sensitive_data === 'yes';
   const generalRefused = choices.general_care === 'no';
@@ -106,6 +115,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
     noticeDelivered &&
     allDecided &&
     choices.general_care === 'yes' &&
+    CONSENT_KEYS.every(({ key }) => !consentRequired(key) || choices[key] === 'yes') &&
     (!isUnaccompanied || isMinor) &&
     (!isMinor || (guardianName.trim() !== '' && guardianRole.trim() !== '')) &&
     (!isUnaccompanied || authorityRef.trim() !== '');
@@ -282,15 +292,15 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
               </div>
 
               <div className="space-y-2">
-                {CONSENT_KEYS.map(({ key, required }) => (
+                {CONSENT_KEYS.map(({ key }) => (
                   <fieldset key={key} className="rounded-xl border border-gray-200 p-3">
                     <legend className="px-1 text-xs font-bold text-carbon">
-                      {t(`arco.consent_types.${key}`)}{' '}
+                      {consentTitle(key)}{' '}
                       <span className="font-normal text-gray-500">
-                        ({required ? t('intake.consent.required') : t('intake.consent.optional')})
+                        ({consentRequired(key) ? t('intake.consent.required') : t('intake.consent.optional')})
                       </span>
                     </legend>
-                    <p className="text-xs text-gray-500 mb-2">{t(`intake.consent.desc.${key}`)}</p>
+                    <p className="text-xs text-gray-500 mb-2">{consentDesc(key)}</p>
                     <div className="flex gap-2">
                       {(['yes', 'no'] as const).map((c) => (
                         <label
@@ -648,7 +658,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                   <span className="text-gray-500">{t('intake.consent.summary_consents')}</span>
                   <span className="font-semibold text-carbon text-right">
                     {CONSENT_KEYS.filter(({ key }) => choices[key] === 'yes')
-                      .map(({ key }) => t(`arco.consent_types.${key}`))
+                      .map(({ key }) => consentTitle(key))
                       .join(' · ')}
                   </span>
                 </div>

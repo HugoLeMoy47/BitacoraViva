@@ -353,6 +353,116 @@ begin
         $q$with u as (update public.case_status set valid_to = now() + interval '1 day' where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null returning 1)
            select count(*)::text from u$q$, 'ERR');
 
+    -- ===== Configuración de la organización (E9): identidad, aviso de privacidad y textos de consentimiento
+    perform pg_temp.expect('control positivo: director actualiza la identidad de su organización', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('Org A renombrada','Org A de prueba','ORA','Acerca de A','Resp A','Calle 1','a@a.invalid','arco@a.invalid')) x$q$, '1');
+    perform pg_temp.expect('la identidad queda guardada', null, null,
+        $q$select count(*)::text from public.organization where id = 'aaaaaaaa-0000-0000-0000-00000000000a' and display_name = 'Org A renombrada' and folio_prefix = 'ORA'$q$, '1');
+    perform pg_temp.expect('la actualización de identidad deja auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'organization' and record_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and action = 'UPDATE'$q$, '1');
+    perform pg_temp.expect('el siguiente folio usa el prefijo declarado', null, null,
+        $q$select split_part(public.fn_generate_case_number('aaaaaaaa-0000-0000-0000-00000000000a'), '-', 1)$q$, 'ORA');
+    perform pg_temp.expect('el folio de B no cambia con el prefijo de A', null, null,
+        $q$select split_part(public.fn_generate_case_number('bbbbbbbb-0000-0000-0000-00000000000b'), '-', 1)$q$, 'TST');
+    perform pg_temp.expect('prefijo de folio inválido se rechaza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('X','X','a1','','','','','')) x$q$, 'ERR');
+    perform pg_temp.expect('nombre vacío se rechaza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('  ','X','ORA','','','','','')) x$q$, 'ERR');
+    perform pg_temp.expect('caseworker no configura la organización', CW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('Hack','Hack','HAK','','','','','')) x$q$, 'ERR');
+    perform pg_temp.expect('oficial de ingreso no configura la organización', INT, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('Hack','Hack','HAK','','','','','')) x$q$, 'ERR');
+    perform pg_temp.expect('viewer no configura la organización', VW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('Hack','Hack','HAK','','','','','')) x$q$, 'ERR');
+    perform pg_temp.expect('usuario sin rol no configura la organización', NR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('Hack','Hack','HAK','','','','','')) x$q$, 'ERR');
+    perform pg_temp.expect('caseworker no publica aviso de privacidad', CW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('T','S','F', current_date)) x$q$, 'ERR');
+    perform pg_temp.expect('oficial de ingreso no publica aviso de privacidad', INT, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('T','S','F', current_date)) x$q$, 'ERR');
+    perform pg_temp.expect('viewer no publica aviso de privacidad', VW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('T','S','F', current_date)) x$q$, 'ERR');
+    perform pg_temp.expect('usuario sin rol no publica aviso de privacidad', NR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('T','S','F', current_date)) x$q$, 'ERR');
+    perform pg_temp.expect('caseworker no publica textos de consentimiento', CW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('internal_sharing','T','D', false)) x$q$, 'ERR');
+    perform pg_temp.expect('oficial de ingreso no publica textos de consentimiento', INT, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('internal_sharing','T','D', false)) x$q$, 'ERR');
+    perform pg_temp.expect('viewer no publica textos de consentimiento', VW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('internal_sharing','T','D', false)) x$q$, 'ERR');
+    perform pg_temp.expect('anon no configura la organización', null, 'anon',
+        $q$select count(*)::text from (select public.fn_update_organization_identity('Hack','Hack','HAK','','','','','')) x$q$, 'ERR');
+    perform pg_temp.expect('anon no publica aviso de privacidad', null, 'anon',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('T','S','F', current_date)) x$q$, 'ERR');
+    perform pg_temp.expect('anon no publica textos de consentimiento', null, 'anon',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('internal_sharing','T','D', false)) x$q$, 'ERR');
+    perform pg_temp.expect('el director no cambia la organización con UPDATE directo', DIR, 'authenticated',
+        $q$with u as (update public.organization set display_name = 'Directo' where id = 'aaaaaaaa-0000-0000-0000-00000000000a' returning 1) select count(*)::text from u$q$, 'ERR|0');
+    perform pg_temp.expect('el director no inserta avisos con INSERT directo', DIR, 'authenticated',
+        $q$with i as (insert into public.privacy_notice (organization_id, version, title, summary, full_text) values ('aaaaaaaa-0000-0000-0000-00000000000a','9.0','T','S','F') returning 1) select count(*)::text from i$q$, 'ERR');
+    perform pg_temp.expect('el director no edita avisos con UPDATE directo', DIR, 'authenticated',
+        $q$with u as (update public.privacy_notice set full_text = 'cambiado' where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' returning 1) select count(*)::text from u$q$, 'ERR|0');
+    perform pg_temp.expect('el director no inserta textos de consentimiento con INSERT directo', DIR, 'authenticated',
+        $q$with i as (insert into public.consent_text (organization_id, consent_type, version, title, description) values ('aaaaaaaa-0000-0000-0000-00000000000a','internal_sharing',9,'T','D') returning 1) select count(*)::text from i$q$, 'ERR');
+
+    perform pg_temp.expect('control positivo: director publica un aviso (versión nueva)', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('Aviso A','Resumen A','Texto completo A', current_date)) x$q$, '1');
+    perform pg_temp.expect('publicar un segundo aviso', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('Aviso A v2','Resumen A2','Texto completo A2', current_date)) x$q$, '1');
+    perform pg_temp.expect('solo un aviso vigente por organización', null, null,
+        $q$select count(*)::text from public.privacy_notice where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and active$q$, '1');
+    perform pg_temp.expect('los avisos anteriores se conservan (historial)', null, null,
+        $q$select count(*)::text from public.privacy_notice where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, '>0');
+    perform pg_temp.expect('el aviso vigente es la última versión', null, null,
+        $q$select title from public.privacy_notice where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and active$q$, 'Aviso A v2');
+    perform pg_temp.expect('aviso con vigencia futura se rechaza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('T','S','F', current_date + 5)) x$q$, 'ERR');
+    perform pg_temp.expect('aviso con resumen vacío se rechaza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('T','','F', current_date)) x$q$, 'ERR');
+    perform pg_temp.expect('disparador: ni el propietario edita un aviso publicado', null, null,
+        $q$with u as (update public.privacy_notice set full_text = 'cambiado' where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and active returning 1) select count(*)::text from u$q$, 'ERR');
+    perform pg_temp.expect('disparador: ni el propietario reactiva un aviso reemplazado', null, null,
+        $q$with u as (update public.privacy_notice set active = true where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and not active returning 1) select count(*)::text from u$q$, 'ERR');
+    perform pg_temp.expect('la publicación del aviso deja auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'privacy_notice' and action = 'INSERT' and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, '>0');
+    perform pg_temp.expect('el director de B no ve los avisos de A', DIRB, 'authenticated',
+        $q$select count(*)::text from public.privacy_notice where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, '0');
+    perform pg_temp.expect('control positivo: el director de B publica en su organización', DIRB, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_privacy_notice('Aviso B','Resumen B','Texto B', current_date)) x$q$, '1');
+    perform pg_temp.expect('publicar en B no toca a A: conserva su único aviso vigente', null, null,
+        $q$select count(*)::text from public.privacy_notice where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and active$q$, '1');
+
+    perform pg_temp.expect('control positivo: director publica un texto de consentimiento', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('secondary_use_research','Uso secundario A','Texto de A', false)) x$q$, '1');
+    perform pg_temp.expect('segunda versión del mismo consentimiento', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('secondary_use_research','Uso secundario A v2','Texto de A v2', true)) x$q$, '1');
+    perform pg_temp.expect('un solo texto vigente por tipo', null, null,
+        $q$select count(*)::text from public.consent_text where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and consent_type = 'secondary_use_research' and active$q$, '1');
+    perform pg_temp.expect('las versiones del texto se conservan', null, null,
+        $q$select count(*)::text from public.consent_text where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and consent_type = 'secondary_use_research'$q$, '2');
+    perform pg_temp.expect('el consentimiento general no puede ser opcional', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('general_care','General','Texto', false)) x$q$, 'ERR');
+    perform pg_temp.expect('control positivo: el general sí se publica como obligatorio', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('general_care','General A','Texto general A', true)) x$q$, '1');
+    perform pg_temp.expect('tipo de consentimiento inválido se rechaza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_publish_consent_text('otro','T','D', false)) x$q$, 'ERR');
+    perform pg_temp.expect('disparador: ni el propietario edita un texto publicado', null, null,
+        $q$with u as (update public.consent_text set description = 'x' where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and active returning 1) select count(*)::text from u$q$, 'ERR');
+    perform pg_temp.expect('disparador: ni el propietario borra un texto publicado', null, null,
+        $q$with d as (delete from public.consent_text where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' returning 1) select count(*)::text from d$q$, 'ERR');
+    perform pg_temp.expect('director B no ve los textos de consentimiento de A', DIRB, 'authenticated',
+        $q$select count(*)::text from public.consent_text where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, '0');
+    perform pg_temp.expect('control positivo: caseworker A lee los textos vigentes de su organización', CW, 'authenticated',
+        $q$select count(*)::text from public.consent_text where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and active$q$, '>0');
+    perform pg_temp.expect('viewer no lee textos de consentimiento', VW, 'authenticated',
+        $q$select count(*)::text from public.consent_text$q$, '0|ERR');
+    perform pg_temp.expect('anon no lee textos de consentimiento', null, 'anon',
+        $q$select count(*)::text from public.consent_text$q$, 'ERR|0');
+    perform pg_temp.expect('un consentimiento nuevo registra el texto vigente con el que se otorgó', null, null,
+        $q$with i as (insert into public.consent (organization_id, person_id, case_id, consent_type, status, granted_by_user_id)
+                      values ('aaaaaaaa-0000-0000-0000-00000000000a','aaaaaaaa-4000-0000-0000-000000000001','aaaaaaaa-5000-0000-0000-000000000001','secondary_use_research','granted','aaaaaaaa-3000-0000-0000-000000000003') returning consent_text_id)
+           select count(*)::text from i join public.consent_text ct on ct.id = i.consent_text_id where ct.active and ct.version = 2$q$, '1');
+
     -- ===== Anónimo: nada
     perform pg_temp.expect('anon no lee personas', null, 'anon', 'select count(*)::text from public.person', 'ERR|0');
     perform pg_temp.expect('anon no abre casos', null, 'anon', new_case, 'ERR');

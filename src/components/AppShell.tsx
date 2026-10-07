@@ -30,6 +30,7 @@ const ICON: Record<RouteId, React.ReactNode> = {
   areas: <Layers className="h-4 w-4" aria-hidden="true" />,
   audit: <History className="h-4 w-4" aria-hidden="true" />,
   authority: <Scale className="h-4 w-4" aria-hidden="true" />,
+  configuration: <Settings className="h-4 w-4" aria-hidden="true" />,
   about: <Info className="h-4 w-4" aria-hidden="true" />,
 };
 

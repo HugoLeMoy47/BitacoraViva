@@ -29,6 +29,7 @@ truncate table
     public.sharing_event,
     public.journal_entry,
     public.consent,
+    public.consent_text,
     public.privacy_notice,
     public.case_vulnerability_marker,
     public.case_status,

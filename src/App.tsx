@@ -7,7 +7,7 @@ import {
   ConsentStatus,
   Person
 } from './types/database';
-import { api, EMPTY_ORG_DATA, loadOrgData, NewCaseInput, OrgData } from './lib/data';
+import { api, configApi, EMPTY_ORG_DATA, loadOrgData, NewCaseInput, OrgData } from './lib/data';
 import { SessionProvider, SessionUser, useSession } from './lib/session';
 import { CatalogProvider } from './lib/catalog';
 import { EnvironmentProvider, useEnvironment } from './lib/environment';
@@ -20,6 +20,7 @@ import { LoginView } from './components/LoginView';
 import { IndicatorsView } from './components/IndicatorsView';
 import { OperationsDashboard } from './components/OperationsDashboard';
 import { AreasView, AuditView, AuthorityView } from './components/AdminViews';
+import { ConfigurationView } from './components/ConfigurationView';
 import { AboutView } from './components/AboutView';
 import { DemoBanner } from './components/DemoBanner';
 import { ToastProvider, useToast } from './lib/toast';
@@ -205,7 +206,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const caseNumberOf = (id: string) => casesList.find((c) => c.id === id)?.case_number ?? null;
 
   return (
-    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, organizationName: organization?.legal_name ?? '', userNames: data.userNames }}>
+    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, organizationName: organization?.legal_name ?? '', organizationInfo: { responsibleName: organization?.responsible_name ?? '', responsibleAddress: organization?.responsible_address ?? '', arcoContact: organization?.arco_contact ?? '' }, userNames: data.userNames }}>
       {pending > 0 && (
         <div role="status" className="fixed left-1/2 top-16 z-[55] -translate-x-1/2 rounded-full bg-carbon px-4 py-1.5 text-sm font-semibold text-white shadow-lg">
           {t('toast.saving')}
@@ -257,6 +258,15 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
         {current === 'areas' && <AreasView areas={data.areas} />}
         {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}
         {current === 'authority' && <AuthorityView requests={data.authorityRequests} />}
+        {current === 'configuration' && (
+          <ConfigurationView
+            organization={organization}
+            busy={pending > 0}
+            onSaveIdentity={(i) => run(() => configApi.updateIdentity(i), 'toast.config_identity')}
+            onPublishNotice={(ti, su, fu) => run(() => configApi.publishPrivacyNotice(ti, su, fu), 'toast.config_notice')}
+            onPublishConsentText={(ty, ti, de, re) => run(() => configApi.publishConsentText(ty, ti, de, re), 'toast.config_consent_text')}
+          />
+        )}
         {current === 'about' && <AboutView organization={organization} areasCount={data.areas.length} />}
       </AppShell>
 

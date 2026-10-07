@@ -19,7 +19,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
   caseData,
 }) => {
   const [copied, setCopied] = useState(false);
-  const { organizationName } = useCatalog();
+  const { organizationName, organizationInfo } = useCatalog();
   const [serverExtract, setServerExtract] = useState<Record<string, unknown> | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
 
@@ -124,9 +124,12 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
                 {t('arco.modal_access.org_custodian')}
               </span>
               <h2 className="text-base font-bold text-carbon">{organizationName}</h2>
-              <p className="text-xs text-gray-500">
-                Extracto oficial para ejercicio de derecho de Acceso conforme a la Ley de Protección de Datos Personales
-              </p>
+              <p className="text-xs text-gray-500">{t('arco.modal_access.official_extract')}</p>
+              {(organizationInfo.responsibleName || organizationInfo.responsibleAddress || organizationInfo.arcoContact) && (
+                <p className="mt-1 text-xs text-gray-600">
+                  {[organizationInfo.responsibleName, organizationInfo.responsibleAddress, organizationInfo.arcoContact].filter(Boolean).join(' · ')}
+                </p>
+              )}
             </div>
             <div className="text-right text-xs text-gray-500">
               <span>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>

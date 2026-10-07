@@ -56,7 +56,8 @@
     "admin": "Administración",
     "more": "Más",
     "primary": "Navegación principal",
-    "skip": "Saltar al contenido"
+    "skip": "Saltar al contenido",
+    "configuration": "Configuración"
   },
   "dashboard": {
     "organization_details": "Identidad de la organización",
@@ -467,7 +468,8 @@
       "btn_print": "Imprimir extracto",
       "btn_copy_json": "Copiar formato estructurado",
       "btn_close": "Cerrar extracto",
-      "copied_notice": "Extracto copiado al portapapeles."
+      "copied_notice": "Extracto copiado al portapapeles.",
+      "official_extract": "Extracto oficial para ejercicio de derecho de Acceso conforme a la Ley de Protección de Datos Personales"
     },
     "modal_oppose": {
       "title": "Oposición a Tratamientos Secundarios (BV-5.5)",
@@ -676,7 +678,10 @@
     "consent_saved": "Consentimiento registrado.",
     "rectified": "Datos rectificados.",
     "anonymized": "Persona anonimizada.",
-    "opposition": "Oposición registrada."
+    "opposition": "Oposición registrada.",
+    "config_identity": "Identidad de la organización guardada.",
+    "config_notice": "Aviso de privacidad publicado como versión nueva.",
+    "config_consent_text": "Texto de consentimiento publicado como versión nueva."
   },
   "errors": {
     "network": "No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.",
@@ -685,5 +690,54 @@
     "permission": "Tu rol no permite esta acción. {detail}",
     "not_found": "El registro ya no existe o no tienes acceso a él.",
     "generic": "No se pudo completar la acción. {detail}"
+  },
+  "config": {
+    "title": "Configuración de la organización",
+    "subtitle": "Lo que declaras aquí aparece en el alta de expedientes, en el aviso de privacidad y en los extractos. Tu asociación responde por su contenido; la plataforma conserva cada versión y audita cada cambio.",
+    "tabs_label": "Secciones de la configuración",
+    "tab_identity": "Identidad",
+    "tab_notice": "Aviso de privacidad",
+    "tab_consents": "Consentimientos",
+    "history": "Historial de versiones",
+    "identity": {
+      "display_name": "Nombre comercial",
+      "display_name_hint": "Es el que se ve en el encabezado.",
+      "legal_name": "Razón social",
+      "legal_name_hint": "Aparece en los documentos oficiales, como el extracto de acceso.",
+      "folio_prefix": "Prefijo de folio",
+      "folio_prefix_placeholder": "Ej. ASF",
+      "folio_prefix_hint": "De 2 a 5 letras. El próximo folio será {folio}. Los folios ya asignados no cambian.",
+      "folio_prefix_error": "Usa solo de 2 a 5 letras, sin números ni espacios.",
+      "responsible_name": "Responsable del tratamiento de datos",
+      "responsible_address": "Domicilio del responsable",
+      "responsible_contact": "Contacto del responsable",
+      "arco_contact": "Contacto para ejercer derechos ARCO",
+      "arco_contact_hint": "Correo o teléfono al que las personas pueden dirigirse. Se imprime en el extracto de acceso.",
+      "about": "Acerca de la asociación",
+      "save": "Guardar identidad"
+    },
+    "notice": {
+      "intro": "El aviso vigente se muestra en el paso cero del alta. Publicar una versión nueva no modifica la anterior: queda en el historial y cada consentimiento conserva la versión que la persona vio.",
+      "current": "Aviso vigente:",
+      "since": "vigente desde el {date}",
+      "none": "No hay un aviso de privacidad vigente: no se pueden abrir expedientes hasta publicar uno.",
+      "field_title": "Título",
+      "field_summary": "Resumen corto",
+      "field_summary_hint": "Se muestra a la persona en el paso cero, antes del texto completo.",
+      "field_full": "Texto completo",
+      "field_full_hint": "Tu asociación valida el contenido; la plataforma no ofrece asesoría legal.",
+      "confirm": "Entiendo que se publica una versión nueva; la anterior queda en el historial y no se puede editar.",
+      "publish": "Publicar nueva versión"
+    },
+    "consents": {
+      "intro": "Define el texto de cada consentimiento tal como lo declara tu asociación. El consentimiento general es siempre obligatorio. Los textos ya otorgados conservan la versión con la que se dieron.",
+      "version": "Versión",
+      "base": "Texto base de la plataforma (sin publicar)",
+      "field_title": "Título",
+      "field_description": "Descripción que verá la persona",
+      "required": "Obligatorio para abrir el expediente",
+      "always_required": "Obligatorio siempre: la plataforma no permite abrir un expediente sin este consentimiento.",
+      "publish": "Publicar nueva versión"
+    }
   }
 }

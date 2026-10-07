@@ -31,6 +31,12 @@ export interface Organization {
   legal_name: string;
   display_name: string;
   active: boolean;
+  folio_prefix?: string | null;
+  about_text?: string | null;
+  responsible_name?: string | null;
+  responsible_address?: string | null;
+  responsible_contact?: string | null;
+  arco_contact?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -357,6 +363,18 @@ export type ConsentType =
   | 'internal_sharing' 
   | 'secondary_use_research';
 
+export interface ConsentText {
+  id: string;
+  organization_id: string;
+  consent_type: ConsentType;
+  version: number;
+  title: string;
+  description: string;
+  required: boolean;
+  active: boolean;
+  created_at: string;
+}
+
 export type ConsentStatus = 'granted' | 'revoked' | 'opposed';
 
 export interface Consent {
@@ -365,6 +383,7 @@ export interface Consent {
   person_id: string;
   case_id?: string | null;
   privacy_notice_id?: string | null;
+  consent_text_id?: string | null;
   consent_type: ConsentType;
   status: ConsentStatus;
   is_minor_assent: boolean;

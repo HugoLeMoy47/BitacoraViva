@@ -7,11 +7,14 @@ export interface Catalog {
   statusAxes: StatusAxis[];
   statusValues: Record<StatusAxisCode, StatusValue[]>;
   organizationName: string;
+  /** Datos del responsable declarados por la asociación (aviso de privacidad y extracto ARCO) */
+  organizationInfo: { responsibleName: string; responsibleAddress: string; arcoContact: string };
   userNames: Record<string, string>;
 }
 
 const EMPTY: Catalog = {
   organizationName: '',
+  organizationInfo: { responsibleName: '', responsibleAddress: '', arcoContact: '' },
   userNames: {},
   areas: [],
   statusAxes: [],
