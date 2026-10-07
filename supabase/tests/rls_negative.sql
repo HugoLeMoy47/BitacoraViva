@@ -31,7 +31,9 @@ insert into public.area (id, organization_id, code, name, active) values
 insert into public.status_axis (id, organization_id, code, label_es, is_primary, is_system, sort_order) values
     ('aaaaaaaa-2000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-00000000000a', 'case_stage', 'Etapa', false, true, 5),
     ('aaaaaaaa-2000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-00000000000a', 'engagement_status', 'Situación', true, true, 2),
-    ('aaaaaaaa-2000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'record_status', 'Estado', false, true, 4);
+    ('aaaaaaaa-2000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'record_status', 'Estado', false, true, 4),
+    ('aaaaaaaa-2000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'legal_status', 'Jurídica', false, true, 1),
+    ('bbbbbbbb-2000-0000-0000-000000000005', 'bbbbbbbb-0000-0000-0000-00000000000b', 'case_stage', 'Etapa B', false, true, 5);
 insert into public.status_value (id, axis_id, organization_id, code, label_es, sort_order, is_system) values
     ('aaaaaaaa-2100-0000-0000-000000000001', 'aaaaaaaa-2000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-00000000000a', 'intake', 'Ingreso', 1, true),
     ('aaaaaaaa-2100-0000-0000-000000000002', 'aaaaaaaa-2000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-00000000000a', 'assessment', 'Valoración', 2, false),
@@ -39,7 +41,12 @@ insert into public.status_value (id, axis_id, organization_id, code, label_es, s
     ('aaaaaaaa-2100-0000-0000-000000000011', 'aaaaaaaa-2000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-00000000000a', 'first_contact', 'Primer contacto', 1, true),
     ('aaaaaaaa-2100-0000-0000-000000000012', 'aaaaaaaa-2000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-00000000000a', 'anonymized', 'Anonimizada', 9, true),
     ('aaaaaaaa-2100-0000-0000-000000000021', 'aaaaaaaa-2000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'open', 'Abierto', 1, true),
-    ('aaaaaaaa-2100-0000-0000-000000000022', 'aaaaaaaa-2000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'anonymized', 'Anonimizado', 4, true);
+    ('aaaaaaaa-2100-0000-0000-000000000022', 'aaaaaaaa-2000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'anonymized', 'Anonimizado', 4, true),
+    ('aaaaaaaa-2100-0000-0000-000000000023', 'aaaaaaaa-2000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'closed', 'Cerrado', 3, true),
+    -- legal_status: el disparador inicial usa 'undetermined'
+    ('aaaaaaaa-2100-0000-0000-000000000031', 'aaaaaaaa-2000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'undetermined', 'Sin determinar', 1, true),
+    ('aaaaaaaa-2100-0000-0000-000000000032', 'aaaaaaaa-2000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'asylum_seeker', 'Solicitante de asilo', 2, false),
+    ('bbbbbbbb-2100-0000-0000-000000000001', 'bbbbbbbb-2000-0000-0000-000000000005', 'bbbbbbbb-0000-0000-0000-00000000000b', 'intake', 'Ingreso B', 1, true);
 
 -- Usuarios: director, caseworker (área TS), intake, viewer y SIN ROL en A; director de B
 insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
@@ -89,6 +96,25 @@ insert into public.sharing_event (id, organization_id, journal_entry_id, case_id
 insert into public.consent (id, organization_id, person_id, case_id, consent_type, status, granted_by_user_id) values
     ('aaaaaaaa-8000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-4000-0000-0000-000000000001', 'aaaaaaaa-5000-0000-0000-000000000001', 'general_care', 'granted', 'aaaaaaaa-3000-0000-0000-000000000003'),
     ('bbbbbbbb-8000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-4000-0000-0000-000000000001', 'bbbbbbbb-5000-0000-0000-000000000001', 'general_care', 'granted', 'bbbbbbbb-3000-0000-0000-000000000001');
+
+-- Datos de la organización B en las demás tablas, para que «no ver nada de B» sea una prueba real
+insert into public.area (id, organization_id, code, name, active) values
+    ('bbbbbbbb-1000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-00000000000b', 'legal', 'Legal B', true);
+insert into public.journal_entry (id, organization_id, case_id, area_id, author_user_id, entry_type_key, body, is_work_note, visibility) values
+    ('bbbbbbbb-6000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-5000-0000-0000-000000000001', 'bbbbbbbb-1000-0000-0000-000000000001', 'bbbbbbbb-3000-0000-0000-000000000001', 'note', 'Entrada B compartida', false, 'shared');
+insert into public.sharing_event (id, organization_id, journal_entry_id, case_id, from_area_id, to_area_id, from_visibility, to_visibility, reason, shared_by_user_id, shared_at) values
+    ('bbbbbbbb-7000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-6000-0000-0000-000000000002', 'bbbbbbbb-5000-0000-0000-000000000001',
+     'bbbbbbbb-1000-0000-0000-000000000001', 'bbbbbbbb-1000-0000-0000-000000000002', 'area_private', 'shared', 'Prueba B', 'bbbbbbbb-3000-0000-0000-000000000001', now());
+insert into public.arco_request (organization_id, person_id, case_id, request_type, status, details, reason, requested_by_name, is_legal_representative, received_at) values
+    ('bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-4000-0000-0000-000000000001', 'bbbbbbbb-5000-0000-0000-000000000001', 'access', 'pending', 'Solicitud B', 'Prueba B', 'Beto PruebaB', false, now());
+insert into public.case_vulnerability_marker (organization_id, case_id, marker_code, affirmed_by) values
+    ('bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-5000-0000-0000-000000000001', 'victim_of_violence', 'bbbbbbbb-3000-0000-0000-000000000001');
+insert into public.attachment (organization_id, case_id, journal_entry_id, storage_path, file_name, mime_type, size_bytes, uploaded_by) values
+    ('bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-5000-0000-0000-000000000001', 'bbbbbbbb-6000-0000-0000-000000000001', 'tst-b/x.pdf', 'x.pdf', 'application/pdf', 1, 'bbbbbbbb-3000-0000-0000-000000000001');
+insert into public.privacy_notice (organization_id, version, title, summary, full_text, effective_date, active) values
+    ('bbbbbbbb-0000-0000-0000-00000000000b', '1.0', 'Aviso B', 'Resumen B', 'Texto B', current_date, true);
+insert into public.authority_request (organization_id, authority_name, request_type, official_letter_ref, received_at, extract_delivered) values
+    ('bbbbbbbb-0000-0000-0000-00000000000b', 'Autoridad B', 'Consulta', 'B/0001', now(), false);
 
 -- ---------------------------------------------------------------- Pruebas
 create temp table test_res (verdict text, name text, expected text, actual text);
@@ -151,12 +177,21 @@ declare
     report text;
 begin
     -- ===== Aislamiento por organización (BV-1.1): ni una fila de otra organización
-    foreach t in array array['person','"case"','case_status','journal_entry','sharing_event','consent','arco_request','audit_event'] loop
+    foreach t in array array['person','"case"','case_status','case_vulnerability_marker','journal_entry','sharing_event','consent','arco_request','attachment','privacy_notice','authority_request','audit_event','area','status_axis','status_value','user_profile'] loop
         perform pg_temp.expect('aislamiento: director A no ve ' || t || ' de B', DIR, 'authenticated',
             format('select count(*)::text from public.%s where organization_id = %L', t, ORG_B), '0');
         perform pg_temp.expect('aislamiento: director B no ve ' || t || ' de A', DIRB, 'authenticated',
             format('select count(*)::text from public.%s where organization_id = %L', t, ORG_A), '0');
+        -- Control positivo: el director de B sí ve sus propias filas (demuestra que los datos de B existen)
+        perform pg_temp.expect('control positivo: director B ve sus propias filas de ' || t, DIRB, 'authenticated',
+            format('select count(*)::text from public.%s where organization_id = %L', t, ORG_B), '>0');
     end loop;
+    perform pg_temp.expect('aislamiento: director A no ve la organización B', DIR, 'authenticated',
+        format('select count(*)::text from public.organization where id = %L', ORG_B), '0');
+    perform pg_temp.expect('aislamiento: director A no ve los roles de la organización B', DIR, 'authenticated',
+        'select count(*)::text from public.user_role where user_id = ''bbbbbbbb-3000-0000-0000-000000000001''', '0');
+    perform pg_temp.expect('aislamiento: director B no ve los roles de la organización A', DIRB, 'authenticated',
+        'select count(*)::text from public.user_role where user_id = ''aaaaaaaa-3000-0000-0000-000000000001''', '0');
     perform pg_temp.expect('aislamiento: caseworker A no ve consent de B', CW, 'authenticated',
         format('select count(*)::text from public.consent where organization_id = %L', ORG_B), '0');
     perform pg_temp.expect('control positivo: director A sí ve su persona', DIR, 'authenticated',
@@ -245,6 +280,22 @@ begin
         'select count(*)::text from (select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''internal_sharing'')) x', '1');
     perform pg_temp.expect('control positivo: caseworker escribe en bitácora', CW, 'authenticated',
         'select count(*)::text from (select public.fn_create_journal_entry(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''note'', ''x'', now(), false, ''aaaaaaaa-1000-0000-0000-000000000001''::uuid)) x', '1');
+
+    -- ===== BV-2.3: compartimentación por área y gobernanza del cierre
+    perform pg_temp.expect('caseworker de otra área no cambia el estatus jurídico', CW, 'authenticated',
+        'select count(*)::text from (select public.fn_change_case_status(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''legal_status'', ''asylum_seeker'', ''x'')) x', 'ERR');
+    perform pg_temp.expect('intake no cierra el expediente', INT, 'authenticated',
+        'select count(*)::text from (select public.fn_change_case_status(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''record_status'', ''closed'', ''x'')) x', 'ERR');
+    perform pg_temp.expect('caseworker no cierra el expediente', CW, 'authenticated',
+        'select count(*)::text from (select public.fn_change_case_status(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''record_status'', ''closed'', ''x'')) x', 'ERR');
+    perform pg_temp.expect('control positivo: director cambia el estatus jurídico', DIR, 'authenticated',
+        'select count(*)::text from (select public.fn_change_case_status(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''legal_status'', ''asylum_seeker'', ''Prueba'')) x', '1');
+    perform pg_temp.expect('control positivo: director cierra el expediente', DIR, 'authenticated',
+        'select count(*)::text from (select public.fn_change_case_status(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''record_status'', ''closed'', ''Prueba'')) x', '1');
+
+    -- ===== BV-4.3: la visibilidad sólo cambia por sharing_event (nadie la edita directamente)
+    perform pg_temp.expect('autor no cambia la visibilidad de su entrada directamente', CW, 'authenticated',
+        'with u as (update public.journal_entry set visibility = ''shared'' where id = ''aaaaaaaa-6000-0000-0000-000000000001'' returning 1) select count(*)::text from u', 'ERR|0');
 
     -- ===== Regla Dura 3: nadie tiene DELETE sobre tablas de negocio
     foreach t in array array['person','"case"','case_status','case_vulnerability_marker','journal_entry','sharing_event','consent','arco_request','audit_event','user_role','user_profile','organization','area'] loop

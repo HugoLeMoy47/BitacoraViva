@@ -47,7 +47,7 @@ Toda función `security definer` **se salta RLS**: si no repite la regla de acce
 npm run test:rls
 ```
 
-Corren 122 pruebas negativas contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
+Corren 163 pruebas negativas contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
 
 ## Reiniciar la demo
 
