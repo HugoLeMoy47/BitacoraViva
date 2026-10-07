@@ -537,6 +537,9 @@ declare
     v_other text[] := array['Alex','Sam','Noa'];
     v_surn text[] := array['Hernández','López','Martínez','Rodríguez','Pérez','Gómez','Flores','Castillo','Reyes','Morales','Ramírez','Cruz','Mejía','Ortiz','Vásquez','Chávez','Alvarado','Aguilar','Pineda','Rivera','Interiano','Paz','Servellón','Pierre','Louis','Jean-Baptiste','Colindres','Maldonado'];
     v_cons_status text;
+    -- 3 expedientes sin consentimiento expreso para datos sensibles: muestran el control P-06
+    -- (alerta en el expediente y en el tablero) y, por regla, no tienen marcadores de vulnerabilidad.
+    v_no_sens boolean := not p_child and p_i in (7, 23, 44);
 begin
     -- ---- Persona
     v_days := case when p_child then p_parent_days
@@ -650,7 +653,7 @@ begin
         if v_markers[m] = 'separated_child' then v_prob := case when v_age < 18 and not p_child and v_age >= 12 then 0.15 else 0 end; end if;
         if v_markers[m] = 'indigenous_language_speaker' then v_prob := case when v_nat in ('Guatemala','Honduras') then 0.13 else 0.01 end; end if;
         if v_markers[m] = 'older_person_at_risk' then v_prob := case when v_age >= 60 then 0.6 else 0 end; end if;
-        if v_prob > 0 and pg_temp.bv_rnd(s || 'mk' || m) < v_prob then
+        if v_prob > 0 and not v_no_sens and pg_temp.bv_rnd(s || 'mk' || m) < v_prob then
             insert into public.case_vulnerability_marker (case_id, organization_id, marker_code, notes, affirmed_by, affirmed_at, created_at)
             values (v_case, v_org, v_markers[m], 'Marcador afirmado en ventanilla (dato sintético de demostración).', v_in, v_opened, v_opened);
             if v_markers[m] = 'unaccompanied_child' then v_unaccompanied := true; end if;
@@ -670,12 +673,7 @@ begin
            case when v_unaccompanied then 'DIF/PPNNA/2026/' || lpad(p_i::text, 4, '0') end,
            v_opened + interval '5 minutes', v_in,
            'Consentimiento informado en el ingreso (dato sintético de demostración).', v_opened
-    from unnest(array['general_care','sensitive_data']) t;
-
-    if pg_temp.bv_rnd(s || 'isc') < 0.30 then
-        insert into public.consent (organization_id, person_id, case_id, privacy_notice_id, consent_type, status, is_minor_assent, granted_at, granted_by_user_id, notes, created_at)
-        values (v_org, v_person, v_case, v_notice, 'internal_sharing', 'granted', v_age < 18, v_opened + interval '10 minutes', v_in, 'Compartición interna entre áreas (dato sintético).', v_opened);
-    end if;
+    from unnest(case when v_no_sens then array['general_care'] else array['general_care','sensitive_data'] end) t;
 
     v_cons_status := pg_temp.bv_pick(s || 'sec', array['none','granted','opposed'], array[75, 20, 5]);
     if v_cons_status <> 'none' then

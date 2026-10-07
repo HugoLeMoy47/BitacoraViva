@@ -147,7 +147,7 @@ declare
     t text;
     new_case text := $nc$select count(*)::text from (select public.fn_create_case_with_person(
         'Nuevo','Caso',null,null,date '2000-01-01',false,1,93,'Honduras',1,null,null,'fija',false,9,1,1,3,null,
-        'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[])) x$nc$;
+        'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], '[{"consent_type":"general_care"}]'::jsonb)) x$nc$;
     report text;
 begin
     -- ===== Aislamiento por organización (BV-1.1): ni una fila de otra organización
@@ -170,6 +170,15 @@ begin
     perform pg_temp.expect('control positivo: viewer obtiene indicadores agregados', VW, 'authenticated',
         'select jsonb_array_length(public.fn_aggregate_metrics()->''rows'')::text', 'OK');
     perform pg_temp.expect('viewer no puede abrir casos', VW, 'authenticated', new_case, 'ERR');
+    -- Indicadores con periodo: la supresión n < 5 se mantiene y la lógica interna no es accesible
+    perform pg_temp.expect('indicadores: con 1 caso ninguna cifra es visible (viewer)', VW, 'authenticated',
+        $q$select count(*)::text from jsonb_array_elements(public.fn_aggregate_metrics(current_date - 90, current_date)->'rows') r
+           where r->>'count' is not null or r->>'prev_count' is not null$q$, '0');
+    perform pg_temp.expect('indicadores: periodo invertido se rechaza', VW, 'authenticated',
+        'select public.fn_aggregate_metrics(current_date, current_date - 10)::text', 'ERR');
+    perform pg_temp.expect('indicadores: anon no los consulta', null, 'anon', 'select public.fn_aggregate_metrics()::text', 'ERR');
+    perform pg_temp.expect('indicadores: fn_metric_rows no es ejecutable por roles de aplicación', DIR, 'authenticated',
+        format('select count(*)::text from public.fn_metric_rows(%L::uuid, null, null)', ORG_A), 'ERR');
 
     -- ===== Usuario con perfil pero sin rol vigente (BV-1.2): no ve nada
     foreach t in array array['person','"case"','journal_entry','consent','area','status_axis','status_value','organization'] loop
@@ -180,6 +189,23 @@ begin
     -- ===== Fronteras entre roles
     perform pg_temp.expect('caseworker no abre casos', CW, 'authenticated', new_case, 'ERR');
     perform pg_temp.expect('control positivo: intake sí abre casos', INT, 'authenticated', new_case, '1');
+    -- Paso cero: la base impone el consentimiento (BV-5.1, P-06, Ethos C2)
+    perform pg_temp.expect('sin consentimiento general no se abre expediente', INT, 'authenticated',
+        replace(new_case, '''[{"consent_type":"general_care"}]''', '''[]'''), 'ERR');
+    perform pg_temp.expect('P-06: sin consentimiento sensible no hay marcadores de vulnerabilidad', INT, 'authenticated',
+        replace(new_case, 'array[]::text[]', 'array[''victim_of_violence'']'), 'ERR');
+    perform pg_temp.expect('control positivo: con consentimiento sensible sí hay marcadores', INT, 'authenticated',
+        replace(replace(new_case, 'array[]::text[]', 'array[''victim_of_violence'']'),
+                '''[{"consent_type":"general_care"}]''', '''[{"consent_type":"general_care"},{"consent_type":"sensitive_data"}]'''), '1');
+    perform pg_temp.expect('persona menor de 18 sin asentimiento ni representante no se abre', INT, 'authenticated',
+        replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), 'ERR');
+    perform pg_temp.expect('control positivo: menor con asentimiento y representante', INT, 'authenticated',
+        replace(replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), '''[{"consent_type":"general_care"}]''',
+                '''[{"consent_type":"general_care","is_minor_assent":true,"legal_guardian_name":"Madre"}]'''), '1');
+    perform pg_temp.expect('niñez no acompañada sin autoridad ni oficio no se abre', INT, 'authenticated',
+        replace(replace(replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), 'array[]::text[]', 'array[''unaccompanied_child'']'),
+                '''[{"consent_type":"general_care"}]''',
+                '''[{"consent_type":"general_care","is_minor_assent":true,"legal_guardian_name":"Tutor"},{"consent_type":"sensitive_data"}]'''), 'ERR');
     foreach t in array array[CW, INT, VW, NR] loop
         perform pg_temp.expect('solo dirección lee auditoría (' || right(t, 1) || ')', t, 'authenticated', 'select count(*)::text from public.audit_event', '0');
     end loop;
