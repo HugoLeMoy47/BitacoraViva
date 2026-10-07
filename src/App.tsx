@@ -1,317 +1,165 @@
-import React, { useState } from 'react';
-import { 
-  ShieldCheck, 
-  Layers, 
-  Users, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Building2, 
-  Lock, 
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  ShieldCheck,
+  Layers,
+  Users,
+  CheckCircle2,
+  AlertTriangle,
+  Building2,
+  Lock,
   Database,
   History,
   Scale,
   FolderOpen,
   FileText,
-  Bell
+  Bell,
+  LogOut,
+  X
 } from 'lucide-react';
 import { t } from './lib/i18n';
-import { 
-  RoleName, 
-  StatusAxisCode, 
-  CaseWithDetails, 
-  AuditEvent,
+import {
+  RoleName,
+  StatusAxisCode,
+  CaseWithDetails,
   JournalEntry,
-  SharingEvent,
   ConsentType,
   ConsentStatus,
-  Person,
-  Consent,
-  ArcoRequest
+  Person
 } from './types/database';
-import { 
-  DEMO_ORGANIZATION, 
-  DEMO_ROLES, 
-  DEMO_AREAS, 
-  DEMO_USERS, 
-  DEMO_AUDIT_EVENTS,
-  DEMO_AUTHORITY_REQUESTS,
-  DEMO_CASES,
-  DEMO_STATUS_VALUES,
-  DEMO_SHARING_EVENTS
-} from './lib/mockData';
+import { api, EMPTY_ORG_DATA, getTitularPersonId, loadOrgData, OrgData } from './lib/data';
+import { SessionProvider, SessionUser, useSession } from './lib/session';
+import { CatalogProvider } from './lib/catalog';
 import { CasesView } from './components/CasesView';
 import { DirectorSharingInbox } from './components/DirectorSharingInbox';
+import { LoginView } from './components/LoginView';
 
-export const App: React.FC = () => {
-  const [activeRole, setActiveRole] = useState<RoleName>('director');
-  const [activeTab, setActiveTab] = useState<'overview' | 'cases' | 'areas' | 'audit' | 'authority_requests' | 'rules'>('cases');
-  const [casesList, setCasesList] = useState<CaseWithDetails[]>(DEMO_CASES);
-  const [auditEventsList, setAuditEventsList] = useState<AuditEvent[]>(DEMO_AUDIT_EVENTS);
-  const [sharingEventsList, setSharingEventsList] = useState<SharingEvent[]>(DEMO_SHARING_EVENTS);
-  const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
+const ROLE_NAMES: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer'];
 
-  const currentUser = DEMO_USERS[activeRole];
+const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
+  const { signOut } = useSession();
+  const activeRole = currentUser.role;
   const isDirector = activeRole === 'director';
 
-  const handleCaseCreated = (newCase: CaseWithDetails) => {
-    setCasesList((prev) => [newCase, ...prev]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'cases' | 'areas' | 'audit' | 'authority_requests' | 'rules'>('cases');
+  const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
+  const [data, setData] = useState<OrgData>(EMPTY_ORG_DATA);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [loadError, setLoadError] = useState<string>('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
-    // Generar evento de auditoría automática (BV-1.4 / Regla Dura 5)
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'INSERT',
-      table_name: 'case',
-      record_id: newCase.id,
-      old_values: null,
-      new_values: {
-        case_number: newCase.case_number,
-        titular: `${newCase.person.given_name} ${newCase.person.paternal_family_name}`,
-        created_by: currentUser.profile.full_name,
-      },
-      created_at: new Date().toISOString(),
-    };
+  const casesList = data.cases;
+  const sharingEventsList = data.sharingEvents;
+  const organization = data.organization;
 
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
+  const reload = useCallback(async () => {
+    try {
+      setData(await loadOrgData());
+      setLoadState('ready');
+    } catch (e) {
+      setLoadError(errorMessage(e));
+      setLoadState((s) => (s === 'ready' ? 'ready' : 'error'));
+      setActionError(errorMessage(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  // Toda escritura es una función de la base (valida rol, audita y es transaccional).
+  // La interfaz sólo informa el resultado y vuelve a leer lo que RLS permite ver.
+  const run = async (action: () => Promise<unknown>) => {
+    setActionError(null);
+    try {
+      await action();
+    } catch (e) {
+      setActionError(errorMessage(e));
+    }
+    await reload();
   };
+
+  const personIdOfCase = (caseId: string) => casesList.find((c) => c.id === caseId)?.titular_person_id;
+
+  const handleCaseCreated = (newCase: CaseWithDetails) =>
+    run(async () => {
+      const p = newCase.person;
+      const caseId = await api.createCaseWithPerson({
+        given_name: p.given_name,
+        paternal_family_name: p.paternal_family_name,
+        maternal_family_name: p.maternal_family_name ?? null,
+        preferred_name: p.preferred_name ?? null,
+        birth_date: p.birth_date,
+        birth_date_is_estimated: p.birth_date_is_estimated,
+        sex_id: p.sex_id,
+        nationality_country_id: p.nationality_country_id,
+        other_nationality: p.other_nationality ?? null,
+        primary_language_id: p.primary_language_id,
+        other_language: p.other_language ?? null,
+        phone_number: p.phone_number ?? null,
+        intake_window_type: newCase.intake_window_type,
+        travels_with_family: newCase.travels_with_family,
+        intake_state_id: newCase.intake_state_id,
+        intake_municipality_id: newCase.intake_municipality_id,
+        intake_channel_id: newCase.intake_channel_id,
+        entry_route_id: newCase.entry_route_id,
+        entry_date_str: newCase.entry_date_str ?? null,
+        assigned_area_id: newCase.assigned_area_id ?? null,
+        vulnerability_codes: newCase.vulnerabilities.map((v) => v.marker_code),
+      });
+      const personId = await getTitularPersonId(caseId);
+      for (const k of newCase.consents || []) {
+        await api.registerConsent({
+          person_id: personId,
+          case_id: caseId,
+          consent_type: k.consent_type,
+          status: k.status,
+          is_minor_assent: k.is_minor_assent,
+          notes: k.notes,
+        });
+      }
+    });
 
   const handleTransitionStatus = (
     caseId: string,
     axisCode: StatusAxisCode,
     newValueCode: string,
     reason: string
-  ) => {
-    const timestamp = new Date().toISOString();
-    const valueCatalog = DEMO_STATUS_VALUES[axisCode] || [];
-    const valObj = valueCatalog.find((v) => v.code === newValueCode);
-    const label = valObj?.label_es || newValueCode;
-
-    setCasesList((prev) =>
-      prev.map((c) => {
-        if (c.id !== caseId) return c;
-
-        return {
-          ...c,
-          updated_at: timestamp,
-          statuses: {
-            ...c.statuses,
-            [axisCode]: {
-              valueCode: newValueCode,
-              label,
-              valid_from: timestamp,
-              reason,
-            },
-          },
-        };
-      })
-    );
-
-    // Asentar en auditoría append-only en la misma transacción lógica
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'STATUS_CHANGE',
-      table_name: 'case_status',
-      record_id: caseId,
-      old_values: null,
-      new_values: {
-        axis: axisCode,
-        new_status: newValueCode,
-        label,
-        reason,
-        author: currentUser.profile.full_name,
-      },
-      created_at: timestamp,
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
+  ) => run(() => api.changeCaseStatus(caseId, axisCode, newValueCode, reason));
 
   // Handlers para Bitácora de Área (Épica E4)
-  const handleAddJournalEntry = (newEntry: JournalEntry) => {
-    setCasesList((prev) =>
-      prev.map((c) => {
-        if (c.id !== newEntry.case_id) return c;
-        const currentEntries = c.journal_entries || [];
-        return {
-          ...c,
-          updated_at: newEntry.created_at,
-          journal_entries: [newEntry, ...currentEntries],
-        };
+  const handleAddJournalEntry = (entry: JournalEntry) =>
+    run(() =>
+      api.createJournalEntry({
+        case_id: entry.case_id,
+        entry_type_key: entry.entry_type_key,
+        body: entry.body,
+        occurred_at: entry.occurred_at,
+        is_work_note: entry.is_work_note,
+        area_id: entry.area_id || null,
       })
     );
 
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'INSERT',
-      table_name: 'journal_entry',
-      record_id: newEntry.id,
-      case_id: newEntry.case_id,
-      old_values: null,
-      new_values: {
-        entry_type: newEntry.entry_type_key,
-        is_work_note: newEntry.is_work_note,
-        occurred_at: newEntry.occurred_at,
-        visibility: newEntry.visibility,
-        author: currentUser.profile.full_name,
-      },
-      created_at: new Date().toISOString(),
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
-
-  const handleAddClarification = (originalEntryId: string, clarificationEntry: JournalEntry) => {
-    setCasesList((prev) =>
-      prev.map((c) => {
-        if (c.id !== clarificationEntry.case_id) return c;
-        const currentEntries = c.journal_entries || [];
-        const updatedEntries = currentEntries.map((e) =>
-          e.id === originalEntryId ? { ...e, superseded_by_id: clarificationEntry.id } : e
-        );
-        return {
-          ...c,
-          updated_at: clarificationEntry.created_at,
-          journal_entries: [clarificationEntry, ...updatedEntries],
-        };
-      })
+  const handleAddClarification = (originalEntryId: string, clarification: JournalEntry) =>
+    run(() =>
+      api.createClarificationNote(
+        originalEntryId,
+        clarification.body,
+        clarification.occurred_at,
+        clarification.is_work_note
+      )
     );
-
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'CLARIFICATION',
-      table_name: 'journal_entry',
-      record_id: clarificationEntry.id,
-      case_id: clarificationEntry.case_id,
-      old_values: null,
-      new_values: {
-        superseded_entry_id: originalEntryId,
-        is_work_note: clarificationEntry.is_work_note,
-        author: currentUser.profile.full_name,
-      },
-      created_at: new Date().toISOString(),
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
 
   const handleShareJournalEntry = (
     entryId: string,
     toAreaId: string,
-    toAreaName: string,
+    _toAreaName: string,
     reason: string
-  ) => {
-    const timestamp = new Date().toISOString();
-    let targetCaseNumber = '';
-    let targetCaseId = '';
-    let fromAreaName = '';
+  ) => run(() => api.shareJournalEntry(entryId, toAreaId, reason));
 
-    setCasesList((prev) =>
-      prev.map((c) => {
-        const hasEntry = c.journal_entries?.some((e) => e.id === entryId);
-        if (!hasEntry) return c;
-
-        targetCaseNumber = c.case_number;
-        targetCaseId = c.id;
-
-        const updatedEntries = (c.journal_entries || []).map((e) => {
-          if (e.id !== entryId) return e;
-          fromAreaName = e.area_name || '';
-
-          const sharingEvt: SharingEvent = {
-            id: `share-${Date.now()}`,
-            organization_id: DEMO_ORGANIZATION.id,
-            journal_entry_id: entryId,
-            case_id: c.id,
-            case_number: c.case_number,
-            from_area_id: e.area_id,
-            from_area_name: e.area_name,
-            to_area_id: toAreaId,
-            to_area_name: toAreaName,
-            from_visibility: 'area_private',
-            to_visibility: 'shared',
-            reason,
-            shared_by_user_id: currentUser.profile.id,
-            shared_by_name: currentUser.profile.full_name,
-            shared_at: timestamp,
-            acknowledged_by_user_id: null,
-            acknowledged_by_name: null,
-            acknowledged_at: null,
-          };
-
-          setSharingEventsList((sPrev) => [sharingEvt, ...sPrev]);
-
-          return {
-            ...e,
-            visibility: 'shared' as const,
-            sharing_event: sharingEvt,
-          };
-        });
-
-        return { ...c, journal_entries: updatedEntries };
-      })
-    );
-
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'SHARE',
-      table_name: 'sharing_event',
-      record_id: entryId,
-      case_id: targetCaseId || null,
-      old_values: null,
-      new_values: {
-        case_number: targetCaseNumber,
-        from_area: fromAreaName,
-        to_area: toAreaName,
-        reason,
-        author: currentUser.profile.full_name,
-      },
-      created_at: timestamp,
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
-
-  const handleAcknowledgeSharing = (sharingEventId: string) => {
-    const timestamp = new Date().toISOString();
-
-    setSharingEventsList((prev) =>
-      prev.map((s) => {
-        if (s.id !== sharingEventId) return s;
-        return {
-          ...s,
-          acknowledged_by_user_id: currentUser.profile.id,
-          acknowledged_by_name: currentUser.profile.full_name,
-          acknowledged_at: timestamp,
-        };
-      })
-    );
-
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'ACKNOWLEDGE',
-      table_name: 'sharing_event',
-      record_id: sharingEventId,
-      old_values: null,
-      new_values: {
-        acknowledged_by: currentUser.profile.full_name,
-        acknowledged_at: timestamp,
-      },
-      created_at: timestamp,
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
+  const handleAcknowledgeSharing = (sharingEventId: string) =>
+    run(() => api.acknowledgeSharing(sharingEventId));
 
   const handleSaveConsent = (
     caseId: string,
@@ -324,310 +172,58 @@ export const App: React.FC = () => {
       authority_letter_ref?: string;
       notes?: string;
     }
-  ) => {
-    const timestamp = new Date().toISOString();
-    let personId = '';
-    let personName = '';
+  ) =>
+    run(async () => {
+      const personId = personIdOfCase(caseId);
+      if (!personId) throw new Error('Expediente no encontrado.');
+      await api.registerConsent({ person_id: personId, case_id: caseId, ...consentData });
+    });
 
-    setCasesList((prev) =>
-      prev.map((c) => {
-        if (c.id !== caseId) return c;
-        personId = c.person.id;
-        personName = `${c.person.given_name} ${c.person.paternal_family_name}`;
+  const handleRectifyPerson = (personId: string, updates: Partial<Person>, reason: string) =>
+    run(async () => {
+      const current = casesList.find((c) => c.titular_person_id === personId)?.person;
+      if (!current) throw new Error('Persona no encontrada.');
+      await api.rectifyPerson({ ...current, ...updates }, reason);
+    });
 
-        const newConsent: Consent = {
-          id: `cons-${Date.now()}`,
-          organization_id: DEMO_ORGANIZATION.id,
-          person_id: c.person.id,
-          case_id: c.id,
-          consent_type: consentData.consent_type,
-          status: consentData.status,
-          is_minor_assent: consentData.is_minor_assent,
-          legal_guardian_name: consentData.legal_guardian_name,
-          legal_guardian_role: consentData.legal_guardian_role,
-          authority_letter_ref: consentData.authority_letter_ref,
-          granted_at: timestamp,
-          granted_by_user_id: currentUser.profile.id,
-          granted_by_name: currentUser.profile.full_name,
-          notes: consentData.notes,
-          created_at: timestamp,
-        };
+  const handleAnonymizePerson = (personId: string, reason: string) =>
+    run(() => api.anonymizePerson(personId, reason));
 
-        const existingConsents = c.consents || [];
-        const filtered = existingConsents.filter((item) => item.consent_type !== consentData.consent_type);
+  const handleOpposeSecondary = (personId: string, reason: string) =>
+    run(() => api.applyOpposition(personId, reason));
 
-        return {
-          ...c,
-          updated_at: timestamp,
-          consents: [...filtered, newConsent],
-        };
-      })
+  if (loadState === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-sm text-gray-500">
+        {t('session.loading')}
+      </div>
     );
+  }
 
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'CONSENT_GRANTED',
-      table_name: 'consent',
-      record_id: personId,
-      case_id: caseId,
-      old_values: null,
-      new_values: {
-        person_name: personName,
-        consent_type: consentData.consent_type,
-        status: consentData.status,
-        is_minor_assent: consentData.is_minor_assent,
-        recorded_by: currentUser.profile.full_name,
-      },
-      created_at: timestamp,
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
-
-  const handleRectifyPerson = (personId: string, updates: Partial<Person>, reason: string) => {
-    const timestamp = new Date().toISOString();
-    const targetCase = casesList.find((c) => c.person.id === personId);
-    const oldPerson = targetCase ? { ...targetCase.person } : null;
-    const targetCaseId = targetCase?.id || null;
-
-    setCasesList((prev) =>
-      prev.map((c) => {
-        if (c.person.id !== personId) return c;
-
-        const updatedPerson: Person = {
-          ...c.person,
-          ...updates,
-          updated_at: timestamp,
-        };
-
-        const rectificationRequest: ArcoRequest = {
-          id: `arco-${Date.now()}`,
-          organization_id: DEMO_ORGANIZATION.id,
-          person_id: personId,
-          person_name: `${updatedPerson.given_name} ${updatedPerson.paternal_family_name}`,
-          case_id: c.id,
-          case_number: c.case_number,
-          request_type: 'rectification',
-          status: 'approved_executed',
-          details: 'Rectificación de datos biográficos en ficha de persona (BV-5.4).',
-          reason,
-          requested_by_name: `${updatedPerson.given_name} ${updatedPerson.paternal_family_name}`,
-          is_legal_representative: false,
-          received_at: timestamp,
-          handled_by_user_id: currentUser.profile.id,
-          handled_by_name: currentUser.profile.full_name,
-          resolved_at: timestamp,
-          resolution_notes: `Datos biográficos actualizados por ${currentUser.profile.full_name}.`,
-          created_at: timestamp,
-        };
-
-        return {
-          ...c,
-          updated_at: timestamp,
-          person: updatedPerson,
-          arco_requests: [rectificationRequest, ...(c.arco_requests || [])],
-        };
-      })
+  if (loadState === 'error') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-md text-center space-y-3">
+          <p className="text-sm font-semibold text-carbon">{t('session.data_error')}</p>
+          <p className="text-xs text-gray-500 break-words">{loadError}</p>
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={() => { setLoadState('loading'); reload(); }}
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-carbon text-white"
+            >
+              {t('session.retry')}
+            </button>
+            <button onClick={signOut} className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300">
+              {t('session.sign_out')}
+            </button>
+          </div>
+        </div>
+      </div>
     );
-
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'RECTIFICATION',
-      table_name: 'person',
-      record_id: personId,
-      case_id: targetCaseId,
-      old_values: oldPerson ? { given_name: oldPerson.given_name, paternal_family_name: oldPerson.paternal_family_name, birth_date: oldPerson.birth_date, phone_number: oldPerson.phone_number } : null,
-      new_values: {
-        ...updates,
-        reason,
-        rectified_by: currentUser.profile.full_name,
-      },
-      created_at: timestamp,
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
-
-  const handleAnonymizePerson = (personId: string, reason: string) => {
-    const timestamp = new Date().toISOString();
-
-    setCasesList((prev) =>
-      prev.map((c) => {
-        if (c.person.id !== personId) return c;
-
-        const anonymizedPerson: Person = {
-          ...c.person,
-          given_name: 'PERSONA ANONIMIZADA',
-          paternal_family_name: 'SUPRIMIDO',
-          maternal_family_name: null,
-          preferred_name: null,
-          phone_number: null,
-          email: null,
-          address_line: null,
-          neighborhood: null,
-          postal_code: null,
-          other_language: null,
-          birth_date_is_estimated: true,
-          is_anonymized: true,
-          anonymized_at: timestamp,
-          anonymized_by: currentUser.profile.id,
-          updated_at: timestamp,
-        };
-
-        const updatedStatuses = {
-          ...c.statuses,
-          engagement_status: {
-            valueCode: 'anonymized',
-            label: 'Anonimizada',
-            valid_from: timestamp,
-            reason: `Supresión y cancelación por ejercicio ARCO: ${reason}`,
-            isActiveCare: false,
-          },
-          record_status: {
-            valueCode: 'anonymized',
-            label: 'Anonimizado',
-            valid_from: timestamp,
-            reason: `Expediente cerrado permanentemente por anonimización.`,
-          },
-        };
-
-        const purgedEntries = (c.journal_entries || []).map((e) => ({
-          ...e,
-          body: '[CONTENIDO SUPRIMIDO POR EJERCICIO DE DERECHO ARCO DE CANCELACIÓN - ADR-0001]',
-        }));
-
-        const cancellationRequest: ArcoRequest = {
-          id: `arco-${Date.now()}`,
-          organization_id: DEMO_ORGANIZATION.id,
-          person_id: personId,
-          person_name: 'PERSONA ANONIMIZADA',
-          case_id: c.id,
-          case_number: c.case_number,
-          request_type: 'cancellation',
-          status: 'approved_executed',
-          details: 'Cancelación de expediente y anonimización irreversible (ADR-0001 / BV-5.3).',
-          reason,
-          requested_by_name: 'PERSONA ANONIMIZADA (Solicitud ARCO)',
-          is_legal_representative: false,
-          received_at: timestamp,
-          handled_by_user_id: currentUser.profile.id,
-          handled_by_name: currentUser.profile.full_name,
-          resolved_at: timestamp,
-          resolution_notes: `Anonimización irreversible ejecutada conforme a ADR-0001 por ${currentUser.profile.full_name}.`,
-          created_at: timestamp,
-        };
-
-        return {
-          ...c,
-          updated_at: timestamp,
-          person: anonymizedPerson,
-          statuses: updatedStatuses,
-          journal_entries: purgedEntries,
-          arco_requests: [cancellationRequest, ...(c.arco_requests || [])],
-        };
-      })
-    );
-
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'ANONYMIZATION',
-      table_name: 'person',
-      record_id: personId,
-      old_values: null,
-      new_values: {
-        reason,
-        executed_by: currentUser.profile.full_name,
-        procedure: 'ADR-0001_anonymize_person',
-        timestamp,
-      },
-      created_at: timestamp,
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
-
-  const handleOpposeSecondary = (personId: string, reason: string) => {
-    const timestamp = new Date().toISOString();
-
-    setCasesList((prev) =>
-      prev.map((c) => {
-        if (c.person.id !== personId) return c;
-
-        const oppositionConsent: Consent = {
-          id: `cons-${Date.now()}`,
-          organization_id: DEMO_ORGANIZATION.id,
-          person_id: personId,
-          case_id: c.id,
-          consent_type: 'secondary_use_research',
-          status: 'opposed',
-          is_minor_assent: false,
-          granted_at: timestamp,
-          granted_by_user_id: currentUser.profile.id,
-          granted_by_name: currentUser.profile.full_name,
-          notes: `Oposición formal registrada: ${reason}`,
-          created_at: timestamp,
-        };
-
-        const existingConsents = (c.consents || []).filter(
-          (item) => item.consent_type !== 'secondary_use_research'
-        );
-
-        const oppositionRequest: ArcoRequest = {
-          id: `arco-${Date.now()}`,
-          organization_id: DEMO_ORGANIZATION.id,
-          person_id: personId,
-          person_name: `${c.person.given_name} ${c.person.paternal_family_name}`,
-          case_id: c.id,
-          case_number: c.case_number,
-          request_type: 'opposition',
-          status: 'approved_executed',
-          details: 'Oposición formal a tratamientos secundarios y reportes externos (BV-5.5).',
-          reason,
-          requested_by_name: `${c.person.given_name} ${c.person.paternal_family_name}`,
-          is_legal_representative: false,
-          received_at: timestamp,
-          handled_by_user_id: currentUser.profile.id,
-          handled_by_name: currentUser.profile.full_name,
-          resolved_at: timestamp,
-          resolution_notes: `Oposición asentada por ${currentUser.profile.full_name}.`,
-          created_at: timestamp,
-        };
-
-        return {
-          ...c,
-          updated_at: timestamp,
-          consents: [...existingConsents, oppositionConsent],
-          arco_requests: [oppositionRequest, ...(c.arco_requests || [])],
-        };
-      })
-    );
-
-    const newAuditEvent: AuditEvent = {
-      id: `e-${Date.now()}`,
-      organization_id: DEMO_ORGANIZATION.id,
-      user_id: currentUser.profile.id,
-      action: 'OPPOSITION',
-      table_name: 'consent',
-      record_id: personId,
-      old_values: null,
-      new_values: {
-        scope: 'secondary_use_research',
-        reason,
-        opposed_by: currentUser.profile.full_name,
-      },
-      created_at: timestamp,
-    };
-
-    setAuditEventsList((prev) => [newAuditEvent, ...prev]);
-  };
+  }
 
   return (
+    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues }}>
     <div className="min-h-screen bg-gray-50 flex flex-col text-carbon font-sans">
       {/* Header Superior con Branding Freejolitos */}
       <header className="bg-carbon text-white border-b-4 border-turquesa sticky top-0 z-50">
@@ -676,41 +272,12 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Barra de simulación de roles (Switch de 4 roles normativos) */}
+      {/* Identidad de la sesión autenticada (el rol lo determina la base, no la interfaz) */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <div className="flex items-center space-x-2">
-              <Users className="w-4 h-4 text-turquesa-dark" />
-              <span className="text-xs font-bold text-carbon-muted uppercase tracking-wider">
-                {t('session.switch_role')}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full md:w-auto">
-              {DEMO_ROLES.map((r) => {
-                const isSelected = activeRole === r.name;
-                return (
-                  <button
-                    key={r.name}
-                    onClick={() => setActiveRole(r.name)}
-                    className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-all text-left flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-claro border-turquesa text-carbon shadow-sm'
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span>{t(`roles.${r.name}.title`)}</span>
-                    {isSelected && <span className="w-2 h-2 rounded-full bg-turquesa ml-2" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Banner de contexto del usuario simulado con área asignada */}
-          <div className="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
             <div className="flex items-center flex-wrap gap-2">
+              <Users className="w-4 h-4 text-turquesa-dark" />
               <span className="font-semibold text-carbon">{currentUser.profile.full_name}</span>
               <span className="text-gray-400">({currentUser.profile.email})</span>
               <span className="bg-gray-200 text-carbon px-2 py-0.5 rounded font-mono text-[11px]">
@@ -721,15 +288,35 @@ export const App: React.FC = () => {
                 {currentUser.assignedAreaName || t('session.transversal_role')}
               </span>
             </div>
-            <p className="text-carbon-muted italic text-[11px]">
-              {t(`roles.${activeRole}.description`)}
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-carbon-muted italic text-[11px]">
+                {t(`roles.${activeRole}.description`)}
+              </p>
+              <button
+                onClick={signOut}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                {t('session.sign_out')}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Contenedor Principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+        {actionError && (
+          <div role="alert" className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-alerta/20 bg-alerta-bg p-3 text-xs text-alerta">
+            <span>
+              <strong>{t('session.action_error')}</strong> {actionError}
+            </span>
+            <button onClick={() => setActionError(null)} aria-label={t('session.dismiss')} className="shrink-0">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Pestañas de Navegación */}
         <div className="flex space-x-2 border-b border-gray-200 mb-6 overflow-x-auto">
           <button
@@ -847,16 +434,16 @@ export const App: React.FC = () => {
               <dl className="space-y-3 text-sm">
                 <div>
                   <dt className="text-gray-500 text-xs font-medium">{t('dashboard.org_display')}</dt>
-                  <dd className="font-semibold text-carbon text-lg">{DEMO_ORGANIZATION.display_name}</dd>
+                  <dd className="font-semibold text-carbon text-lg">{organization?.display_name}</dd>
                 </div>
                 <div>
                   <dt className="text-gray-500 text-xs font-medium">{t('dashboard.org_legal')}</dt>
-                  <dd className="text-carbon">{DEMO_ORGANIZATION.legal_name}</dd>
+                  <dd className="text-carbon">{organization?.legal_name}</dd>
                 </div>
                 <div>
                   <dt className="text-gray-500 text-xs font-medium">{t('dashboard.org_slug')}</dt>
                   <dd className="font-mono text-xs bg-gray-100 p-1.5 rounded inline-block text-gray-800">
-                    {DEMO_ORGANIZATION.slug}
+                    {organization?.slug}
                   </dd>
                 </div>
                 <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs">
@@ -889,11 +476,11 @@ export const App: React.FC = () => {
 
               <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4 text-center">
                 <div className="bg-gray-50 p-3 rounded-lg">
-                  <span className="block text-2xl font-bold text-carbon">{DEMO_AREAS.length}</span>
+                  <span className="block text-2xl font-bold text-carbon">{data.areas.length}</span>
                   <span className="text-[11px] text-gray-500">{t('dashboard.total_areas')}</span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-lg">
-                  <span className="block text-2xl font-bold text-turquesa-dark">{DEMO_ROLES.length}</span>
+                  <span className="block text-2xl font-bold text-turquesa-dark">{ROLE_NAMES.length}</span>
                   <span className="text-[11px] text-gray-500">{t('dashboard.total_roles')}</span>
                 </div>
               </div>
@@ -908,7 +495,7 @@ export const App: React.FC = () => {
               <h2 className="text-base font-bold text-carbon">{t('dashboard.areas_title')}</h2>
             </div>
             <div className="divide-y divide-gray-100">
-              {DEMO_AREAS.map((area) => (
+              {data.areas.map((area) => (
                 <div key={area.id} className="p-4 sm:px-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 rounded-full bg-claro text-turquesa-dark flex items-center justify-center font-bold text-xs">
@@ -939,7 +526,7 @@ export const App: React.FC = () => {
                     <p className="text-xs text-gray-500">Gobernanza C4: Append-only estricto por trigger en PostgreSQL · Solo Dirección</p>
                   </div>
                   <span className="text-xs font-mono bg-claro text-carbon px-2 py-1 rounded border border-turquesa/30">
-                    {auditEventsList.length} eventos
+                    {data.auditEvents.length} eventos
                   </span>
                 </div>
                 <div className="overflow-x-auto">
@@ -953,7 +540,7 @@ export const App: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {auditEventsList.map((event) => (
+                      {data.auditEvents.map((event) => (
                         <tr key={event.id} className="hover:bg-gray-50 font-mono">
                           <td className="px-6 py-3 whitespace-nowrap">
                             <span className="px-2 py-0.5 bg-gray-100 text-carbon font-bold rounded text-[11px] border border-gray-300">
@@ -1008,7 +595,7 @@ export const App: React.FC = () => {
                     <p className="text-xs text-gray-500">{t('authority_requests.subtitle')}</p>
                   </div>
                   <span className="text-xs font-mono bg-claro text-carbon px-2 py-1 rounded border border-turquesa/30">
-                    {DEMO_AUTHORITY_REQUESTS.length} oficios registrados
+                    {data.authorityRequests.length} oficios registrados
                   </span>
                 </div>
 
@@ -1024,7 +611,7 @@ export const App: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {DEMO_AUTHORITY_REQUESTS.map((req) => (
+                      {data.authorityRequests.map((req) => (
                         <tr key={req.id} className="hover:bg-gray-50">
                           <td className="px-6 py-3 font-semibold text-carbon">{req.authority_name}</td>
                           <td className="px-6 py-3 font-mono text-gray-700">{req.official_letter_ref}</td>
@@ -1110,7 +697,27 @@ export const App: React.FC = () => {
         />
       )}
     </div>
+    </CatalogProvider>
   );
 };
+
+const Gate: React.FC = () => {
+  const { status, user } = useSession();
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-sm text-gray-500">
+        {t('session.loading')}
+      </div>
+    );
+  }
+  if (status === 'anonymous' || !user) return <LoginView />;
+  return <Workspace key={user.profile.id} currentUser={user} />;
+};
+
+export const App: React.FC = () => (
+  <SessionProvider>
+    <Gate />
+  </SessionProvider>
+);
 
 export default App;

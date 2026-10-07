@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Share2, CheckCircle2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { JournalEntry } from '../types/database';
-import { DEMO_AREAS } from '../lib/mockData';
+import { useCatalog } from '../lib/catalog';
 
 interface ShareEntryModalProps {
   isOpen: boolean;
@@ -21,8 +21,9 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
   authorFullName: _authorFullName,
   onSubmitShare,
 }) => {
+  const { areas } = useCatalog();
   // Filter out the entry's own area
-  const candidateAreas = DEMO_AREAS.filter(a => a.id !== entry.area_id);
+  const candidateAreas = areas.filter(a => a.id !== entry.area_id);
   const [targetAreaId, setTargetAreaId] = useState<string>(
     candidateAreas[0]?.id || ''
   );
@@ -34,7 +35,7 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
     e.preventDefault();
     if (!reason.trim() || !targetAreaId) return;
 
-    const targetArea = DEMO_AREAS.find(a => a.id === targetAreaId);
+    const targetArea = areas.find(a => a.id === targetAreaId);
     onSubmitShare(entry.id, targetAreaId, targetArea?.name || '', reason.trim());
     onClose();
   };

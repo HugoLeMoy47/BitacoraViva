@@ -33,11 +33,8 @@ import {
   ConsentStatus,
   Person
 } from '../types/database';
-import { 
-  DEMO_STATUS_AXES, 
-  DEMO_STATUS_VALUES, 
-  VULNERABILITY_CATALOG 
-} from '../lib/mockData';
+import { VULNERABILITY_CATALOG } from '../lib/catalogs';
+import { useCatalog } from '../lib/catalog';
 import { NewJournalEntryModal } from './NewJournalEntryModal';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
 import { ShareEntryModal } from './ShareEntryModal';
@@ -97,6 +94,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onAnonymizePerson,
   onOpposeSecondary,
 }) => {
+  const { statusAxes, statusValues } = useCatalog();
   const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy'>('axes');
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   const [targetValueCode, setTargetValueCode] = useState<string>('');
@@ -159,7 +157,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     setTransitioningAxis(axisCode);
     setErrorMessage(null);
     setTransitionReason('');
-    const possibleValues = DEMO_STATUS_VALUES[axisCode] || [];
+    const possibleValues = statusValues[axisCode] || [];
     const firstNonCurrent = possibleValues.find(v => v.code !== caseData.statuses[axisCode]?.valueCode);
     setTargetValueCode(firstNonCurrent ? firstNonCurrent.code : (possibleValues[0]?.code || ''));
   };
@@ -353,7 +351,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {DEMO_STATUS_AXES.map((axis) => {
+            {statusAxes.map((axis) => {
               const currentStatus = caseData.statuses[axis.code];
               const isPrimary = axis.is_primary;
 
@@ -1134,7 +1132,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   onChange={(e) => setTargetValueCode(e.target.value)}
                   className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                 >
-                  {(DEMO_STATUS_VALUES[transitioningAxis] || []).map((val) => (
+                  {(statusValues[transitioningAxis] || []).map((val) => (
                     <option key={val.code} value={val.code}>
                       {val.label_es} ({val.code})
                     </option>

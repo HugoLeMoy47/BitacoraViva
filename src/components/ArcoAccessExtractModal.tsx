@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Printer, Copy, Check, FileText, ShieldAlert } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails } from '../types/database';
+import { api } from '../lib/data';
 
 interface ArcoAccessExtractModalProps {
   isOpen: boolean;
@@ -15,6 +16,22 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
   caseData,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [serverExtract, setServerExtract] = useState<Record<string, unknown> | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  // El extracto formal lo emite la base (sólo dirección, sin notas de trabajo protegidas)
+  // y deja el evento de auditoría ARCO_ACCESS_EXTRACT_ISSUED (BV-5.2, Ethos E-02).
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setServerExtract(null);
+    setExtractError(null);
+    api
+      .generateArcoAccessExtract(caseData.person.id)
+      .then((r) => { if (!cancelled) setServerExtract(r); })
+      .catch((e) => { if (!cancelled) setExtractError(e instanceof Error ? e.message : String(e)); });
+    return () => { cancelled = true; };
+  }, [isOpen, caseData.person.id]);
 
   if (!isOpen) return null;
 
@@ -56,7 +73,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
   };
 
   const handleCopyJson = () => {
-    navigator.clipboard.writeText(JSON.stringify(extractData, null, 2));
+    navigator.clipboard.writeText(JSON.stringify(serverExtract ?? extractData, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
@@ -91,6 +108,11 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
 
         {/* Contenido imprimible */}
         <div className="p-6 overflow-y-auto space-y-6 text-carbon print:p-0">
+          {extractError && (
+            <div role="alert" className="rounded-lg border border-alerta/20 bg-alerta-bg p-3 text-xs text-alerta">
+              {extractError}
+            </div>
+          )}
           {/* Cabecera institucional */}
           <div className="border-b border-gray-200 pb-4 flex justify-between items-start">
             <div>

@@ -34,7 +34,13 @@
     "status_connected": "Supabase Cloud / Migración E1-E3",
     "mode_emulation": "Modo Nube Activo",
     "assigned_area": "Área de adscripción:",
-    "transversal_role": "Transversal (Organización completa)"
+    "transversal_role": "Transversal (Organización completa)",
+    "sign_out": "Cerrar sesión",
+    "loading": "Cargando…",
+    "data_error": "No se pudieron cargar los datos.",
+    "action_error": "La operación no se pudo completar:",
+    "retry": "Reintentar",
+    "dismiss": "Cerrar"
   },
   "navigation": {
     "overview": "Visión General",
@@ -357,5 +363,17 @@
     "r8": "8. Nombres estandarizados según el glosario de términos",
     "r9": "9. Cero literales de texto visibles en componentes (i18n)",
     "r10": "10. Cero cambios de esquema desde consola (migraciones versionadas)"
+  },
+  "login": {
+    "title": "Iniciar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "submit": "Entrar",
+    "signing_in": "Entrando…",
+    "error_credentials": "Correo o contraseña incorrectos.",
+    "error_no_role": "Tu cuenta no tiene un rol vigente asignado. Pide a Dirección que lo asigne.",
+    "notice_expired": "Tu sesión se cerró por inactividad (30 min). Vuelve a iniciar sesión.",
+    "demo_title": "Acceso rápido de demostración",
+    "demo_hint": "Entra con una cuenta semilla para ver cada rol con sus permisos reales (RLS)."
   }
 }

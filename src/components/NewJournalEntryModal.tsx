@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Calendar, Shield, Clock, AlertTriangle, Eye, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { JournalEntry, JournalEntryType } from '../types/database';
-import { DEMO_AREAS } from '../lib/mockData';
+import { useCatalog } from '../lib/catalog';
 
 interface NewJournalEntryModalProps {
   isOpen: boolean;
@@ -25,10 +25,11 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
   assignedAreaId,
   onEntryCreated,
 }) => {
+  const { areas } = useCatalog();
   const [step, setStep] = useState<'compose' | 'preview'>('compose');
   const [entryType, setEntryType] = useState<JournalEntryType>('follow_up');
   const [areaId, setAreaId] = useState<string>(
-    assignedAreaId || DEMO_AREAS.find(a => a.code === 'trabajo_social')?.id || DEMO_AREAS[0].id
+    assignedAreaId || areas.find(a => a.code === 'trabajo_social')?.id || areas[0]?.id || ''
   );
   const [occurredAt, setOccurredAt] = useState<string>(
     new Date().toISOString().slice(0, 16)
@@ -38,7 +39,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentArea = DEMO_AREAS.find(a => a.id === areaId) || DEMO_AREAS[0];
+  const currentArea = areas.find(a => a.id === areaId) || areas[0];
 
   const handleProceedToPreview = (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +145,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                     onChange={(e) => setAreaId(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none"
                   >
-                    {DEMO_AREAS.map(a => (
+                    {areas.map(a => (
                       <option key={a.id} value={a.id}>{a.name}</option>
                     ))}
                   </select>

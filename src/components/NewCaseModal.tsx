@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, CheckCircle2, HeartHandshake } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails, VulnerabilityMarkerCode } from '../types/database';
-import { VULNERABILITY_CATALOG } from '../lib/mockData';
+import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 
 interface NewCaseModalProps {
   isOpen: boolean;
