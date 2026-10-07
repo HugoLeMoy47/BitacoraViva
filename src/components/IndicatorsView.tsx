@@ -119,7 +119,7 @@ export const IndicatorsView: React.FC = () => {
             type="button"
             onClick={() => setPreset(p.id)}
             aria-pressed={preset === p.id}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
+            className={`min-h-9 px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
               preset === p.id ? 'bg-claro border-turquesa text-carbon' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >

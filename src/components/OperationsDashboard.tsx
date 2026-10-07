@@ -188,7 +188,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
                     <td className="px-5 py-2 text-gray-600">{c.statuses.engagement_status.label}</td>
                     <td className="px-5 py-2 text-right font-mono font-bold text-carbon">{days}</td>
                     <td className="px-5 py-2 text-right">
-                      <button type="button" onClick={() => onOpenCase(c.id)} className="font-semibold text-turquesa-dark underline">
+                      <button type="button" onClick={() => onOpenCase(c.id)} className="inline-flex min-h-9 items-center px-2 font-semibold text-turquesa-dark underline">
                         {t('operations.open_case')}
                       </button>
                     </td>

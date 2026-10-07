@@ -41,6 +41,8 @@ export interface OrgData {
   auditEvents: AuditEvent[];
   authorityRequests: AuthorityRequest[];
   sharingEvents: SharingEvent[];
+  /** id de persona usuaria → nombre (sólo las que RLS permite ver) */
+  userNames: Record<string, string>;
 }
 
 export const EMPTY_ORG_DATA: OrgData = {
@@ -58,6 +60,7 @@ export const EMPTY_ORG_DATA: OrgData = {
   auditEvents: [],
   authorityRequests: [],
   sharingEvents: [],
+  userNames: {},
 };
 
 async function rows<T>(query: PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
@@ -213,6 +216,7 @@ export async function loadOrgData(): Promise<OrgData> {
     auditEvents: audit,
     authorityRequests: authority,
     sharingEvents,
+    userNames: Object.fromEntries(profiles.map((p) => [p.id, p.full_name])),
   };
 }
 
@@ -291,7 +295,24 @@ export interface StageHistoryRow {
   valid_to: string | null;
 }
 
+export interface CaseStatusHistoryRow {
+  axis_id: string;
+  value_id: string;
+  valid_from: string;
+  valid_to: string | null;
+  reason: string;
+  created_by: string | null;
+}
+
 export const api = {
+  loadCaseStatusHistory: (caseId: string) =>
+    rows<CaseStatusHistoryRow>(
+      supabase
+        .from('case_status')
+        .select('axis_id, value_id, valid_from, valid_to, reason, created_by')
+        .eq('case_id', caseId)
+        .order('valid_from', { ascending: false })
+    ),
   loadStageHistory: (axisId: string) =>
     rows<StageHistoryRow>(
       supabase.from('case_status').select('case_id, value_id, valid_from, valid_to').eq('axis_id', axisId)

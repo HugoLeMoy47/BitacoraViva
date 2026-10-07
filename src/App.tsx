@@ -185,7 +185,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const caseNumberOf = (id: string) => casesList.find((c) => c.id === id)?.case_number ?? null;
 
   return (
-    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, organizationName: organization?.legal_name ?? '' }}>
+    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, organizationName: organization?.legal_name ?? '', userNames: data.userNames }}>
       <AppShell
         user={currentUser}
         organizationName={organization?.display_name ?? ''}
@@ -241,7 +241,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
         )}
 
         {current === 'areas' && <AreasView areas={data.areas} />}
-        {current === 'audit' && <AuditView events={data.auditEvents} />}
+        {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}
         {current === 'authority' && <AuthorityView requests={data.authorityRequests} />}
         {current === 'about' && <AboutView organization={organization} areasCount={data.areas.length} />}
       </AppShell>

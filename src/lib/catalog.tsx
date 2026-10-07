@@ -7,10 +7,12 @@ export interface Catalog {
   statusAxes: StatusAxis[];
   statusValues: Record<StatusAxisCode, StatusValue[]>;
   organizationName: string;
+  userNames: Record<string, string>;
 }
 
 const EMPTY: Catalog = {
   organizationName: '',
+  userNames: {},
   areas: [],
   statusAxes: [],
   statusValues: {

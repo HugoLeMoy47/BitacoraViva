@@ -137,7 +137,35 @@
     "rule7_note": "Regla Dura 7:",
     "open_restricted": "Apertura exclusiva de ingreso y dirección",
     "not_found_title": "No se encontró el expediente",
-    "not_found_body": "No existe un expediente con el folio {folio} o no tienes acceso a él."
+    "not_found_body": "No existe un expediente con el folio {folio} o no tienes acceso a él.",
+    "sections": "Secciones del expediente",
+    "history": {
+      "title": "Historial de estatus",
+      "subtitle": "Cada cambio cierra el estatus vigente y abre uno nuevo: nada se sobrescribe. Qué valor, desde cuándo, hasta cuándo, quién y por qué.",
+      "changes": "{n} registros",
+      "current": "vigente",
+      "range": "Del {from} al {to}",
+      "since": "Desde el {from}",
+      "days": "{n} días"
+    },
+    "list": {
+      "search_label": "Buscar expediente",
+      "stage": "Etapa",
+      "engagement": "Situación ante la organización",
+      "all_f": "Todas",
+      "sort": "Ordenar por",
+      "sort_recent": "Más recientes",
+      "sort_folio": "Folio",
+      "sort_person": "Persona",
+      "only_markers": "Con marcadores de vulnerabilidad",
+      "only_mine": "Asignados a mí",
+      "showing": "{shown} de {total} expedientes",
+      "clear": "Limpiar filtros",
+      "more": "Mostrar {n} más",
+      "marker_more": "+{n} más",
+      "empty": "Aún no hay expedientes.",
+      "no_results": "Ningún expediente coincide con los filtros."
+    }
   },
   "intake": {
     "modal_title": "Levantamiento de Expediente (Estándar MAP-OIM v3)",
@@ -232,7 +260,21 @@
     "active_policy_label": "Política RLS activa:",
     "active_policy_code": "create policy \"Solo directores leen auditoría de su organización\" on public.audit_event for select using (public.has_role('director'));",
     "subtitle": "Registro de sólo adición, protegido por la base de datos · Sólo Dirección",
-    "count": "{n} eventos"
+    "count": "{n} eventos",
+    "system": "Sistema",
+    "showing": "{shown} de {total} eventos",
+    "limit_note": "se cargan los últimos 500",
+    "no_results": "Ningún evento coincide con los filtros.",
+    "filters": {
+      "action": "Acción",
+      "table": "Tabla",
+      "actor": "Persona",
+      "from": "Desde",
+      "to": "Hasta",
+      "search": "Buscar",
+      "search_ph": "Folio, identificador o texto…",
+      "all_f": "Todas"
+    }
   },
   "authority_requests": {
     "title": "Requerimientos de Autoridad (Ethos E-03)",

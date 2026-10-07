@@ -45,6 +45,8 @@ import { OpposeSecondaryTreatmentModal } from './OpposeSecondaryTreatmentModal';
 import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
 import { formatDate, formatDateTime, formatTime } from '../lib/format';
 import { ModalShell } from './ModalShell';
+import { Tabs } from './Tabs';
+import { StatusHistory } from './StatusHistory';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -191,20 +193,20 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Barra superior de navegación */}
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 text-xs font-semibold text-carbon-muted hover:text-carbon transition"
+          className="flex min-h-9 items-center gap-2 whitespace-nowrap text-sm font-semibold text-carbon-muted hover:text-carbon transition"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>{t('cases.btn_back')}</span>
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs px-2.5 py-1 rounded bg-carbon text-white font-bold tracking-wider">
+          <span className="whitespace-nowrap font-mono text-xs px-2.5 py-1 rounded bg-carbon text-white font-bold tracking-wider">
             {caseData.case_number}
           </span>
-          <span className="text-xs bg-turquesa/10 text-turquesa px-2.5 py-1 rounded-full font-bold">
+          <span className="whitespace-nowrap text-xs bg-claro text-turquesa-dark px-2.5 py-1 rounded-full font-bold">
             {caseData.statuses.engagement_status?.label || 'Primer Contacto'}
           </span>
         </div>
@@ -214,9 +216,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-title text-2xl font-bold text-carbon">
+            <h2 className="font-title text-2xl font-bold text-carbon">
               {caseData.person.preferred_name || `${caseData.person.given_name} ${caseData.person.paternal_family_name}`}
-            </h1>
+            </h2>
             {caseData.parent_case_id && (
               <span className="text-xs bg-turquesa/15 text-turquesa px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                 {t('cases.badge_subfolio')}
@@ -265,82 +267,29 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         </div>
       )}
 
-      {/* Pestañas del Expediente */}
-      <div className="flex flex-wrap space-x-2 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab('axes')}
-          className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
-            activeTab === 'axes'
-              ? 'border-turquesa text-carbon'
-              : 'border-transparent text-gray-500 hover:text-carbon'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          {t('cases.tab_axes')}
-        </button>
-
-        <button
-          onClick={() => setActiveTab('journal')}
-          className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
-            activeTab === 'journal'
-              ? 'border-turquesa text-carbon'
-              : 'border-transparent text-gray-500 hover:text-carbon'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          {t('journal.tab_title')} ({journalEntries.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('summary')}
-          className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
-            activeTab === 'summary'
-              ? 'border-turquesa text-carbon'
-              : 'border-transparent text-gray-500 hover:text-carbon'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          {t('cases.tab_summary')}
-        </button>
-        <button
-          onClick={() => setActiveTab('vulnerabilities')}
-          className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
-            activeTab === 'vulnerabilities'
-              ? 'border-turquesa text-carbon'
-              : 'border-transparent text-gray-500 hover:text-carbon'
-          }`}
-        >
-          <AlertCircle className="w-4 h-4" />
-          {t('cases.tab_vulnerabilities')} ({caseData.vulnerabilities.length})
-        </button>
-        {caseData.subfolios && caseData.subfolios.length > 0 && (
-          <button
-            onClick={() => setActiveTab('subfolios')}
-            className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
-              activeTab === 'subfolios'
-                ? 'border-turquesa text-carbon'
-                : 'border-transparent text-gray-500 hover:text-carbon'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            {t('cases.tab_subfolios')} ({caseData.subfolios.length})
-          </button>
-        )}
-        <button
-          onClick={() => setActiveTab('privacy')}
-          className={`pb-3 px-4 text-xs font-bold border-b-2 flex items-center gap-2 ${
-            activeTab === 'privacy'
-              ? 'border-turquesa text-carbon'
-              : 'border-transparent text-gray-500 hover:text-carbon'
-          }`}
-        >
-          <ShieldCheck className="w-4 h-4" />
-          {t('arco.tab_title')}
-          {!hasSensitiveDataConsent && (
-            <span className="w-2 h-2 rounded-full bg-amber-500" title={t('arco.sensitive_alert_missing')} />
-          )}
-        </button>
-      </div>
+      {/* Secciones del expediente */}
+      <Tabs
+        ariaLabel={t('cases.sections')}
+        value={activeTab}
+        onChange={(id) => setActiveTab(id as typeof activeTab)}
+        items={[
+          { id: 'axes', label: t('cases.tab_axes'), icon: <Layers className="h-4 w-4" aria-hidden="true" /> },
+          { id: 'journal', label: `${t('journal.tab_title')} (${journalEntries.length})`, icon: <BookOpen className="h-4 w-4" aria-hidden="true" /> },
+          { id: 'summary', label: t('cases.tab_summary'), icon: <FileText className="h-4 w-4" aria-hidden="true" /> },
+          { id: 'vulnerabilities', label: `${t('cases.tab_vulnerabilities')} (${caseData.vulnerabilities.length})`, icon: <AlertCircle className="h-4 w-4" aria-hidden="true" /> },
+          ...(caseData.subfolios && caseData.subfolios.length > 0
+            ? [{ id: 'subfolios', label: `${t('cases.tab_subfolios')} (${caseData.subfolios.length})`, icon: <Users className="h-4 w-4" aria-hidden="true" /> }]
+            : []),
+          {
+            id: 'privacy',
+            label: t('arco.tab_title'),
+            icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" />,
+            badge: !hasSensitiveDataConsent ? (
+              <span className="h-2 w-2 rounded-full bg-amber-500" role="img" aria-label={t('arco.sensitive_alert_missing')} title={t('arco.sensitive_alert_missing')} />
+            ) : undefined,
+          },
+        ]}
+      />
 
       {/* Tab 1: Los 5 Ejes de Estatus (Regla Dura 7 / ME-02) */}
       {activeTab === 'axes' && (
@@ -402,7 +351,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     </span>
                     <button
                       onClick={() => handleOpenTransition(axis.code)}
-                      className="px-3 py-1.5 text-xs font-bold text-carbon bg-turquesa/20 hover:bg-turquesa hover:text-carbon rounded-lg transition"
+                      className="min-h-9 px-3 py-1.5 text-xs font-bold text-carbon bg-turquesa/20 hover:bg-turquesa hover:text-carbon rounded-lg transition"
                     >
                       {t('cases.btn_change_status')}
                     </button>
@@ -411,6 +360,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               );
             })}
           </div>
+
+          <StatusHistory caseId={caseData.id} />
         </div>
       )}
 
