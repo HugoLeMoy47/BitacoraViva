@@ -35,13 +35,19 @@ declare
 begin
     -- Crear usuarios auth si existen extensiones auth en local
     if exists (select 1 from information_schema.tables where table_schema = 'auth' and table_name = 'users') then
-        insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+        insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change, email_change_token_new)
         values
-            (v_user_dir, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'director@alberguesantafe.org', crypt('albergue2026!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Elena Morales (Directora)"}', now(), now()),
-            (v_user_case, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'caseworker@alberguesantafe.org', crypt('albergue2026!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Carlos Méndez (Trabajo Social)"}', now(), now()),
-            (v_user_intk, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'intake@alberguesantafe.org', crypt('albergue2026!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Mariana Ríos (Oficial de Ingreso)"}', now(), now()),
-            (v_user_view, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@alberguesantafe.org', crypt('albergue2026!', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Dr. Roberto Soto (Observador/Auditor)"}', now(), now())
+            (v_user_dir, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'director@alberguesantafe.org', extensions.crypt('albergue2026!', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Elena Morales (Directora)"}', now(), now(), '', '', '', ''),
+            (v_user_case, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'caseworker@alberguesantafe.org', extensions.crypt('albergue2026!', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Carlos Méndez (Trabajo Social)"}', now(), now(), '', '', '', ''),
+            (v_user_intk, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'intake@alberguesantafe.org', extensions.crypt('albergue2026!', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Mariana Ríos (Oficial de Ingreso)"}', now(), now(), '', '', '', ''),
+            (v_user_view, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'viewer@alberguesantafe.org', extensions.crypt('albergue2026!', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Dr. Roberto Soto (Observador/Auditor)"}', now(), now(), '', '', '', '')
         on conflict (id) do nothing;
+
+        -- Identidades email (requeridas por GoTrue para login con password)
+        insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+        select u.id, u.id, u.id::text, 'email', jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true), now(), now(), now()
+        from auth.users u where u.id in (v_user_dir, v_user_case, v_user_intk, v_user_view)
+        on conflict do nothing;
 
         -- Perfiles vinculados a la organización
         insert into public.user_profile (id, organization_id, email, full_name, active)
