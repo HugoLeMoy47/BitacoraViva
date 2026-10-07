@@ -4,6 +4,7 @@ import { t } from '../lib/i18n';
 import { JournalEntry, JournalEntryType } from '../types/database';
 import { useCatalog } from '../lib/catalog';
 import { formatDateTime } from '../lib/format';
+import { ModalShell } from './ModalShell';
 
 interface NewJournalEntryModalProps {
   isOpen: boolean;
@@ -77,7 +78,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-carbon/60 p-4 backdrop-blur-sm">
+    <ModalShell onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-carbon/60 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
@@ -97,7 +98,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
-          >
+           aria-label={t('common.close')}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -286,6 +287,6 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

@@ -6,6 +6,7 @@ import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
 import { ConsentInput, NewCaseInput, getActivePrivacyNotice } from '../lib/data';
+import { ModalShell } from './ModalShell';
 
 type Step = 0 | 1 | 2 | 3 | 4;
 type Choice = 'yes' | 'no' | null;
@@ -189,7 +190,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
     (step === 2 && (!givenName.trim() || !paternalName.trim() || !!ageProblem));
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <ModalShell onClose={onClose} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-2xl overflow-hidden my-8">
         {/* Cabecera del modal */}
         <div className="px-6 py-4 bg-carbon text-white flex justify-between items-center border-b border-gray-700">
@@ -696,6 +697,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };

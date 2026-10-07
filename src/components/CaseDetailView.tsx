@@ -44,6 +44,7 @@ import { AnonymizePersonModal } from './AnonymizePersonModal';
 import { OpposeSecondaryTreatmentModal } from './OpposeSecondaryTreatmentModal';
 import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
 import { formatDate, formatDateTime, formatTime } from '../lib/format';
+import { ModalShell } from './ModalShell';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -1094,7 +1095,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
       {/* Modal de Cambio de Estatus Multieje (Regla Dura 7) */}
       {transitioningAxis && (
-        <div className="fixed inset-0 bg-carbon/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <ModalShell onClose={() => setTransitioningAxis(null)} className="fixed inset-0 bg-carbon/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-gray-200">
             <div className="px-6 py-4 bg-carbon text-white flex items-center justify-between">
               <div>
@@ -1107,7 +1108,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </div>
               <button
                 onClick={() => setTransitioningAxis(null)}
-                className="text-gray-500 hover:text-white text-sm"
+                aria-label={t('common.close')}
+                className="text-gray-300 hover:text-white text-sm p-2"
               >
                 ✕
               </button>
@@ -1181,7 +1183,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {/* Modal: Nueva Entrada de Bitácora (BV-4.1) */}

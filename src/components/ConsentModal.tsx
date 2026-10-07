@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, ShieldCheck, FileCheck } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails, ConsentType, ConsentStatus } from '../types/database';
+import { ModalShell } from './ModalShell';
 
 interface ConsentModalProps {
   isOpen: boolean;
@@ -49,7 +50,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+    <ModalShell onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
         {/* Encabezado */}
         <div className="bg-carbon px-6 py-4 flex items-center justify-between text-white border-b border-carbon-muted/20">
@@ -67,7 +68,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-white p-1 rounded transition"
-          >
+           aria-label={t('common.close')}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -201,6 +202,6 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   );
 };

@@ -3,6 +3,7 @@ import { X, Share2, CheckCircle2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { JournalEntry } from '../types/database';
 import { useCatalog } from '../lib/catalog';
+import { ModalShell } from './ModalShell';
 
 interface ShareEntryModalProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-carbon/60 p-4 backdrop-blur-sm">
+    <ModalShell onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-carbon/60 p-4 backdrop-blur-sm">
       <div className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div className="flex items-center gap-2">
@@ -53,7 +54,7 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-600"
-          >
+           aria-label={t('common.close')}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -120,6 +121,6 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   );
 };

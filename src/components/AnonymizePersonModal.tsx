@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, AlertTriangle, Trash2, ShieldAlert } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails } from '../types/database';
+import { ModalShell } from './ModalShell';
 
 interface AnonymizePersonModalProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+    <ModalShell onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden border-2 border-red-500 animate-in fade-in zoom-in-95 duration-200">
         {/* Encabezado de alerta máxima */}
         <div className="bg-red-700 px-6 py-4 flex items-center justify-between text-white">
@@ -58,7 +59,7 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
           <button
             onClick={onClose}
             className="text-red-200 hover:text-white p-1 rounded transition"
-          >
+           aria-label={t('common.close')}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -149,6 +150,6 @@ export const AnonymizePersonModal: React.FC<AnonymizePersonModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ModalShell>
   );
 };

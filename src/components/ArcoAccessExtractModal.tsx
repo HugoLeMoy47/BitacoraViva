@@ -5,6 +5,7 @@ import { CaseWithDetails } from '../types/database';
 import { useCatalog } from '../lib/catalog';
 import { api } from '../lib/data';
 import { formatDate } from '../lib/format';
+import { ModalShell } from './ModalShell';
 
 interface ArcoAccessExtractModalProps {
   isOpen: boolean;
@@ -86,7 +87,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+    <ModalShell onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
         {/* Encabezado */}
         <div className="bg-carbon px-6 py-4 flex items-center justify-between text-white border-b border-carbon-muted/20 shrink-0">
@@ -104,7 +105,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-white p-1 rounded transition"
-          >
+           aria-label={t('common.close')}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -295,6 +296,6 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 };
