@@ -67,7 +67,24 @@ export const ModalShell: React.FC<ModalShellProps> = ({ onClose, className = '',
     };
     document.addEventListener('keydown', onKeyDown, true);
 
+    // Un error nuevo recibe el foco: se anuncia y queda a la vista junto al formulario
+    const observer = new MutationObserver((records) => {
+      for (const r of records) {
+        for (const node of Array.from(r.addedNodes)) {
+          if (!(node instanceof HTMLElement)) continue;
+          const alert = node.matches('[role="alert"]') ? node : node.querySelector<HTMLElement>('[role="alert"]');
+          if (alert) {
+            alert.tabIndex = -1;
+            alert.focus();
+            return;
+          }
+        }
+      }
+    });
+    observer.observe(root, { childList: true, subtree: true });
+
     return () => {
+      observer.disconnect();
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.style.overflow = prevOverflow;
       previouslyFocused?.focus?.({ preventScroll: true });

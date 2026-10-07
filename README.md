@@ -19,6 +19,8 @@ React 19 · TypeScript · Vite · Tailwind · Supabase (Postgres + Auth, con RLS
 npm ci
 npm run dev        # servidor local
 npm run build      # tsc -b && vite build
+npm run check:i18n # toda clave usada existe en src/locales/es.json (Regla Dura 9)
+npm run audit:ui   # auditor de interfaz (ver «Auditoría de interfaz»)
 ```
 
 El frontend lee `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` **en tiempo de compilación**. `.env.production` y `wrangler.jsonc` ya apuntan al proyecto Supabase de la demo (la clave `anon` es pública por diseño). Para desarrollar contra esa base, crea `.env.local` con los mismos dos valores. **Nunca** pongas la clave `service_role` en el navegador ni en el repositorio (Regla Dura 2).
@@ -36,6 +38,14 @@ npx supabase db push                     # aplica las migraciones pendientes
 - Proyecto de la demo: `lbmytnjvpkjepsaiqymd` (`us-west-2`, Postgres 17).
 - `supabase/seed.sql` es **exclusivo de demo**: siembra 60 expedientes sintéticos, 4 cuentas demo y marca el entorno como `demo` (`app_config`). Nunca se ejecuta en producción.
 - Una base sin la fila de entorno se considera `production`: la interfaz no muestra el aviso de demo ni ofrece cuentas de acceso rápido.
+
+## Auditoría de interfaz
+
+```bash
+npm run build && npm run audit:ui
+```
+
+Recorre la aplicación compilada con `playwright-core` y el Edge o Chrome del sistema (no descarga navegadores; la dependencia es solo de desarrollo). Prueba los 4 roles en 5 anchos (360, 390, 768, 1024, 1440 px): desbordamiento horizontal, contenido que empieza en más del 25 % de la pantalla, texto menor de 12 px, contraste AA medido, controles sin nombre accesible, etiquetas huérfanas, áreas táctiles menores de 44 px, y los modales (`role="dialog"`, Escape, foco). También recorre las secciones del expediente y los pasos del alta. Debe terminar en «✓ Sin hallazgos» antes de cerrar un ciclo de interfaz. Si cambias un texto de `es.json`, revisa que el auditor no lo busque con las mayúsculas anteriores.
 
 ## Reglas para escribir funciones SQL
 
@@ -73,13 +83,15 @@ src/
     session.tsx           login, rol y cierre por inactividad
     environment.tsx       entorno demo/producción declarado por la base
     catalog.tsx           áreas y catálogos de estatus
+    navigation.ts         pantallas permitidas por rol (única fuente) · router.ts: ruta en el hash
+    format.ts             fechas con Intl · errors.ts: mensajes de error comprensibles · toast.tsx: avisos
   locales/es.json         todas las cadenas visibles (Regla Dura 9)
 supabase/
   migrations/             esquema versionado
   seed.sql                semilla de demo (determinista)
   demo/reset_demo.sql     vaciado para el reinicio
   tests/rls_negative.sql  pruebas negativas
-scripts/                  demo:reset y test:rls
+scripts/                  demo:reset, test:rls, check:i18n y audit:ui
 ```
 
 ## Estado

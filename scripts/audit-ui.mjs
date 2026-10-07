@@ -29,9 +29,9 @@ const VIEWPORTS = [
 
 const ROLES = [
   { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'areas', 'auditoria', 'autoridad', 'acerca'] },
-  { key: 'caseworker', button: 'Trabajo Social / Caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'acerca'] },
-  { key: 'intake', button: 'Oficial de Ingreso', routes: ['expedientes', 'indicadores', 'acerca'] },
-  { key: 'viewer', button: 'Observador / Auditor', routes: ['indicadores', 'acerca'] },
+  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'acerca'] },
+  { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'indicadores', 'acerca'] },
+  { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
 ];
 
 // ---- Comprobaciones que corren dentro de la página ----
@@ -201,7 +201,7 @@ try {
 
         await page.evaluate(() => { location.hash = '#/expedientes'; });
         await page.waitForTimeout(900);
-        await page.getByRole('button', { name: /Levantar Nuevo/ }).click();
+        await page.getByRole('button', { name: /Levantar Nuevo/i }).click();
         await page.waitForSelector('[role=dialog]');
         record(role.key, vp.name, 'alta/paso 0', await auditNow());
         await page.getByRole('checkbox', { name: /Entregué o leí/ }).check();
@@ -215,7 +215,7 @@ try {
             record(role.key, vp.name, 'alta/paso 1', await auditNow());
             await page.getByRole('button', { name: /Siguiente/ }).click();
             await page.getByLabel(/Nombres/).fill('Prueba');
-            await page.getByLabel(/Primer Apellido/).fill('Auditoria');
+            await page.getByLabel(/Primer apellido/i).fill('Auditoria');
             record(role.key, vp.name, 'alta/paso 2', await auditNow());
             await page.getByRole('button', { name: /Siguiente/ }).click();
             await page.waitForTimeout(250);
@@ -260,7 +260,7 @@ try {
       if (role.key === 'director' && vp.name === '1024') {
         await page.evaluate(() => { location.hash = '#/expedientes'; });
         await page.waitForTimeout(900);
-        const opener = page.getByRole('button', { name: /Levantar Nuevo/ });
+        const opener = page.getByRole('button', { name: /Levantar Nuevo/i });
         await opener.focus();
         await opener.click();
         const issues = [];

@@ -34,7 +34,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
     assignedAreaId || areas.find(a => a.code === 'trabajo_social')?.id || areas[0]?.id || ''
   );
   const [occurredAt, setOccurredAt] = useState<string>(
-    new Date().toISOString().slice(0, 16)
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
   );
   const [isWorkNote, setIsWorkNote] = useState<boolean>(false);
   const [body, setBody] = useState<string>('');
