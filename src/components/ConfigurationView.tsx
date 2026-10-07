@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Building2, FileText, ShieldCheck } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { formatDate } from '../lib/format';
 import { listConsentTexts, listPrivacyNotices, OrganizationIdentityInput } from '../lib/data';
@@ -73,9 +72,9 @@ export const ConfigurationView: React.FC<Props> = ({ organization, busy, onSaveI
           value={tab}
           onChange={(id) => setTab(id as TabId)}
           items={[
-            { id: 'identity', label: t('config.tab_identity'), icon: <Building2 className="h-4 w-4" aria-hidden="true" /> },
-            { id: 'notice', label: t('config.tab_notice'), icon: <FileText className="h-4 w-4" aria-hidden="true" /> },
-            { id: 'consents', label: t('config.tab_consents'), icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" /> },
+            { id: 'identity', label: t('config.tab_identity') },
+            { id: 'notice', label: t('config.tab_notice') },
+            { id: 'consents', label: t('config.tab_consents') },
           ]}
           className="border-b border-gray-200 px-2"
         />
@@ -240,7 +239,7 @@ const NoticeForm: React.FC<{
         ) : current ? (
           <>
             <strong className="text-carbon">{t('config.notice.current')}</strong>{' '}
-            {t('intake.consent.version_label')} {current.version} · {t('config.notice.since').replace('{date}', formatDate(current.effective_date))}
+            {t('config.notice.version')} {current.version} · {t('config.notice.since').replace('{date}', formatDate(current.effective_date))}
           </>
         ) : (
           <span className="text-alerta-dark">{t('config.notice.none')}</span>
@@ -289,7 +288,7 @@ const NoticeForm: React.FC<{
               <li key={n.id}>
                 <details className="rounded-lg border border-gray-200 bg-white">
                   <summary className="flex cursor-pointer flex-wrap items-center gap-x-2 px-3 py-2 text-xs font-semibold text-carbon">
-                    <span>{t('intake.consent.version_label')} {n.version}</span>
+                    <span>{t('config.notice.version')} {n.version}</span>
                     <span className="font-normal text-gray-500">{formatDate(n.effective_date)}</span>
                     {n.active && <span className="rounded bg-claro px-1.5 font-normal text-turquesa-dark">{t('cases.history.current')}</span>}
                   </summary>

@@ -696,7 +696,7 @@
     "subtitle": "Lo que declaras aquí aparece en el alta de expedientes, en el aviso de privacidad y en los extractos. Tu asociación responde por su contenido; la plataforma conserva cada versión y audita cada cambio.",
     "tabs_label": "Secciones de la configuración",
     "tab_identity": "Identidad",
-    "tab_notice": "Aviso de privacidad",
+    "tab_notice": "Aviso",
     "tab_consents": "Consentimientos",
     "history": "Historial de versiones",
     "identity": {
@@ -727,7 +727,8 @@
       "field_full": "Texto completo",
       "field_full_hint": "Tu asociación valida el contenido; la plataforma no ofrece asesoría legal.",
       "confirm": "Entiendo que se publica una versión nueva; la anterior queda en el historial y no se puede editar.",
-      "publish": "Publicar nueva versión"
+      "publish": "Publicar nueva versión",
+      "version": "Versión"
     },
     "consents": {
       "intro": "Define el texto de cada consentimiento tal como lo declara tu asociación. El consentimiento general es siempre obligatorio. Los textos ya otorgados conservan la versión con la que se dieron.",

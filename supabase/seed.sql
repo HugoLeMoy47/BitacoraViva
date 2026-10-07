@@ -9,13 +9,21 @@ insert into public.app_config (key, value) values ('environment', 'demo')
 on conflict (key) do update set value = excluded.value, updated_at = now();
 
 -- 1. Organización de demostración
-insert into public.organization (id, slug, legal_name, display_name, active)
+insert into public.organization (
+    id, slug, legal_name, display_name, active, folio_prefix,
+    responsible_name, responsible_address, responsible_contact, arco_contact
+)
 values (
     '00000000-0000-0000-0000-000000000001',
     'albergue-santa-fe',
     'Albergue Santa Fe A.C.',
     'Albergue Santa Fe',
-    true
+    true,
+    'ASF',
+    'Dirección de Albergue Santa Fe A.C. (datos ficticios)',
+    'Av. Independencia 450, Tuxtla Gutiérrez, Chiapas',
+    'contacto@albergue-demo.invalid',
+    'arco@albergue-demo.invalid'
 ) on conflict (id) do nothing;
 
 -- 2. Áreas operativas del albergue
