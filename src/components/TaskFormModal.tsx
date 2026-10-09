@@ -132,13 +132,14 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, categories, 
                 {t('tasks.f_assignee')}
               </label>
               <select id={`${uid}-assignee`} value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className={FIELD}>
-                <option value="">{t('tasks.unassigned')}</option>
+                <option value="">{t('tasks.f_pool')}</option>
                 {assigneeOptions.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
                   </option>
                 ))}
               </select>
+              <p className="mt-1 text-xs text-gray-600">{t('tasks.f_pool_hint')}</p>
             </div>
             <div>
               <label htmlFor={`${uid}-due`} className={LABEL}>

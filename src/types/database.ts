@@ -62,6 +62,58 @@ export interface TaskCategory {
   archived_at: string | null;
 }
 
+/** Plantilla de rutina: tareas recurrentes agrupadas bajo un perfil de jornada. */
+export interface RoutineTemplate {
+  id: string;
+  organization_id: string;
+  name: string;
+  description: string | null;
+  work_area_id: string | null;
+  task_category_id: string | null;
+  created_at: string;
+  archived_at: string | null;
+}
+
+export interface RoutineTemplateItem {
+  id: string;
+  organization_id: string;
+  routine_template_id: string;
+  name: string;
+  details: string | null;
+  sort_order: number;
+  photo_required: boolean;
+  work_area_id: string | null;
+  task_category_id: string | null;
+  archived_at: string | null;
+}
+
+export type ShiftKind = 'morning' | 'afternoon' | 'night' | 'general';
+
+/** Recado de turno: texto libre para el turno siguiente. NO es una entrada de bitácora de caso. */
+export interface ShiftNote {
+  id: string;
+  organization_id: string;
+  work_area_id: string | null;
+  note_date: string;
+  shift: ShiftKind;
+  body: string;
+  created_at: string;
+  created_by: string | null;
+  archived_at: string | null;
+}
+
+export type ShiftNoteScope = 'all' | 'area' | 'own';
+
+/** Ajustes de operación del Seguidor de tareas (una fila por organización). */
+export interface TaskSetting {
+  id: string;
+  organization_id: string;
+  shift_note_scope: ShiftNoteScope;
+  shift_note_days: number;
+  pool_max_unstarted: number;
+  pool_release_days: number;
+}
+
 /** Espacio físico del inmueble (cocina, dormitorios). No es `Area`, que es funcional. */
 export interface WorkArea {
   id: string;

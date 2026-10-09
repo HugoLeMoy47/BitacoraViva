@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ListChecks, Plus } from 'lucide-react';
+import { ListChecks, PlayCircle, Plus } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { SessionUser } from '../lib/session';
 import { useCatalog } from '../lib/catalog';
@@ -18,21 +18,34 @@ import { TaskFormModal } from './TaskFormModal';
 import { TaskArchiveModal } from './TaskArchiveModal';
 import { TaskReportsView } from './TaskReportsView';
 import { TaskCatalogsView } from './TaskCatalogsView';
+import { PoolPanel } from './PoolPanel';
+import { StartRoutineModal } from './StartRoutineModal';
+import { RoutinesView } from './RoutinesView';
+import { ShiftNotesView } from './ShiftNotesView';
+import { TaskSettingsView } from './TaskSettingsView';
 import { Tabs } from './Tabs';
 import { VolunteerProgress } from './VolunteerProgress';
 import { VictoryModal } from './VictoryModal';
 
 // Seguidor de tareas (E7). Quien gestiona (dirección y coordinación de tareas) ve y mantiene todas, y
-// además tiene Reportes; sólo la dirección administra los Catálogos. El resto ve las suyas. Lo que cada
+// además tiene Reportes y Rutinas; sólo la dirección administra Catálogos y Ajustes. El resto ve las suyas,
+// toma tareas del pool, inicia rutinas y deja notas de turno. Lo que cada
 // rol puede hacer lo decide la base de datos (RLS y disparadores): aquí sólo se ofrece lo que la base va
 // a aceptar.
 
 const VICTORY_MESSAGES = 6;
 type PersonFilter = 'all' | 'unassigned' | string;
-type Section = 'board' | 'reports' | 'catalogs';
+type Section = 'board' | 'reports' | 'routines' | 'notes' | 'catalogs' | 'settings';
 
 // Segmento de la ruta (#/tareas/reportes) de cada sección
-const SECTION_PARAM: Record<Section, string | null> = { board: null, reports: 'reportes', catalogs: 'catalogos' };
+const SECTION_PARAM: Record<Section, string | null> = {
+  board: null,
+  reports: 'reportes',
+  routines: 'rutinas',
+  notes: 'notas',
+  catalogs: 'catalogos',
+  settings: 'ajustes',
+};
 
 interface TasksViewProps {
   user: SessionUser;
@@ -52,12 +65,19 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
   const me = user.profile.id;
 
   // Sólo se llega a una sección que el rol puede usar; si no, el tablero
-  const section: Section = isManagement && sectionParam === 'reportes' ? 'reports' : canCatalogs && sectionParam === 'catalogos' ? 'catalogs' : 'board';
+  const section: Section =
+    isManagement && sectionParam === 'reportes' ? 'reports'
+    : isManagement && sectionParam === 'rutinas' ? 'routines'
+    : sectionParam === 'notas' ? 'notes'
+    : canCatalogs && sectionParam === 'catalogos' ? 'catalogs'
+    : canCatalogs && sectionParam === 'ajustes' ? 'settings'
+    : 'board';
 
   const [filter, setFilter] = useState<PersonFilter>('all');
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>('pending');
   const [form, setForm] = useState<{ task: Task | null } | null>(null);
   const [archiving, setArchiving] = useState<Task | null>(null);
+  const [startingRoutine, setStartingRoutine] = useState(false);
   const [victory, setVictory] = useState<{ taskName: string; message: string; isLast: boolean } | null>(null);
 
   const { categories, workAreas, evidenceTaskIds, assignableUserIds } = tasks.data;
@@ -67,7 +87,11 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
   // Tareas vigentes: lo archivado sale del tablero y de los reportes (queda en el historial y la auditoría)
   const live = useMemo(() => tasks.data.tasks.filter((x) => !x.archived_at), [tasks.data.tasks]);
 
-  // Quien no gestiona ve sólo lo suyo: las tareas sin asignar son del pool (Fase 4)
+  // El pool: trabajo sin asignar y pendiente que cualquier persona con acceso a tareas puede tomar
+  const pool = useMemo(() => live.filter((x) => !x.assigned_to && x.status === 'pending'), [live]);
+  const activeRoutines = useMemo(() => tasks.data.routines.filter((r) => !r.archived_at), [tasks.data.routines]);
+
+  // Quien no gestiona ve en su tablero sólo lo suyo; lo sin asignar lo ve en el pool
   const visible = useMemo(
     () =>
       live.filter((task) => {
@@ -109,6 +133,13 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
     const ok = await tasks.setStatus(task.id, advance.to, successKey ?? undefined);
     // El reconocimiento es para quien hace el trabajo; la coordinación recibe sólo el aviso
     if (ok && advance.to === 'done' && !isManagement) celebrate(task);
+  };
+
+  const handleClaim = (task: Task) => tasks.claim(task.id);
+  const handleRelease = (task: Task) => tasks.release(task.id);
+
+  const handleStartRoutine = async (id: string) => {
+    if (await tasks.startRoutine(id)) setStartingRoutine(false);
   };
 
   const handleReopen = (task: Task) => tasks.setStatus(task.id, 'in_progress', 'tasks.toast_reopened');
@@ -158,6 +189,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
       onReopen={handleReopen}
       onEdit={(x) => setForm({ task: x })}
       onArchive={setArchiving}
+      onClaim={isManagement ? undefined : handleClaim}
+      onRelease={isManagement ? undefined : handleRelease}
     />
   );
 
@@ -178,8 +211,9 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
   const nothingYet = isManagement && live.length === 0;
   const sectionTabs = [
     { id: 'board', label: t('tasks.tab_board') },
-    ...(isManagement ? [{ id: 'reports', label: t('tasks.tab_reports') }] : []),
-    ...(canCatalogs ? [{ id: 'catalogs', label: t('tasks.tab_catalogs') }] : []),
+    ...(isManagement ? [{ id: 'reports', label: t('tasks.tab_reports') }, { id: 'routines', label: t('tasks.tab_routines') }] : []),
+    { id: 'notes', label: t('tasks.tab_notes') },
+    ...(canCatalogs ? [{ id: 'catalogs', label: t('tasks.tab_catalogs') }, { id: 'settings', label: t('tasks.tab_settings') }] : []),
   ];
 
   return (
@@ -229,6 +263,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
           items={sectionTabs}
           value={section}
           onChange={(id) => navigate('tasks', SECTION_PARAM[id as Section])}
+          className="flex-wrap"
         />
       )}
 
@@ -242,6 +277,36 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
           filePrefix={t('tasks.reports.file_prefix')}
         />
       )}
+
+      {section === 'routines' && (
+        <RoutinesView
+          routines={tasks.data.routines}
+          items={tasks.data.routineItems}
+          categories={categories}
+          workAreas={workAreas}
+          busyId={tasks.busyId}
+          saving={tasks.saving}
+          onSave={tasks.saveRoutine}
+          onArchive={tasks.archiveRoutine}
+        />
+      )}
+
+      {section === 'notes' && (
+        <ShiftNotesView
+          notes={tasks.data.notes}
+          workAreas={workAreas}
+          userNames={userNames}
+          setting={tasks.data.setting}
+          me={me}
+          isManagement={isManagement}
+          busyId={tasks.busyId}
+          saving={tasks.saving}
+          onAdd={tasks.addNote}
+          onRetract={tasks.retractNote}
+        />
+      )}
+
+      {section === 'settings' && <TaskSettingsView setting={tasks.data.setting} saving={tasks.saving} onSave={tasks.saveSettings} />}
 
       {section === 'catalogs' && (
         <TaskCatalogsView
@@ -258,6 +323,26 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
       {section === 'board' && (
         <>
           {!isManagement && <VolunteerProgress progress={progressOf(visible)} fullName={user.profile.full_name} organizationName={organizationName} />}
+
+          {!isManagement && (
+            <>
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Las rutinas las crea otra persona: al abrir se relee, para no ofrecer una lista vieja
+                    setStartingRoutine(true);
+                    tasks.reload();
+                  }}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-turquesa bg-white px-4 text-sm font-semibold text-carbon hover:bg-claro-surface"
+                >
+                  <PlayCircle className="h-4 w-4 text-turquesa-dark" aria-hidden="true" />
+                  {t('tasks.routines.start_button')}
+                </button>
+              </div>
+              <PoolPanel tasks={pool} renderCard={renderCard} onOpen={tasks.refreshPool} />
+            </>
+          )}
 
           {nothingYet ? (
             <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center">
@@ -284,7 +369,16 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
         />
       )}
       {archiving && <TaskArchiveModal task={archiving} busy={tasks.busyId === archiving.id} onClose={() => setArchiving(null)} onConfirm={confirmArchive} />}
-      {victory && <VictoryModal taskName={victory.taskName} message={victory.message} isLast={victory.isLast} onClose={() => setVictory(null)} />}
+      {startingRoutine && <StartRoutineModal routines={activeRoutines} items={tasks.data.routineItems} busyId={tasks.busyId} onStart={handleStartRoutine} onClose={() => setStartingRoutine(false)} />}
+      {victory && (
+        <VictoryModal
+          taskName={victory.taskName}
+          message={victory.message}
+          isLast={victory.isLast}
+          onClose={() => setVictory(null)}
+          onLeaveNote={() => navigate('tasks', SECTION_PARAM.notes)}
+        />
+      )}
     </div>
   );
 };

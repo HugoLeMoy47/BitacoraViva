@@ -1,7 +1,17 @@
 import { supabase } from './supabase';
 import { t } from './i18n';
 import { friendlyError } from './errors';
-import { Task, TaskCategory, TaskStatus, WorkArea } from '../types/database';
+import {
+  RoutineTemplate,
+  RoutineTemplateItem,
+  ShiftKind,
+  ShiftNote,
+  Task,
+  TaskCategory,
+  TaskSetting,
+  TaskStatus,
+  WorkArea,
+} from '../types/database';
 
 // Capa de datos del Seguidor de tareas (E7). La seguridad vive en la base (RLS, disparadores y
 // funciones): este módulo sólo lee lo que RLS devuelve y escribe en tablas cuya política y
@@ -19,6 +29,11 @@ export interface TaskData {
   evidenceTaskIds: Set<string>;
   /** Personas a quienes se puede asignar una tarea (activas, con acceso a tareas) */
   assignableUserIds: string[];
+  routines: RoutineTemplate[];
+  routineItems: RoutineTemplateItem[];
+  notes: ShiftNote[];
+  /** Ajustes de operación de la organización (nulo si aún no existen) */
+  setting: TaskSetting | null;
 }
 
 export const EMPTY_TASK_DATA: TaskData = {
@@ -27,6 +42,10 @@ export const EMPTY_TASK_DATA: TaskData = {
   workAreas: [],
   evidenceTaskIds: new Set(),
   assignableUserIds: [],
+  routines: [],
+  routineItems: [],
+  notes: [],
+  setting: null,
 };
 
 /** Error de la base con su código (SQLSTATE: TK001…, 42501…) para explicarlo con el siguiente paso. */
@@ -48,12 +67,17 @@ async function rows<T>(query: PromiseLike<{ data: T[] | null; error: DbError | n
 }
 
 export async function loadTaskData(): Promise<TaskData> {
-  const [tasks, categories, workAreas, evidence, roles] = await Promise.all([
+  const [tasks, categories, workAreas, evidence, roles, routines, routineItems, notes, settings] = await Promise.all([
     rows<Task>(supabase.from('task').select('*').order('created_at', { ascending: false }).limit(1000)),
     rows<TaskCategory>(supabase.from('task_category').select('*').order('sort_order').order('label_es')),
     rows<WorkArea>(supabase.from('work_area').select('*').order('sort_order').order('label_es')),
     rows<{ task_id: string }>(supabase.from('task_evidence').select('task_id').is('archived_at', null)),
     rows<{ user_id: string }>(supabase.from('user_role').select('user_id').is('revoked_at', null).in('role_name', TASK_ROLES)),
+    rows<RoutineTemplate>(supabase.from('routine_template').select('*').order('name')),
+    rows<RoutineTemplateItem>(supabase.from('routine_template_item').select('*').order('sort_order')),
+    // RLS decide qué notas llegan: el alcance y la ventana de lectura son un ajuste de la organización
+    rows<ShiftNote>(supabase.from('shift_note').select('*').order('created_at', { ascending: false }).limit(300)),
+    rows<TaskSetting>(supabase.from('task_setting').select('*').limit(1)),
   ]);
   return {
     tasks,
@@ -61,9 +85,12 @@ export async function loadTaskData(): Promise<TaskData> {
     workAreas,
     evidenceTaskIds: new Set(evidence.map((e) => e.task_id)),
     assignableUserIds: Array.from(new Set(roles.map((r) => r.user_id))),
+    routines,
+    routineItems,
+    notes,
+    setting: settings[0] ?? null,
   };
 }
-
 export interface TaskInput {
   name: string;
   details: string | null;
@@ -93,6 +120,110 @@ export const taskApi = {
   /** Baja lógica: definitiva (Regla Dura 3). Ninguna tarea se borra. */
   archive: (id: string) =>
     wrote(supabase.from('task').update({ archived_at: new Date().toISOString() }).eq('id', id).select('id')),
+};
+
+/** Llama una función de la base. Las que tocan el pool, las rutinas y los ajustes validan rol y organización por dentro. */
+async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) throw new TaskError(error.message, error.code);
+  return data as T;
+}
+
+// ---- Pool de tareas abiertas (BV-7.10)
+// Tomar es atómico (bloqueo de fila: dos personas no toman la misma) y respeta el tope de la organización.
+// Soltar es el inverso, y sólo de lo que la persona tomó por su cuenta y no empezó.
+export const poolApi = {
+  claim: (taskId: string) => call('fn_claim_open_task', { p_task_id: taskId }),
+  release: (taskId: string) => call('fn_release_task', { p_task_id: taskId }),
+  /** Lo tomado y vencido vuelve al pool. Corre al abrir el pool, sin depender de pg_cron. */
+  releaseExpired: () => call<number>('fn_release_expired_claims', {}),
+};
+
+// ---- Plantillas de rutina (BV-7.11)
+
+export interface RoutineItemDraft {
+  /** Presente si ya existe: se actualiza en lugar de crearse */
+  id?: string;
+  name: string;
+  details: string | null;
+  photo_required: boolean;
+}
+
+export interface RoutineDraft {
+  id?: string;
+  name: string;
+  description: string | null;
+  work_area_id: string | null;
+  task_category_id: string | null;
+  items: RoutineItemDraft[];
+}
+
+export const routineApi = {
+  /** Iniciar una rutina: crea las tareas de la plantilla, asignadas a quien la inicia (una vez por día). */
+  start: (templateId: string) => call<{ routine: string; tasks_created: number }>('fn_start_routine', { p_template_id: templateId }),
+
+  /**
+   * Guarda una plantilla y sus pasos. Son varias escrituras (cada una con su política y su auditoría), no una
+   * sola transacción: si una falla a medias, la plantilla queda con lo que alcanzó a guardarse, a la vista y
+   * editable, y volver a guardar la deja completa porque cada paso se actualiza por su identificador.
+   */
+  async save(organizationId: string, draft: RoutineDraft, existing: RoutineTemplateItem[]): Promise<void> {
+    const header = {
+      name: draft.name.trim(),
+      description: draft.description?.trim() || null,
+      work_area_id: draft.work_area_id,
+      task_category_id: draft.task_category_id,
+    };
+    let templateId = draft.id;
+    if (templateId) {
+      await wrote(supabase.from('routine_template').update(header).eq('id', templateId).select('id'));
+    } else {
+      const { data, error } = await supabase.from('routine_template').insert({ organization_id: organizationId, ...header }).select('id').single();
+      if (error) throw new TaskError(error.message, error.code);
+      templateId = (data as { id: string }).id;
+    }
+
+    // Los pasos que ya no están se dan de baja (no se borran)
+    const keep = new Set(draft.items.map((i) => i.id).filter((x): x is string => !!x));
+    for (const old of existing.filter((e) => e.routine_template_id === templateId && !e.archived_at && !keep.has(e.id))) {
+      await wrote(supabase.from('routine_template_item').update({ archived_at: new Date().toISOString() }).eq('id', old.id).select('id'));
+    }
+    for (const [i, item] of draft.items.entries()) {
+      const fields = { name: item.name.trim(), details: item.details?.trim() || null, photo_required: item.photo_required, sort_order: i + 1 };
+      if (item.id) {
+        await wrote(supabase.from('routine_template_item').update(fields).eq('id', item.id).select('id'));
+      } else {
+        await wrote(supabase.from('routine_template_item').insert({ organization_id: organizationId, routine_template_id: templateId, ...fields }).select('id'));
+      }
+    }
+  },
+
+  archive: (id: string) => wrote(supabase.from('routine_template').update({ archived_at: new Date().toISOString() }).eq('id', id).select('id')),
+};
+
+// ---- Notas de turno (BV-7.12): se agregan, no se editan; retirar es baja lógica.
+
+export interface ShiftNoteInput {
+  body: string;
+  shift: ShiftKind;
+  work_area_id: string | null;
+}
+
+export const noteApi = {
+  create: (organizationId: string, input: ShiftNoteInput) =>
+    wrote(supabase.from('shift_note').insert({ organization_id: organizationId, body: input.body.trim(), shift: input.shift, work_area_id: input.work_area_id }).select('id')),
+  retract: (id: string) => wrote(supabase.from('shift_note').update({ archived_at: new Date().toISOString() }).eq('id', id).select('id')),
+};
+
+// ---- Ajustes de operación (BV-7.13): sólo la dirección, por función de la base.
+export const settingApi = {
+  update: (s: Pick<TaskSetting, 'shift_note_scope' | 'shift_note_days' | 'pool_max_unstarted' | 'pool_release_days'>) =>
+    call('fn_update_task_setting', {
+      p_shift_note_scope: s.shift_note_scope,
+      p_shift_note_days: s.shift_note_days,
+      p_pool_max_unstarted: s.pool_max_unstarted,
+      p_pool_release_days: s.pool_release_days,
+    }),
 };
 
 // ---- Catálogos de tareas (BV-7.9): categorías y áreas de trabajo. Sólo dirección escribe (RLS).

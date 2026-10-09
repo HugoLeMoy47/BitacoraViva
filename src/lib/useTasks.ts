@@ -3,7 +3,23 @@ import { supabase } from './supabase';
 import { SessionUser } from './session';
 import { useToast } from './toast';
 import { t } from './i18n';
-import { CatalogKind, EMPTY_TASK_DATA, TaskData, TaskInput, catalogApi, loadTaskData, taskApi, taskErrorMessage } from './tasks';
+import {
+  CatalogKind,
+  EMPTY_TASK_DATA,
+  RoutineDraft,
+  ShiftNoteInput,
+  TaskData,
+  TaskInput,
+  catalogApi,
+  loadTaskData,
+  noteApi,
+  poolApi,
+  routineApi,
+  settingApi,
+  taskApi,
+  taskErrorMessage,
+} from './tasks';
+import { TaskSetting } from '../types/database';
 import { TaskStatus } from '../types/database';
 
 // Estado de la pantalla de tareas: carga, tiempo real y escrituras con aviso de resultado.
@@ -32,6 +48,20 @@ export interface UseTasks {
   createCatalogItem: (kind: CatalogKind, label: string, takenKeys: string[]) => Promise<boolean>;
   renameCatalogItem: (kind: CatalogKind, id: string, label: string) => Promise<boolean>;
   archiveCatalogItem: (kind: CatalogKind, id: string) => Promise<boolean>;
+  /** Pool de tareas abiertas */
+  claim: (id: string) => Promise<boolean>;
+  release: (id: string) => Promise<boolean>;
+  /** Devuelve al pool lo tomado y vencido; se llama al abrir el pool */
+  refreshPool: () => Promise<void>;
+  /** Rutinas */
+  startRoutine: (id: string) => Promise<boolean>;
+  saveRoutine: (draft: RoutineDraft) => Promise<boolean>;
+  archiveRoutine: (id: string) => Promise<boolean>;
+  /** Notas de turno */
+  addNote: (input: ShiftNoteInput) => Promise<boolean>;
+  retractNote: (id: string) => Promise<boolean>;
+  /** Ajustes de operación (sólo dirección) */
+  saveSettings: (s: Pick<TaskSetting, 'shift_note_scope' | 'shift_note_days' | 'pool_max_unstarted' | 'pool_release_days'>) => Promise<boolean>;
 }
 
 export function useTasks(user: SessionUser): UseTasks {
@@ -122,5 +152,25 @@ export function useTasks(user: SessionUser): UseTasks {
     createCatalogItem: (kind, label, takenKeys) => act(() => catalogApi.create(kind, orgId, label, takenKeys), 'tasks.catalogs.toast_created'),
     renameCatalogItem: (kind, id, label) => act(() => catalogApi.rename(kind, id, label), 'tasks.catalogs.toast_renamed', id),
     archiveCatalogItem: (kind, id) => act(() => catalogApi.archive(kind, id), 'tasks.catalogs.toast_archived', id),
+    claim: (id) => act(() => poolApi.claim(id).then(() => undefined), 'tasks.pool.toast_claimed', id),
+    release: (id) => act(() => poolApi.release(id).then(() => undefined), 'tasks.pool.toast_released', id),
+    refreshPool: async () => {
+      try {
+        await poolApi.releaseExpired();
+        await reload();
+      } catch {
+        // Devolver lo vencido es una cortesía al abrir el pool: si falla, el pool se muestra como está
+      }
+    },
+    startRoutine: (id) =>
+      act(async () => {
+        const r = await routineApi.start(id);
+        toast.success(t('tasks.routines.toast_started').replace('{n}', String(r.tasks_created)));
+      }, null, id),
+    saveRoutine: (draft) => act(() => routineApi.save(orgId, draft, data.routineItems), 'tasks.routines.toast_saved'),
+    archiveRoutine: (id) => act(() => routineApi.archive(id), 'tasks.routines.toast_archived', id),
+    addNote: (input) => act(() => noteApi.create(orgId, input), 'tasks.notes.toast_created'),
+    retractNote: (id) => act(() => noteApi.retract(id), 'tasks.notes.toast_retracted', id),
+    saveSettings: (s) => act(() => settingApi.update(s).then(() => undefined), 'tasks.settings.toast_saved'),
   };
 }

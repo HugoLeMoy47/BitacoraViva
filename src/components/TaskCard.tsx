@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Archive, CalendarClock, Camera, Check, ChevronDown, ChevronUp, MapPin, Pencil, Play, RotateCcw, Tag, User } from 'lucide-react';
+import { Archive, CalendarClock, Camera, Check, ChevronDown, ChevronUp, Hand, MapPin, Pencil, Play, RotateCcw, Tag, Undo2, User } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { formatDate } from '../lib/format';
 import { Advance, availableAdvance, isOverdue } from '../lib/taskFlow';
@@ -25,6 +25,10 @@ interface TaskCardProps {
   onReopen: (task: Task) => void;
   onEdit: (task: Task) => void;
   onArchive: (task: Task) => void;
+  /** Pool: tomar una tarea sin asignar */
+  onClaim?: (task: Task) => void;
+  /** Pool: soltar lo que la persona tomó por su cuenta y no ha empezado */
+  onRelease?: (task: Task) => void;
 }
 
 const SECONDARY =
@@ -44,6 +48,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onReopen,
   onEdit,
   onArchive,
+  onClaim,
+  onRelease,
 }) => {
   const [expanded, setExpanded] = useState(false);
   // Una tarea sin asignar es del pool (Fase 4): aquí no se avanza hasta que alguien la tome
@@ -52,6 +58,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const photoBlocked = !!advance?.needsPhoto;
   const longDetails = (task.details?.length ?? 0) > 80;
   const photoPending = task.photo_required && !hasEvidence && task.status !== 'done';
+  const canClaim = !!onClaim && !task.assigned_to && task.status === 'pending';
+  // Sólo lo que la persona tomó por su cuenta (claimed_at): lo que asignó coordinación no se devuelve solo
+  const canRelease = !!onRelease && !!task.claimed_at && !!task.assigned_to && task.status === 'pending';
 
   return (
     <li
@@ -113,6 +122,17 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {canClaim && (
+          <button
+            type="button"
+            onClick={() => onClaim?.(task)}
+            disabled={busy}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
+          >
+            <Hand className="h-4 w-4" aria-hidden="true" />
+            {t('tasks.pool.take')}
+          </button>
+        )}
         {advance && (
           <button
             type="button"
@@ -128,6 +148,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               <Check className="h-4 w-4" aria-hidden="true" />
             )}
             {t(advance.labelKey)}
+          </button>
+        )}
+        {canRelease && (
+          <button type="button" onClick={() => onRelease?.(task)} disabled={busy} className={SECONDARY}>
+            <Undo2 className="h-4 w-4" aria-hidden="true" />
+            {t('tasks.pool.release')}
           </button>
         )}
         {isManagement && task.status === 'done' && (

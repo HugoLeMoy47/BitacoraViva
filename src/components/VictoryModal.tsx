@@ -13,9 +13,11 @@ interface VictoryModalProps {
   message: string;
   isLast: boolean;
   onClose: () => void;
+  /** Sólo al cerrar la última tarea de la jornada: ofrecer dejar una nota para el turno siguiente */
+  onLeaveNote?: () => void;
 }
 
-export const VictoryModal: React.FC<VictoryModalProps> = ({ taskName, message, isLast, onClose }) => {
+export const VictoryModal: React.FC<VictoryModalProps> = ({ taskName, message, isLast, onClose, onLeaveNote }) => {
   // El cierre se lee por referencia: si cambiara su identidad en cada render, la ráfaga de confeti
   // y el temporizador se reiniciarían con cualquier actualización de la pantalla de atrás
   const closeRef = useRef(onClose);
@@ -45,6 +47,18 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({ taskName, message, i
         >
           {t(isLast ? 'tasks.victory_last_button' : 'tasks.victory_continue')}
         </button>
+        {isLast && onLeaveNote && (
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onLeaveNote();
+            }}
+            className="mt-2 min-h-11 w-full rounded-xl border border-turquesa/50 px-4 text-xs font-semibold text-carbon hover:bg-claro-surface"
+          >
+            {t('tasks.victory_leave_note')}
+          </button>
+        )}
       </div>
     </ModalShell>
   );

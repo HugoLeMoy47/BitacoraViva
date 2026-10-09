@@ -28,13 +28,13 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'tareas/reportes', 'tareas/catalogos', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
-  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'indicadores', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
   // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
-  { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'tareas/reportes', 'acerca'] },
-  { key: 'volunteer', button: 'Voluntariado', routes: ['tareas', 'acerca'] },
+  { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'acerca'] },
+  { key: 'volunteer', button: 'Voluntariado', routes: ['tareas', 'tareas/notas', 'acerca'] },
 ];
 
 // ---- Comprobaciones que corren dentro de la página ----
@@ -265,6 +265,23 @@ async function keyboardJourney(page) {
   return out;
 }
 
+// Abre un modal desde su botón, lo audita y comprueba lo esencial: role=dialog con nombre, el foco entra,
+// Escape lo cierra y el foco regresa al botón que lo abrió. No escribe nada.
+async function checkModalOpening(page, opener, label, audit) {
+  const issues = [];
+  await opener.focus();
+  await opener.click();
+  await page.waitForSelector('[role=dialog]');
+  const items = await audit();
+  if (!(await page.locator('[role=dialog][aria-modal=true][aria-labelledby]').count())) issues.push({ rule: 'modal', detail: label + ': sin role=dialog, aria-modal y nombre' });
+  if (!(await page.evaluate(() => document.querySelector('[role=dialog]').contains(document.activeElement)))) issues.push({ rule: 'modal', detail: label + ': el foco no entra al modal' });
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  if (await page.locator('[role=dialog]').count()) issues.push({ rule: 'modal', detail: label + ': no se cierra con Escape' });
+  if (!(await opener.evaluate((el) => el === document.activeElement))) issues.push({ rule: 'modal', detail: label + ': el foco no regresa al botón que lo abrió' });
+  return { items, issues };
+}
+
 const findings = [];
 const record = (role, vp, route, items) => items.forEach((f) => findings.push({ role, vp, route, ...f }));
 
@@ -272,6 +289,7 @@ let browser;
 try {
   browser = await chromium.launch({ channel: 'msedge', headless: true }).catch(() => chromium.launch({ channel: 'chrome', headless: true }));
   let pages = 0;
+  const sessions = new Map();
 
   for (const role of ROLES) {
     for (const vp of VIEWPORTS) {
@@ -280,17 +298,22 @@ try {
         hasTouch: vp.touch,
         isMobile: vp.touch && vp.width < 768,
         deviceScaleFactor: 1,
+        // Se reutiliza la sesión del rol entre tamaños de pantalla: iniciar sesión 30+ veces agota el límite de Supabase Auth
+        ...(sessions.has(role.key) ? { storageState: sessions.get(role.key) } : {}),
       });
       const page = await ctx.newPage();
       await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-      await page.getByRole('button', { name: role.button, exact: true }).click();
+      const loginButton = page.getByRole('button', { name: role.button, exact: true });
+      if (await loginButton.isVisible().catch(() => false)) await loginButton.click();
       await page.waitForSelector('header', { timeout: 20000 });
+      if (!sessions.has(role.key)) sessions.set(role.key, await ctx.storageState());
       await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
 
       for (const route of role.routes) {
         await page.evaluate((r) => { location.hash = '#/' + r; }, route);
         await page.waitForTimeout(900);
-        await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
+        await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 })
+          .catch(async (e) => { throw new Error(`«Cargando» no desaparece: rol ${role.key}, ${vp.name}, ruta ${route}. Texto: ${(await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(0, 300)}`, { cause: e }); });
         const items = await page.evaluate(`(${pageAudit})(${JSON.stringify({ touch: vp.touch, mobile: vp.width < 768 })})`);
         record(role.key, vp.name, route, items);
         pages++;
@@ -406,6 +429,28 @@ try {
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'tareas/reporte vista ' + (i + 1), await auditNow());
         }
+
+        // Rutinas: el formulario de alta se abre y se cancela
+        await page.evaluate(() => { location.hash = '#/tareas/rutinas'; });
+        await page.waitForTimeout(900);
+        const routineModal = await checkModalOpening(page, page.getByRole('button', { name: /Nueva rutina/i }), 'rutina/formulario', auditNow);
+        record(role.key, vp.name, 'tareas/rutina formulario', routineModal.items);
+        record(role.key, vp.name, '(modal rutina)', routineModal.issues);
+      }
+
+      // Voluntariado: pool de tareas abiertas e inicio de turno (sólo lee: abre y cancela)
+      if (role.key === 'volunteer' && (vp.name === '360' || vp.name === '1024')) {
+        await page.evaluate(() => { location.hash = '#/tareas'; });
+        await page.waitForTimeout(1200);
+        const poolToggle = page.getByRole('button', { name: /Tareas disponibles/ });
+        if (await poolToggle.count()) {
+          await poolToggle.click();
+          await page.waitForTimeout(500);
+          record(role.key, vp.name, 'tareas/pool abierto', await auditNow());
+        }
+        const startModal = await checkModalOpening(page, page.getByRole('button', { name: /Iniciar mi turno/i }), 'iniciar turno', auditNow);
+        record(role.key, vp.name, 'tareas/iniciar turno', startModal.items);
+        record(role.key, vp.name, '(modal iniciar turno)', startModal.issues);
       }
 
       // Foco visible por teclado (una pantalla por combinación)
