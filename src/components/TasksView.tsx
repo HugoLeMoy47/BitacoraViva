@@ -4,6 +4,7 @@ import { t } from '../lib/i18n';
 import { SessionUser } from '../lib/session';
 import { useCatalog } from '../lib/catalog';
 import { useToast } from '../lib/toast';
+import { navigate } from '../lib/router';
 import { canManageTasks } from '../lib/navigation';
 import { useTasks } from '../lib/useTasks';
 import { usePhoneScreen } from '../lib/usePhoneScreen';
@@ -15,23 +16,43 @@ import { TaskCard } from './TaskCard';
 import { TaskMobileList } from './TaskMobileList';
 import { TaskFormModal } from './TaskFormModal';
 import { TaskArchiveModal } from './TaskArchiveModal';
+import { TaskReportsView } from './TaskReportsView';
+import { TaskCatalogsView } from './TaskCatalogsView';
+import { Tabs } from './Tabs';
 import { VolunteerProgress } from './VolunteerProgress';
 import { VictoryModal } from './VictoryModal';
 
-// Seguidor de tareas (E7). Quien gestiona (dirección y coordinación de tareas) ve y mantiene todas;
-// el resto ve las suyas. Lo que cada rol puede hacer lo decide la base de datos (RLS y disparadores);
-// aquí sólo se ofrece lo que la base va a aceptar.
+// Seguidor de tareas (E7). Quien gestiona (dirección y coordinación de tareas) ve y mantiene todas, y
+// además tiene Reportes; sólo la dirección administra los Catálogos. El resto ve las suyas. Lo que cada
+// rol puede hacer lo decide la base de datos (RLS y disparadores): aquí sólo se ofrece lo que la base va
+// a aceptar.
 
 const VICTORY_MESSAGES = 6;
 type PersonFilter = 'all' | 'unassigned' | string;
+type Section = 'board' | 'reports' | 'catalogs';
 
-export const TasksView: React.FC<{ user: SessionUser }> = ({ user }) => {
+// Segmento de la ruta (#/tareas/reportes) de cada sección
+const SECTION_PARAM: Record<Section, string | null> = { board: null, reports: 'reportes', catalogs: 'catalogos' };
+
+interface TasksViewProps {
+  user: SessionUser;
+  /** Segmento de la ruta tras «tareas»: `reportes`, `catalogos` o nada (tablero) */
+  section: string | null;
+  /** Cadena de consulta de la ruta (filtros de un reporte compartido) */
+  query: string;
+}
+
+export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionParam, query }) => {
   const { userNames, organizationName } = useCatalog();
   const toast = useToast();
   const tasks = useTasks(user);
   const isPhone = usePhoneScreen();
   const isManagement = canManageTasks(user.roles);
+  const canCatalogs = user.roles.includes('director');
   const me = user.profile.id;
+
+  // Sólo se llega a una sección que el rol puede usar; si no, el tablero
+  const section: Section = isManagement && sectionParam === 'reportes' ? 'reports' : canCatalogs && sectionParam === 'catalogos' ? 'catalogs' : 'board';
 
   const [filter, setFilter] = useState<PersonFilter>('all');
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>('pending');
@@ -43,24 +64,26 @@ export const TasksView: React.FC<{ user: SessionUser }> = ({ user }) => {
   const categoryLabel = useMemo(() => new Map(categories.map((c) => [c.id, c.label_es])), [categories]);
   const workAreaLabel = useMemo(() => new Map(workAreas.map((a) => [a.id, a.label_es])), [workAreas]);
 
+  // Tareas vigentes: lo archivado sale del tablero y de los reportes (queda en el historial y la auditoría)
+  const live = useMemo(() => tasks.data.tasks.filter((x) => !x.archived_at), [tasks.data.tasks]);
+
   // Quien no gestiona ve sólo lo suyo: las tareas sin asignar son del pool (Fase 4)
   const visible = useMemo(
     () =>
-      tasks.data.tasks.filter((task) => {
-        if (task.archived_at) return false;
+      live.filter((task) => {
         if (!isManagement) return task.assigned_to === me;
         if (filter === 'all') return true;
         if (filter === 'unassigned') return !task.assigned_to;
         return task.assigned_to === filter;
       }),
-    [tasks.data.tasks, isManagement, me, filter]
+    [live, isManagement, me, filter]
   );
   const groups = useMemo(() => groupByStatus(visible), [visible]);
 
   const people = useMemo(() => {
-    const ids = Array.from(new Set(tasks.data.tasks.filter((x) => !x.archived_at && x.assigned_to).map((x) => x.assigned_to as string)));
+    const ids = Array.from(new Set(live.filter((x) => x.assigned_to).map((x) => x.assigned_to as string)));
     return ids.map((id) => ({ id, name: userNames[id] || t('tasks.assignee_former') })).sort((a, b) => a.name.localeCompare(b.name, 'es'));
-  }, [tasks.data.tasks, userNames]);
+  }, [live, userNames]);
 
   const assignees = useMemo(
     () =>
@@ -152,7 +175,12 @@ export const TasksView: React.FC<{ user: SessionUser }> = ({ user }) => {
     );
   }
 
-  const nothingYet = isManagement && tasks.data.tasks.filter((x) => !x.archived_at).length === 0;
+  const nothingYet = isManagement && live.length === 0;
+  const sectionTabs = [
+    { id: 'board', label: t('tasks.tab_board') },
+    ...(isManagement ? [{ id: 'reports', label: t('tasks.tab_reports') }] : []),
+    ...(canCatalogs ? [{ id: 'catalogs', label: t('tasks.tab_catalogs') }] : []),
+  ];
 
   return (
     <div className="space-y-4">
@@ -165,7 +193,7 @@ export const TasksView: React.FC<{ user: SessionUser }> = ({ user }) => {
           <p className="text-sm text-gray-600">{t(isManagement ? 'tasks.subtitle_manager' : 'tasks.subtitle_member')}</p>
         </div>
 
-        {isManagement && (
+        {isManagement && section === 'board' && (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <label className="block text-xs font-semibold text-gray-700">
               {t('tasks.filter_person')}
@@ -195,17 +223,53 @@ export const TasksView: React.FC<{ user: SessionUser }> = ({ user }) => {
         )}
       </div>
 
-      {!isManagement && <VolunteerProgress progress={progressOf(visible)} fullName={user.profile.full_name} organizationName={organizationName} />}
+      {sectionTabs.length > 1 && (
+        <Tabs
+          ariaLabel={t('tasks.sections')}
+          items={sectionTabs}
+          value={section}
+          onChange={(id) => navigate('tasks', SECTION_PARAM[id as Section])}
+        />
+      )}
 
-      {nothingYet ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center">
-          <p className="text-sm font-semibold text-carbon">{t('tasks.empty_manager_title')}</p>
-          <p className="mx-auto mt-1 max-w-xs text-xs text-gray-600">{t('tasks.empty_manager_body')}</p>
-        </div>
-      ) : isPhone ? (
-        <TaskMobileList groups={groups} active={mobileStatus} onChangeActive={setMobileStatus} renderCard={renderCard} isManagement={isManagement} />
-      ) : (
-        <TaskBoard groups={groups} renderCard={renderCard} onDropTask={handleDrop} />
+      {section === 'reports' && (
+        <TaskReportsView
+          tasks={live}
+          categories={categories}
+          workAreas={workAreas}
+          userNames={userNames}
+          initialQuery={query}
+          filePrefix={t('tasks.reports.file_prefix')}
+        />
+      )}
+
+      {section === 'catalogs' && (
+        <TaskCatalogsView
+          categories={categories}
+          workAreas={workAreas}
+          busyId={tasks.busyId}
+          saving={tasks.saving}
+          onCreate={tasks.createCatalogItem}
+          onRename={tasks.renameCatalogItem}
+          onArchive={tasks.archiveCatalogItem}
+        />
+      )}
+
+      {section === 'board' && (
+        <>
+          {!isManagement && <VolunteerProgress progress={progressOf(visible)} fullName={user.profile.full_name} organizationName={organizationName} />}
+
+          {nothingYet ? (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center">
+              <p className="text-sm font-semibold text-carbon">{t('tasks.empty_manager_title')}</p>
+              <p className="mx-auto mt-1 max-w-xs text-xs text-gray-600">{t('tasks.empty_manager_body')}</p>
+            </div>
+          ) : isPhone ? (
+            <TaskMobileList groups={groups} active={mobileStatus} onChangeActive={setMobileStatus} renderCard={renderCard} isManagement={isManagement} />
+          ) : (
+            <TaskBoard groups={groups} renderCard={renderCard} onDropTask={handleDrop} />
+          )}
+        </>
       )}
 
       {form && (

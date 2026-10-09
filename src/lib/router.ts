@@ -20,11 +20,16 @@ export const ROUTE_SLUG: Record<RouteId, string> = {
 export interface Route {
   id: RouteId | null;
   param: string | null;
+  /** Cadena de consulta tras «?» (sin el signo), p. ej. los filtros de un reporte */
+  query: string;
 }
 
 export function parseHash(hash: string): Route {
-  const parts = hash
-    .replace(/^#\/?/, '')
+  const raw = hash.replace(/^#\/?/, '');
+  const queryAt = raw.indexOf('?');
+  const path = queryAt === -1 ? raw : raw.slice(0, queryAt);
+  const query = queryAt === -1 ? '' : raw.slice(queryAt + 1);
+  const parts = path
     .split('/')
     .filter(Boolean)
     .map((p) => {
@@ -35,11 +40,20 @@ export function parseHash(hash: string): Route {
       }
     });
   const id = (Object.keys(ROUTE_SLUG) as RouteId[]).find((k) => ROUTE_SLUG[k] === parts[0]) ?? null;
-  return { id, param: id && parts[1] ? parts[1] : null };
+  return { id, param: id && parts[1] ? parts[1] : null, query: id ? query : '' };
 }
 
-export function hrefFor(id: RouteId, param?: string | null): string {
-  return `#/${ROUTE_SLUG[id]}${param ? `/${encodeURIComponent(param)}` : ''}`;
+export function hrefFor(id: RouteId, param?: string | null, query?: string): string {
+  return `#/${ROUTE_SLUG[id]}${param ? `/${encodeURIComponent(param)}` : ''}${query ? `?${query}` : ''}`;
+}
+
+/**
+ * Cambia sólo la consulta de la ruta actual SIN agregar una entrada al historial y sin disparar
+ * `hashchange`: el buscador de un reporte cambia el estado por tecla, y con historial «atrás» exigiría
+ * una pulsación por letra tecleada.
+ */
+export function replaceQuery(id: RouteId, param: string | null, query: string): void {
+  window.history.replaceState(null, '', hrefFor(id, param, query));
 }
 
 export function navigate(id: RouteId, param?: string | null, opts?: { replace?: boolean }): void {

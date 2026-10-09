@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import { SessionUser } from './session';
 import { useToast } from './toast';
 import { t } from './i18n';
-import { EMPTY_TASK_DATA, TaskData, TaskInput, loadTaskData, taskApi, taskErrorMessage } from './tasks';
+import { CatalogKind, EMPTY_TASK_DATA, TaskData, TaskInput, catalogApi, loadTaskData, taskApi, taskErrorMessage } from './tasks';
 import { TaskStatus } from '../types/database';
 
 // Estado de la pantalla de tareas: carga, tiempo real y escrituras con aviso de resultado.
@@ -28,6 +28,10 @@ export interface UseTasks {
   update: (id: string, input: TaskInput) => Promise<boolean>;
   setStatus: (id: string, status: TaskStatus, successKey?: string) => Promise<boolean>;
   archive: (id: string) => Promise<boolean>;
+  /** Catálogos (sólo dirección): categorías y áreas de trabajo */
+  createCatalogItem: (kind: CatalogKind, label: string, takenKeys: string[]) => Promise<boolean>;
+  renameCatalogItem: (kind: CatalogKind, id: string, label: string) => Promise<boolean>;
+  archiveCatalogItem: (kind: CatalogKind, id: string) => Promise<boolean>;
 }
 
 export function useTasks(user: SessionUser): UseTasks {
@@ -115,5 +119,8 @@ export function useTasks(user: SessionUser): UseTasks {
     update: (id, input) => act(() => taskApi.update(id, input), 'tasks.toast_updated'),
     setStatus: (id, status, successKey) => act(() => taskApi.setStatus(id, status), successKey ?? null, id),
     archive: (id) => act(() => taskApi.archive(id), 'tasks.toast_archived', id),
+    createCatalogItem: (kind, label, takenKeys) => act(() => catalogApi.create(kind, orgId, label, takenKeys), 'tasks.catalogs.toast_created'),
+    renameCatalogItem: (kind, id, label) => act(() => catalogApi.rename(kind, id, label), 'tasks.catalogs.toast_renamed', id),
+    archiveCatalogItem: (kind, id) => act(() => catalogApi.archive(kind, id), 'tasks.catalogs.toast_archived', id),
   };
 }

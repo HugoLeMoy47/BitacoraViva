@@ -51,6 +51,14 @@ Recorre la aplicación compilada con `playwright-core` y el Edge o Chrome del si
 
 Toda función `security definer` **se salta RLS**: si no repite la regla de acceso, la regla no existe. Una función nueva debe (1) comprobar sesión, rol operativo y organización, (2) ser ejecutable sólo por `authenticated` y (3) llevar su prueba negativa en `supabase/tests/rls_negative.sql`.
 
+## Pruebas unitarias
+
+```bash
+npm run test:unit
+```
+
+Vitest sobre la lógica **pura** del Seguidor de tareas (reportes, enlace compartible, CSV, flujo de estados, claves de catálogo): 56 pruebas junto a cada módulo (`src/lib/*.test.ts`). Es lo que se puede equivocar en silencio —promedios, cortes de semana, orden, escape de fórmulas— y por eso vive aislado de React y de Supabase para poder revisarlo sin navegador ni base.
+
 ## Pruebas de seguridad
 
 ```bash

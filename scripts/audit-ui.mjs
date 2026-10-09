@@ -28,12 +28,12 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'tareas/reportes', 'tareas/catalogos', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
   { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'indicadores', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
   // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
-  { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'acerca'] },
+  { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'tareas/reportes', 'acerca'] },
   { key: 'volunteer', button: 'Voluntariado', routes: ['tareas', 'acerca'] },
 ];
 
@@ -323,6 +323,10 @@ try {
         await page.waitForTimeout(900);
         await page.getByRole('button', { name: /Levantar Nuevo/i }).click();
         await page.waitForSelector('[role=dialog]');
+        // Los textos de consentimiento cargan de forma asíncrona: sin esta espera, marcar las decisiones antes
+        // de que lleguen deja «Siguiente» deshabilitado y el recorrido falla de forma intermitente
+        await page.waitForFunction(() => document.querySelectorAll('[role=dialog] input[type=radio]').length >= 2, null, { timeout: 15000 });
+        await page.waitForTimeout(500);
         record(role.key, vp.name, 'alta/paso 0', await auditNow());
         await page.getByRole('checkbox', { name: /Entregué o leí/ }).check();
         const yes = page.locator('[role=dialog] input[type=radio][value=yes]');
@@ -389,6 +393,19 @@ try {
         const archive = page.getByRole('button', { name: /^Archivar$/ }).first();
         if (await archive.count()) await checkModal(archive, 'archivar');
         record(role.key, vp.name, '(modal tareas)', modalIssues);
+
+        // Reportes: cada vista (con el panel de filtros abierto en celular, donde se pliega)
+        await page.evaluate(() => { location.hash = '#/tareas/reportes'; });
+        await page.waitForTimeout(900);
+        const filtersToggle = page.getByRole('button', { name: /^Filtros/ });
+        if (await filtersToggle.count()) { await filtersToggle.click(); await page.waitForTimeout(250); }
+        const reportTabs = page.locator('[role=tablist][aria-label="Vistas del reporte"] [role=tab]');
+        const reportTabCount = await reportTabs.count();
+        for (let i = 0; i < reportTabCount; i++) {
+          await reportTabs.nth(i).click();
+          await page.waitForTimeout(500);
+          record(role.key, vp.name, 'tareas/reporte vista ' + (i + 1), await auditNow());
+        }
       }
 
       // Foco visible por teclado (una pantalla por combinación)

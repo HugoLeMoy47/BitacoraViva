@@ -95,6 +95,44 @@ export const taskApi = {
     wrote(supabase.from('task').update({ archived_at: new Date().toISOString() }).eq('id', id).select('id')),
 };
 
+// ---- Catálogos de tareas (BV-7.9): categorías y áreas de trabajo. Sólo dirección escribe (RLS).
+
+export type CatalogKind = 'category' | 'workArea';
+const CATALOG_TABLE: Record<CatalogKind, string> = { category: 'task_category', workArea: 'work_area' };
+
+/**
+ * Clave estable del catálogo a partir de la etiqueta: minúsculas, sin acentos, con guiones bajos y única
+ * entre las ya existentes (también las archivadas: una clave no se reutiliza). La etiqueta se puede
+ * renombrar después; la clave, no. Formato exigido por la base: `^[a-z][a-z0-9_]{1,39}$`.
+ */
+export function makeCatalogKey(label: string, taken: string[]): string {
+  let base = label
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (!/^[a-z]/.test(base)) base = `c_${base}`;
+  base = base.slice(0, 34).replace(/_+$/g, '');
+  // La base exige al menos 2 caracteres: una etiqueta de puros símbolos no puede dejar la clave en «c»
+  if (base.length < 2) base = 'c_item';
+  let key = base;
+  for (let n = 2; taken.includes(key); n++) key = `${base}_${n}`;
+  return key;
+}
+
+export const catalogApi = {
+  create: (kind: CatalogKind, organizationId: string, label: string, takenKeys: string[]) =>
+    wrote(supabase.from(CATALOG_TABLE[kind]).insert({ organization_id: organizationId, key: makeCatalogKey(label, takenKeys), label_es: label.trim() }).select('id')),
+
+  rename: (kind: CatalogKind, id: string, label: string) =>
+    wrote(supabase.from(CATALOG_TABLE[kind]).update({ label_es: label.trim() }).eq('id', id).select('id')),
+
+  /** Baja lógica y definitiva (Regla Dura 3): las tareas que ya la usan conservan su etiqueta. */
+  archive: (kind: CatalogKind, id: string) =>
+    wrote(supabase.from(CATALOG_TABLE[kind]).update({ archived_at: new Date().toISOString() }).eq('id', id).select('id')),
+};
+
 /** Explica un error con el siguiente paso. Los códigos TK de la base tienen texto propio. */
 export function taskErrorMessage(e: unknown): string {
   if (e instanceof TaskError && e.code?.startsWith('TK')) {
