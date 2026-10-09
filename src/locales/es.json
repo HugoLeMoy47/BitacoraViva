@@ -720,7 +720,11 @@
       "tk021": "La rutina ya no existe o está archivada.",
       "tk022": "Ya iniciaste esta rutina hoy: tus tareas están en el tablero.",
       "tk023": "Este registro se agrega y no se edita; solo puede darse de baja.",
-      "tk024": "El dato no es válido. Revísalo e inténtalo de nuevo."
+      "tk024": "El dato no es válido. Revísalo e inténtalo de nuevo.",
+      "ev_type": "Solo se aceptan fotos JPG, PNG o WebP.",
+      "ev_size": "La foto pesa más de 5 MB. Toma otra o elige una más pequeña.",
+      "ev_empty": "El archivo está vacío. Elige otra foto.",
+      "ev_storage": "No se pudo subir o abrir la foto. Revisa tu conexión e inténtalo de nuevo."
     }
   },
   "config": {
@@ -798,7 +802,6 @@
     "due": "Vence {date}",
     "overdue": "Vencida desde {date}",
     "photo_required_note": "Requiere foto de evidencia al terminar",
-    "photo_unavailable": "La carga de fotos llega en la siguiente actualización. Mientras tanto, pide a quien coordina que la cierre.",
     "details_show": "Ver instrucciones completas",
     "details_hide": "Ocultar instrucciones",
     "action_start": "Comenzar tarea",
@@ -1049,6 +1052,24 @@
       "warn_pool_cap": "Cada persona podrá tener a la vez hasta {n} tarea(s) tomadas del pool sin empezar. Lo asignado por coordinación no cuenta.",
       "save": "Guardar ajustes",
       "toast_saved": "Ajustes guardados."
+    },
+    "evidence": {
+      "title": "Fotos de evidencia",
+      "privacy": "Las fotos son privadas: solo las ven quien coordina y quien tiene la tarea, y cada vez que se abre una queda registrado. Evita que salgan rostros de personas atendidas.",
+      "take": "Tomar foto",
+      "choose": "Elegir de la galería",
+      "limits": "JPG, PNG o WebP. La foto se reduce sola antes de subirse y se le quita la ubicación.",
+      "uploading": "Subiendo la foto…",
+      "read_only": "La tarea ya está cerrada: puedes ver las fotos, pero no agregar más.",
+      "list_title": "Fotos de esta tarea",
+      "empty": "Todavía no hay fotos.",
+      "load_failed": "No se pudieron cargar las fotos. Cierra y vuelve a abrir.",
+      "photo_n": "Foto {n}",
+      "view": "Ver",
+      "photo_alt": "Foto de evidencia de la tarea «{task}»",
+      "add": "Agregar foto",
+      "open": "Fotos",
+      "toast_uploaded": "Foto guardada."
     }
   }
 }

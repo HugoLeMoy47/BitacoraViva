@@ -20,6 +20,7 @@ import { TaskReportsView } from './TaskReportsView';
 import { TaskCatalogsView } from './TaskCatalogsView';
 import { PoolPanel } from './PoolPanel';
 import { StartRoutineModal } from './StartRoutineModal';
+import { EvidenceModal } from './EvidenceModal';
 import { RoutinesView } from './RoutinesView';
 import { ShiftNotesView } from './ShiftNotesView';
 import { TaskSettingsView } from './TaskSettingsView';
@@ -78,6 +79,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
   const [form, setForm] = useState<{ task: Task | null } | null>(null);
   const [archiving, setArchiving] = useState<Task | null>(null);
   const [startingRoutine, setStartingRoutine] = useState(false);
+  const [evidenceTask, setEvidenceTask] = useState<Task | null>(null);
   const [victory, setVictory] = useState<{ taskName: string; message: string; isLast: boolean } | null>(null);
 
   const { categories, workAreas, evidenceTaskIds, assignableUserIds } = tasks.data;
@@ -154,6 +156,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
     // La exigencia de foto se evalúa contra el DESTINO: arrastrar de pendiente directo a hecha también la requiere
     if (to === 'done' && task.photo_required && !evidenceTaskIds.has(task.id) && !isManagement) {
       toast.error(t('tasks.move_needs_photo'));
+      setEvidenceTask(task);
       return;
     }
     const successKey = to === 'in_progress' ? (task.status === 'done' ? 'tasks.toast_reopened' : 'tasks.toast_started') : isManagement ? 'tasks.toast_done' : undefined;
@@ -191,6 +194,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
       onArchive={setArchiving}
       onClaim={isManagement ? undefined : handleClaim}
       onRelease={isManagement ? undefined : handleRelease}
+      onEvidence={setEvidenceTask}
     />
   );
 
@@ -370,6 +374,22 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
       )}
       {archiving && <TaskArchiveModal task={archiving} busy={tasks.busyId === archiving.id} onClose={() => setArchiving(null)} onConfirm={confirmArchive} />}
       {startingRoutine && <StartRoutineModal routines={activeRoutines} items={tasks.data.routineItems} busyId={tasks.busyId} onStart={handleStartRoutine} onClose={() => setStartingRoutine(false)} />}
+      {evidenceTask && (
+        <EvidenceModal
+          // La tarea se relee de los datos vivos: si cambió (se cerró, se archivó), el modal lo refleja
+          task={tasks.data.tasks.find((x) => x.id === evidenceTask.id) ?? evidenceTask}
+          canUpload={
+            isManagement ||
+            (() => {
+              const live = tasks.data.tasks.find((x) => x.id === evidenceTask.id) ?? evidenceTask;
+              return live.assigned_to === user.profile.id && live.status !== 'done' && !live.archived_at;
+            })()
+          }
+          busy={tasks.busyId === evidenceTask.id}
+          onUpload={tasks.uploadEvidence}
+          onClose={() => setEvidenceTask(null)}
+        />
+      )}
       {victory && (
         <VictoryModal
           taskName={victory.taskName}

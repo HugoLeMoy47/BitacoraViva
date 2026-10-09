@@ -451,6 +451,16 @@ try {
         const startModal = await checkModalOpening(page, page.getByRole('button', { name: /Iniciar mi turno/i }), 'iniciar turno', auditNow);
         record(role.key, vp.name, 'tareas/iniciar turno', startModal.items);
         record(role.key, vp.name, '(modal iniciar turno)', startModal.issues);
+
+        // Evidencia fotográfica: el modal de fotos de la primera tarea que lo ofrece (sólo abre y cancela)
+        const photoOpener = page.getByRole('button', { name: /^(Agregar foto|Fotos|Tomar foto y concluir)$/ }).first();
+        if (await photoOpener.count()) {
+          const photoModal = await checkModalOpening(page, photoOpener, 'fotos de evidencia', auditNow);
+          record(role.key, vp.name, 'tareas/fotos de evidencia', photoModal.items);
+          record(role.key, vp.name, '(modal fotos)', photoModal.issues);
+        } else {
+          console.log("aviso: ninguna tarea ofrece el modal de fotos en "+vp.name);
+        }
       }
 
       // Foco visible por teclado (una pantalla por combinación)

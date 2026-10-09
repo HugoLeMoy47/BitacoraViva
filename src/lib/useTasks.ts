@@ -11,6 +11,7 @@ import {
   TaskData,
   TaskInput,
   catalogApi,
+  evidenceApi,
   loadTaskData,
   noteApi,
   poolApi,
@@ -60,6 +61,8 @@ export interface UseTasks {
   /** Notas de turno */
   addNote: (input: ShiftNoteInput) => Promise<boolean>;
   retractNote: (id: string) => Promise<boolean>;
+  /** Evidencia fotográfica: subir una foto a una tarea (recarga para que el cierre se habilite) */
+  uploadEvidence: (taskId: string, file: File) => Promise<boolean>;
   /** Ajustes de operación (sólo dirección) */
   saveSettings: (s: Pick<TaskSetting, 'shift_note_scope' | 'shift_note_days' | 'pool_max_unstarted' | 'pool_release_days'>) => Promise<boolean>;
 }
@@ -171,6 +174,7 @@ export function useTasks(user: SessionUser): UseTasks {
     archiveRoutine: (id) => act(() => routineApi.archive(id), 'tasks.routines.toast_archived', id),
     addNote: (input) => act(() => noteApi.create(orgId, input), 'tasks.notes.toast_created'),
     retractNote: (id) => act(() => noteApi.retract(id), 'tasks.notes.toast_retracted', id),
+    uploadEvidence: (taskId, file) => act(() => evidenceApi.upload(orgId, taskId, file), 'tasks.evidence.toast_uploaded', taskId),
     saveSettings: (s) => act(() => settingApi.update(s).then(() => undefined), 'tasks.settings.toast_saved'),
   };
 }

@@ -1,7 +1,9 @@
 import { supabase } from './supabase';
 import { t } from './i18n';
 import { friendlyError } from './errors';
+import { EVIDENCE_SIGNED_URL_SECONDS, evidencePath, evidenceProblem, prepareEvidence } from './evidence';
 import {
+  TaskEvidence,
   RoutineTemplate,
   RoutineTemplateItem,
   ShiftKind,
@@ -201,6 +203,33 @@ export const routineApi = {
   archive: (id: string) => wrote(supabase.from('routine_template').update({ archived_at: new Date().toISOString() }).eq('id', id).select('id')),
 };
 
+// ---- Evidencia fotográfica (BV-7.14, BV-7.15)
+// Bucket PRIVADO: no hay URL pública. Abrir una foto pide permiso a la base (que deja evento de auditoría y
+// devuelve la ruta) y sólo entonces firma una URL de 60 s (EVIDENCE_SIGNED_URL_SECONDS). Nada se actualiza ni se borra: corregir es subir otra.
+export const evidenceApi = {
+  list: (taskId: string) =>
+    rows<TaskEvidence>(supabase.from('task_evidence').select('*').eq('task_id', taskId).is('archived_at', null).order('created_at', { ascending: false })),
+
+  /** Reduce la foto, la sube al bucket y registra su ruta. Devuelve sólo cuando ambas cosas quedaron hechas. */
+  async upload(organizationId: string, taskId: string, original: File): Promise<void> {
+    const file = await prepareEvidence(original);
+    const problem = evidenceProblem(file);
+    if (problem) throw new TaskError(problem, `EV-${problem}`);
+    const path = evidencePath(organizationId, taskId, file.type, crypto.randomUUID());
+    const up = await supabase.storage.from('task-evidence').upload(path, file, { contentType: file.type, upsert: false });
+    if (up.error) throw new TaskError(up.error.message, 'EV-storage');
+    await wrote(supabase.from('task_evidence').insert({ organization_id: organizationId, task_id: taskId, storage_path: path, mime_type: file.type, size_bytes: file.size }).select('id'));
+  },
+
+  /** URL firmada de corta vida. La función de la base valida rol y tarea, y registra el acceso. */
+  async open(evidenceId: string): Promise<string> {
+    const path = await call<string>('fn_task_evidence_access', { p_evidence_id: evidenceId });
+    const { data, error } = await supabase.storage.from('task-evidence').createSignedUrl(path, EVIDENCE_SIGNED_URL_SECONDS);
+    if (error || !data) throw new TaskError(error?.message ?? 'sin URL', 'EV-storage');
+    return data.signedUrl;
+  },
+};
+
 // ---- Notas de turno (BV-7.12): se agregan, no se editan; retirar es baja lógica.
 
 export interface ShiftNoteInput {
@@ -268,6 +297,11 @@ export const catalogApi = {
 export function taskErrorMessage(e: unknown): string {
   if (e instanceof TaskError && e.code?.startsWith('TK')) {
     const key = `errors.task.${e.code.toLowerCase()}`;
+    const text = t(key);
+    if (text !== key) return text;
+  }
+  if (e instanceof TaskError && e.code?.startsWith('EV-')) {
+    const key = `errors.task.${e.code.toLowerCase().replace('-', '_')}`;
     const text = t(key);
     if (text !== key) return text;
   }

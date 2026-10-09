@@ -29,6 +29,8 @@ interface TaskCardProps {
   onClaim?: (task: Task) => void;
   /** Pool: soltar lo que la persona tomó por su cuenta y no ha empezado */
   onRelease?: (task: Task) => void;
+  /** Abre las fotos de evidencia (ver y, si se puede, subir) */
+  onEvidence?: (task: Task) => void;
 }
 
 const SECONDARY =
@@ -50,12 +52,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onArchive,
   onClaim,
   onRelease,
+  onEvidence,
 }) => {
   const [expanded, setExpanded] = useState(false);
   // Una tarea sin asignar es del pool (Fase 4): aquí no se avanza hasta que alguien la tome
   const advance = task.assigned_to ? availableAdvance(task, { isManagement, hasEvidence }) : null;
   const overdue = isOverdue(task);
-  const photoBlocked = !!advance?.needsPhoto;
   const longDetails = (task.details?.length ?? 0) > 80;
   const photoPending = task.photo_required && !hasEvidence && task.status !== 'done';
   const canClaim = !!onClaim && !task.assigned_to && task.status === 'pending';
@@ -136,8 +138,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         {advance && (
           <button
             type="button"
-            onClick={() => onAdvance(task, advance)}
-            disabled={busy || photoBlocked}
+            // Sin la foto exigida, el botón lleva a subirla en lugar de cerrar
+            onClick={() => (advance.needsPhoto && onEvidence ? onEvidence(task) : onAdvance(task, advance))}
+            disabled={busy}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
           >
             {advance.needsPhoto ? (
@@ -148,6 +151,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               <Check className="h-4 w-4" aria-hidden="true" />
             )}
             {t(advance.labelKey)}
+          </button>
+        )}
+        {onEvidence && (hasEvidence || (!!task.assigned_to && task.status !== 'done') || isManagement) && !(advance?.needsPhoto) && (
+          <button type="button" onClick={() => onEvidence(task)} disabled={busy} className={SECONDARY}>
+            <Camera className="h-4 w-4" aria-hidden="true" />
+            {t(hasEvidence ? 'tasks.evidence.open' : 'tasks.evidence.add')}
           </button>
         )}
         {canRelease && (
@@ -176,7 +185,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         )}
       </div>
 
-      {photoBlocked && <p className="mt-2 text-xs text-amber-900">{t('tasks.photo_unavailable')}</p>}
     </li>
   );
 };

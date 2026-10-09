@@ -265,7 +265,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowFullNotice((v) => !v)}
-                      className="text-turquesa-dark font-semibold underline"
+                      className="inline-flex min-h-11 items-center text-turquesa-dark font-semibold underline"
                     >
                       {showFullNotice ? t('intake.consent.hide_full') : t('intake.consent.show_full')}
                     </button>

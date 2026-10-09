@@ -90,6 +90,18 @@ export interface RoutineTemplateItem {
 export type ShiftKind = 'morning' | 'afternoon' | 'night' | 'general';
 
 /** Recado de turno: texto libre para el turno siguiente. NO es una entrada de bitácora de caso. */
+export interface TaskEvidence {
+  id: string;
+  organization_id: string;
+  task_id: string;
+  storage_path: string;
+  mime_type: 'image/jpeg' | 'image/png' | 'image/webp';
+  size_bytes: number;
+  created_at: string;
+  created_by: string | null;
+  archived_at: string | null;
+}
+
 export interface ShiftNote {
   id: string;
   organization_id: string;
