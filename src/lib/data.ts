@@ -74,7 +74,24 @@ function fullName(p?: { given_name: string; paternal_family_name: string } | nul
   return p ? `${p.given_name} ${p.paternal_family_name}` : '';
 }
 
-export async function loadOrgData(): Promise<OrgData> {
+/**
+ * `caseAccess` falso = la persona sólo tiene roles de tareas (ADR-0007): no recibe expediente ni
+ * catálogos de casos, así que ni se piden (RLS los devolvería vacíos). Sólo se leen la organización
+ * y los nombres del personal, que sirven para rotular a quien tiene cada tarea.
+ */
+export async function loadOrgData(caseAccess = true): Promise<OrgData> {
+  if (!caseAccess) {
+    const [organizations, profiles] = await Promise.all([
+      rows<Organization>(supabase.from('organization').select('*')),
+      rows<UserProfile>(supabase.from('user_profile').select('*')),
+    ]);
+    return {
+      ...EMPTY_ORG_DATA,
+      organization: organizations[0] || null,
+      userNames: Object.fromEntries(profiles.map((p) => [p.id, p.full_name])),
+    };
+  }
+
   const [
     organizations,
     areas,

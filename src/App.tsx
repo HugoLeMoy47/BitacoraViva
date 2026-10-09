@@ -12,7 +12,7 @@ import { SessionProvider, SessionUser, useSession } from './lib/session';
 import { CatalogProvider } from './lib/catalog';
 import { EnvironmentProvider, useEnvironment } from './lib/environment';
 import { RouteId, navigate, useRoute } from './lib/router';
-import { allowedRoutes, defaultRoute } from './lib/navigation';
+import { allowedRoutes, defaultRoute, hasCaseAccess } from './lib/navigation';
 import { AppShell } from './components/AppShell';
 import { CasesView } from './components/CasesView';
 import { DirectorSharingInbox } from './components/DirectorSharingInbox';
@@ -21,6 +21,7 @@ import { IndicatorsView } from './components/IndicatorsView';
 import { OperationsDashboard } from './components/OperationsDashboard';
 import { AreasView, AuditView, AuthorityView } from './components/AdminViews';
 import { ConfigurationView } from './components/ConfigurationView';
+import { TasksView } from './components/TasksView';
 import { AboutView } from './components/AboutView';
 import { DemoBanner } from './components/DemoBanner';
 import { ToastProvider, useToast } from './lib/toast';
@@ -30,13 +31,16 @@ const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : S
 
 const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const { signOut } = useSession();
+  // El rol principal rotula y rige las pantallas de casos; las pantallas visibles salen de TODOS los roles
   const activeRole = currentUser.role;
-  const isDirector = activeRole === 'director';
+  const roles = currentUser.roles;
+  const caseAccess = hasCaseAccess(roles);
+  const isDirector = roles.includes('director');
 
   const route = useRoute();
   const { isDemo } = useEnvironment();
-  const allowed = allowedRoutes(activeRole, isDemo);
-  const current: RouteId = route.id && allowed.includes(route.id) ? route.id : defaultRoute(activeRole);
+  const allowed = allowedRoutes(roles, isDemo);
+  const current: RouteId = route.id && allowed.includes(route.id) ? route.id : defaultRoute(roles);
   const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
   const [data, setData] = useState<OrgData>(EMPTY_ORG_DATA);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -50,7 +54,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
   const reload = useCallback(async (): Promise<OrgData | null> => {
     try {
-      const fresh = await loadOrgData();
+      const fresh = await loadOrgData(caseAccess);
       setData(fresh);
       setLoadState('ready');
       return fresh;
@@ -60,15 +64,15 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
       toast.error(friendlyError(errorMessage(e)));
       return null;
     }
-  }, [toast]);
+  }, [toast, caseAccess]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
   useEffect(() => {
-    if (!route.id || !allowed.includes(route.id)) navigate(defaultRoute(activeRole), null, { replace: true });
-  }, [route.id, allowed.join(','), activeRole]);
+    if (!route.id || !allowed.includes(route.id)) navigate(defaultRoute(roles), null, { replace: true });
+  }, [route.id, allowed.join(','), roles.join(',')]);
 
   // Toda escritura es una función de la base (valida rol, audita y es transaccional).
   // La interfaz sólo informa el resultado y vuelve a leer lo que RLS permite ver.
@@ -254,6 +258,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onSelectCase={(number) => navigate('cases', number)}
           />
         )}
+
+        {current === 'tasks' && <TasksView user={currentUser} />}
 
         {current === 'areas' && <AreasView areas={data.areas} />}
         {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}

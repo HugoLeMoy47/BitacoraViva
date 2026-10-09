@@ -28,10 +28,13 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
-  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'indicadores', 'acerca'] },
-  { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'indicadores', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'indicadores', 'acerca'] },
+  { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
+  // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
+  { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'acerca'] },
+  { key: 'volunteer', button: 'Voluntariado', routes: ['tareas', 'acerca'] },
 ];
 
 // ---- Comprobaciones que corren dentro de la página ----
@@ -355,6 +358,39 @@ try {
         }
       }
 
+      // Seguidor de tareas: cada estado de la lista de celular y los modales de captura (coordinación de tareas).
+      // Sólo lee: abre el formulario y la confirmación de archivo y los cancela con Escape.
+      if (role.key === 'task_manager' && (vp.name === '360' || vp.name === '1024')) {
+        await page.evaluate(() => { location.hash = '#/tareas'; });
+        await page.waitForTimeout(900);
+        if (vp.name === '360') {
+          const states = page.locator('main [role=group] button[aria-pressed]');
+          const n = await states.count();
+          for (let i = 0; i < n; i++) {
+            await states.nth(i).click();
+            await page.waitForTimeout(300);
+            record(role.key, vp.name, 'tareas/estado ' + (i + 1), await auditNow());
+          }
+        }
+        const modalIssues = [];
+        const checkModal = async (opener, label) => {
+          await opener.focus();
+          await opener.click();
+          await page.waitForSelector('[role=dialog]');
+          record(role.key, vp.name, 'tareas/' + label, await auditNow());
+          if (!(await page.locator('[role=dialog][aria-modal=true][aria-labelledby]').count())) modalIssues.push({ rule: 'modal', detail: label + ': sin role=dialog, aria-modal y nombre' });
+          if (!(await page.evaluate(() => document.querySelector('[role=dialog]').contains(document.activeElement)))) modalIssues.push({ rule: 'modal', detail: label + ': el foco no entra al modal' });
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(300);
+          if (await page.locator('[role=dialog]').count()) modalIssues.push({ rule: 'modal', detail: label + ': no se cierra con Escape' });
+          if (!(await opener.evaluate((el) => el === document.activeElement))) modalIssues.push({ rule: 'modal', detail: label + ': el foco no regresa al botón que lo abrió' });
+        };
+        await checkModal(page.getByRole('button', { name: /Nueva tarea/i }), 'formulario');
+        const archive = page.getByRole('button', { name: /^Archivar$/ }).first();
+        if (await archive.count()) await checkModal(archive, 'archivar');
+        record(role.key, vp.name, '(modal tareas)', modalIssues);
+      }
+
       // Foco visible por teclado (una pantalla por combinación)
       await page.evaluate(() => { location.hash = '#/' + (document.querySelector('[role=tab]') ? 'indicadores' : 'indicadores'); });
       await page.waitForTimeout(600);
@@ -401,6 +437,31 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await ctx.newPage();
     record('director', '1280', '(recorrido por teclado)', await keyboardJourney(page).catch((e) => [{ rule: 'recorrido-teclado', detail: 'error: ' + String(e.message).slice(0, 120) }]));
+    await ctx.close();
+    pages++;
+  }
+
+  // ---- Recorrido por teclado del voluntariado: del acceso a «Comenzar tarea», sin pulsarla ----
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const page = await ctx.newPage();
+    const out = [];
+    try {
+      await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+      await page.evaluate(() => document.activeElement?.blur?.());
+      if (!(await tabTo(page, /^Voluntariado$/))) out.push({ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Voluntariado con Tab' });
+      else {
+        await page.keyboard.press('Enter');
+        await page.waitForSelector('header', { timeout: 20000 });
+        await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
+        await page.evaluate(() => { location.hash = '#/tareas'; document.activeElement?.blur?.(); });
+        await page.waitForTimeout(1200);
+        if (!(await tabTo(page, /Comenzar tarea|Concluir tarea/, { max: 80 }))) out.push({ rule: 'recorrido-teclado', detail: 'tareas: no se llega al botón de avanzar una tarea con Tab' });
+      }
+    } catch (e) {
+      out.push({ rule: 'recorrido-teclado', detail: 'error: ' + String(e.message).slice(0, 120) });
+    }
+    record('volunteer', '1280', '(recorrido por teclado)', out);
     await ctx.close();
     pages++;
   }

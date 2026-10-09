@@ -5,11 +5,15 @@ import { RoleName, UserProfile, UserRole } from '../types/database';
 // RNF-04: la sesión caduca por inactividad a los 30 minutos.
 export const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
 
-const ROLE_PRIORITY: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer'];
+// Rol «principal» (para la etiqueta y las pantallas de casos): los de casos van antes que los de tareas.
+const ROLE_PRIORITY: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer', 'task_manager', 'volunteer'];
 
 export interface SessionUser {
   profile: UserProfile;
+  /** Rol principal; los permisos y las pantallas salen de TODOS los roles vigentes (`roles`) */
   role: RoleName;
+  /** Todos los roles vigentes de la persona: se acumulan (ADR-0007) */
+  roles: RoleName[];
   userRole: UserRole;
   assignedAreaId?: string;
   assignedAreaCode?: string;
@@ -57,6 +61,7 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
   return {
     profile,
     role: userRole.role_name,
+    roles: Array.from(new Set(roles.map((r) => r.role_name))),
     userRole,
     assignedAreaId: area?.id,
     assignedAreaCode: area?.code,

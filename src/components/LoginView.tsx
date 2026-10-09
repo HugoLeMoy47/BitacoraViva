@@ -12,6 +12,8 @@ const DEMO_ACCOUNTS: { role: RoleName; email: string }[] = [
   { role: 'caseworker', email: 'caseworker@alberguesantafe.org' },
   { role: 'intake_officer', email: 'intake@alberguesantafe.org' },
   { role: 'viewer', email: 'viewer@alberguesantafe.org' },
+  { role: 'task_manager', email: 'taskmanager@alberguesantafe.org' },
+  { role: 'volunteer', email: 'volunteer@alberguesantafe.org' },
 ];
 
 export const LoginView: React.FC = () => {

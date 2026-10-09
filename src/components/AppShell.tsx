@@ -8,6 +8,7 @@ import {
   History,
   Info,
   Layers,
+  ListChecks,
   LogOut,
   MoreHorizontal,
   Scale,
@@ -26,6 +27,7 @@ import { Tabs } from './Tabs';
 const ICON: Record<RouteId, React.ReactNode> = {
   operations: <Gauge className="h-4 w-4" aria-hidden="true" />,
   cases: <FolderOpen className="h-4 w-4" aria-hidden="true" />,
+  tasks: <ListChecks className="h-4 w-4" aria-hidden="true" />,
   indicators: <BarChart3 className="h-4 w-4" aria-hidden="true" />,
   areas: <Layers className="h-4 w-4" aria-hidden="true" />,
   audit: <History className="h-4 w-4" aria-hidden="true" />,

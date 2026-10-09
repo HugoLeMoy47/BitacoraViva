@@ -3,11 +3,12 @@ import { useMemo, useSyncExternalStore } from 'react';
 // Enrutamiento mínimo por hash (#/expedientes/ASF-2026-0001): sin dependencias, funciona con el
 // hospedaje estático, y da lo que importa: recargar conserva el lugar, «atrás» funciona y
 // los enlaces se pueden compartir.
-export type RouteId = 'operations' | 'cases' | 'indicators' | 'areas' | 'audit' | 'authority' | 'configuration' | 'about';
+export type RouteId = 'operations' | 'cases' | 'tasks' | 'indicators' | 'areas' | 'audit' | 'authority' | 'configuration' | 'about';
 
 export const ROUTE_SLUG: Record<RouteId, string> = {
   operations: 'operacion',
   cases: 'expedientes',
+  tasks: 'tareas',
   indicators: 'indicadores',
   areas: 'areas',
   audit: 'auditoria',

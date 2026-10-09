@@ -4,7 +4,8 @@
 // Alineación: Ethos v1.2, RNF v1.0, MAP-OIM v3 (Épicas E1, E2 y E3)
 // ==============================================================================
 
-export type RoleName = 'viewer' | 'caseworker' | 'intake_officer' | 'director';
+// Cuatro roles de casos y dos que sólo operan en tareas (ADR-0007). Una persona puede tener varios.
+export type RoleName = 'viewer' | 'caseworker' | 'intake_officer' | 'director' | 'task_manager' | 'volunteer';
 
 export type AreaCode = 'legal' | 'psicologia' | 'trabajo_social' | 'medica' | 'coordinacion';
 
@@ -23,7 +24,53 @@ export type AuditAction =
   | 'OPPOSITION'
   | 'CONSENT_GRANTED'
   | 'CONSENT_REVOKED'
-  | 'ARCO_ACCESS_EXTRACT_ISSUED';
+  | 'ARCO_ACCESS_EXTRACT_ISSUED'
+  | 'EVIDENCE_ACCESS';
+
+// ---- Seguidor de tareas (E7) ----
+export type TaskStatus = 'pending' | 'in_progress' | 'done';
+
+export interface Task {
+  id: string;
+  organization_id: string;
+  name: string;
+  details: string | null;
+  status: TaskStatus;
+  photo_required: boolean;
+  assigned_to: string | null;
+  /** Cuándo la tomó la persona del pool; nulo si la asignó coordinación */
+  claimed_at: string | null;
+  /** Vencimiento (fecha, sin hora) */
+  due_at: string | null;
+  started_at: string | null;
+  done_at: string | null;
+  task_category_id: string | null;
+  work_area_id: string | null;
+  routine_template_id: string | null;
+  created_at: string;
+  created_by: string | null;
+  updated_at: string;
+  archived_at: string | null;
+}
+
+export interface TaskCategory {
+  id: string;
+  organization_id: string;
+  key: string;
+  label_es: string;
+  sort_order: number;
+  archived_at: string | null;
+}
+
+/** Espacio físico del inmueble (cocina, dormitorios). No es `Area`, que es funcional. */
+export interface WorkArea {
+  id: string;
+  organization_id: string;
+  key: string;
+  label_es: string;
+  sort_order: number;
+  archived_at: string | null;
+}
 
 export interface Organization {
   id: string;
