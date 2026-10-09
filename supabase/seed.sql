@@ -796,3 +796,196 @@ values
      'INM/2026/SINT-0977', now() - interval '3 days', 'a0000000-0000-0000-0000-000000000001',
      null, false)
 on conflict (id) do nothing;
+
+-- ==============================================================================
+-- 10. Seguidor de tareas (Épica E7): cuentas, catálogos, rutinas, tareas y notas de turno
+--
+-- Todo es FICTICIO y determinista (identificadores por md5 de una clave estable). Las fechas se
+-- calculan hacia atrás desde el día del reinicio, de modo que la demo siempre luce reciente.
+-- Cuentas: coordinación de tareas y dos personas voluntarias. El resto del personal (director,
+-- caseworker, ingreso) también recibe tareas, tal como lo decide el ADR-0007.
+-- Las tareas cerradas no exigen foto: no existen archivos de evidencia sembrados.
+-- ==============================================================================
+do $$
+declare
+    v_org uuid := '00000000-0000-0000-0000-000000000001';
+    v_dir uuid := 'a0000000-0000-0000-0000-000000000001';
+    v_cw  uuid := 'a0000000-0000-0000-0000-000000000002';
+    v_in  uuid := 'a0000000-0000-0000-0000-000000000003';
+    v_tm  uuid := 'a0000000-0000-0000-0000-000000000005';
+    v_v1  uuid := 'a0000000-0000-0000-0000-000000000006';
+    v_v2  uuid := 'a0000000-0000-0000-0000-000000000007';
+begin
+    if exists (select 1 from information_schema.tables where table_schema = 'auth' and table_name = 'users') then
+        insert into auth.users (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change, email_change_token_new)
+        values
+            (v_tm, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'taskmanager@alberguesantafe.org', extensions.crypt('albergue2026!', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Rosa Elena Vega (Coordinación de tareas)"}', now(), now(), '', '', '', ''),
+            (v_v1, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'volunteer@alberguesantafe.org', extensions.crypt('albergue2026!', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Lucía Torres (Voluntariado)"}', now(), now(), '', '', '', ''),
+            (v_v2, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'volunteer2@alberguesantafe.org', extensions.crypt('albergue2026!', extensions.gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{"full_name":"Mateo Díaz (Voluntariado)"}', now(), now(), '', '', '', '')
+        on conflict (id) do nothing;
+
+        insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+        select u.id, u.id, u.id::text, 'email', jsonb_build_object('sub', u.id::text, 'email', u.email, 'email_verified', true), now(), now(), now()
+        from auth.users u where u.id in (v_tm, v_v1, v_v2)
+        on conflict do nothing;
+
+        insert into public.user_profile (id, organization_id, email, full_name, active)
+        values
+            (v_tm, v_org, 'taskmanager@alberguesantafe.org', 'Rosa Elena Vega', true),
+            (v_v1, v_org, 'volunteer@alberguesantafe.org', 'Lucía Torres', true),
+            (v_v2, v_org, 'volunteer2@alberguesantafe.org', 'Mateo Díaz', true)
+        on conflict (id) do nothing;
+
+        insert into public.user_role (user_id, role_name, area_id, granted_by, granted_at)
+        select r.u, r.role, null, v_dir, now()
+        from (values (v_tm, 'task_manager'), (v_v1, 'volunteer'), (v_v2, 'volunteer')) as r(u, role)
+        where not exists (select 1 from public.user_role x where x.user_id = r.u and x.role_name = r.role and x.revoked_at is null);
+    end if;
+end $$;
+
+-- Catálogos de tareas
+insert into public.task_category (id, organization_id, key, label_es, sort_order)
+select md5('task_category:' || k)::uuid, '00000000-0000-0000-0000-000000000001', k, l, o
+from (values
+    ('cleaning', 'Limpieza e higiene', 1), ('kitchen', 'Cocina y alimentos', 2),
+    ('laundry', 'Lavandería y ropa', 3), ('maintenance', 'Mantenimiento', 4),
+    ('donations', 'Donaciones y almacén', 5), ('accompaniment', 'Acompañamiento', 6)
+) as c(k, l, o)
+on conflict (organization_id, key) do nothing;
+
+insert into public.work_area (id, organization_id, key, label_es, sort_order)
+select md5('work_area:' || k)::uuid, '00000000-0000-0000-0000-000000000001', k, l, o
+from (values
+    ('kitchen', 'Cocina', 1), ('dining', 'Comedor', 2), ('dorm_women', 'Dormitorio de mujeres', 3),
+    ('dorm_men', 'Dormitorio de hombres', 4), ('family_module', 'Módulo familiar', 5),
+    ('laundry', 'Lavandería', 6), ('warehouse', 'Almacén', 7), ('offices', 'Oficinas', 8)
+) as a(k, l, o)
+on conflict (organization_id, key) do nothing;
+
+-- Plantillas de rutina
+insert into public.routine_template (id, organization_id, name, description, work_area_id, task_category_id, created_by)
+select md5('routine:' || k)::uuid, '00000000-0000-0000-0000-000000000001', n, d,
+       md5('work_area:' || wa)::uuid, md5('task_category:' || tc)::uuid, 'a0000000-0000-0000-0000-000000000005'
+from (values
+    ('kitchen_morning', 'Turno de cocina — mañana', 'Desayuno y limpieza de la cocina antes del mediodía.', 'kitchen', 'kitchen'),
+    ('dorms_night', 'Cierre de dormitorios — noche', 'Revisión y orden de los dormitorios al cierre del día.', 'dorm_women', 'cleaning'),
+    ('laundry_day', 'Ropero y lavandería', 'Clasificar la ropa donada y atender la lavandería.', 'laundry', 'laundry')
+) as r(k, n, d, wa, tc)
+on conflict (id) do nothing;
+
+insert into public.routine_template_item (id, organization_id, routine_template_id, name, details, sort_order, photo_required)
+select md5('routine_item:' || k || ':' || o)::uuid, '00000000-0000-0000-0000-000000000001',
+       md5('routine:' || k)::uuid, n, d, o, p
+from (values
+    ('kitchen_morning', 1, 'Preparar el desayuno', 'Menú del día pegado en la puerta del refrigerador.', false),
+    ('kitchen_morning', 2, 'Servir el desayuno', null, false),
+    ('kitchen_morning', 3, 'Lavar la loza y las ollas', null, false),
+    ('kitchen_morning', 4, 'Limpiar estufa y mesas', 'Fotografiar la cocina al terminar.', true),
+    ('kitchen_morning', 5, 'Revisar y rotular la despensa', null, false),
+    ('dorms_night', 1, 'Tender camas y ordenar el área', null, false),
+    ('dorms_night', 2, 'Barrer y trapear el pasillo', null, false),
+    ('dorms_night', 3, 'Vaciar botes de basura', null, false),
+    ('dorms_night', 4, 'Cerrar ventanas y revisar luces', 'Fotografiar el dormitorio ordenado.', true),
+    ('laundry_day', 1, 'Clasificar la ropa donada por talla', null, false),
+    ('laundry_day', 2, 'Lavar y tender sábanas', null, false),
+    ('laundry_day', 3, 'Doblar y guardar en el ropero', null, false)
+) as i(k, o, n, d, p)
+on conflict (id) do nothing;
+
+-- Tareas: 24 cerradas (últimas 10 semanas), 8 en curso, 5 pendientes asignadas y 5 en el pool
+do $$
+declare
+    v_org uuid := '00000000-0000-0000-0000-000000000001';
+    v_names text[] := array[
+        'Limpiar los baños del primer piso', 'Preparar el desayuno', 'Ordenar el almacén de donaciones',
+        'Lavar y doblar sábanas', 'Barrer el patio central', 'Inventariar la despensa',
+        'Acompañar a una persona a su cita médica', 'Reparar la llave del lavabo', 'Clasificar la ropa donada',
+        'Limpiar el comedor después de la cena', 'Preparar la cena para el albergue', 'Trapear los pasillos',
+        'Revisar extintores y salidas', 'Organizar el cuarto de juegos', 'Recibir y registrar una donación',
+        'Sanitizar los módulos familiares', 'Tender camas del dormitorio de mujeres', 'Sacar la basura y reciclables'];
+    v_cats text[] := array['cleaning','kitchen','donations','laundry','cleaning','kitchen','accompaniment',
+        'maintenance','laundry','cleaning','kitchen','cleaning','maintenance','accompaniment','donations',
+        'cleaning','cleaning','cleaning'];
+    v_areas text[] := array['dorm_women','kitchen','warehouse','laundry','offices','kitchen','offices',
+        'family_module','laundry','dining','kitchen','dorm_men','offices','family_module','warehouse',
+        'family_module','dorm_women','offices'];
+    v_who uuid[] := array[
+        'a0000000-0000-0000-0000-000000000006'::uuid, 'a0000000-0000-0000-0000-000000000007'::uuid,
+        'a0000000-0000-0000-0000-000000000006'::uuid, 'a0000000-0000-0000-0000-000000000007'::uuid,
+        'a0000000-0000-0000-0000-000000000006'::uuid, 'a0000000-0000-0000-0000-000000000002'::uuid,
+        'a0000000-0000-0000-0000-000000000007'::uuid, 'a0000000-0000-0000-0000-000000000003'::uuid];
+    n int := array_length(v_names, 1);
+    i int;
+    v_status text;
+    v_assignee uuid;
+    v_claimed timestamptz;
+    v_created timestamptz;
+    v_started timestamptz;
+    v_done timestamptz;
+    v_due date;
+begin
+    for i in 1 .. 42 loop
+        v_assignee := v_who[1 + (i % array_length(v_who, 1))];
+        v_claimed := null;
+        v_started := null;
+        v_done := null;
+        v_due := null;
+
+        if i <= 24 then
+            v_status := 'done';
+            v_created := now() - make_interval(days => 70 - ((i - 1) * 3), hours => (i * 5) % 9);
+            v_started := v_created + make_interval(hours => 2 + (i % 5));
+            v_done := v_started + make_interval(hours => 1 + (i % 6), mins => (i * 7) % 50);
+        elsif i <= 32 then
+            v_status := 'in_progress';
+            v_created := now() - make_interval(days => 1 + (i % 4), hours => i % 7);
+            v_started := v_created + interval '3 hours';
+            v_due := current_date + ((i % 4) - 1);
+        elsif i <= 37 then
+            v_status := 'pending';
+            v_created := now() - make_interval(days => i % 3, hours => 2 + (i % 5));
+            v_due := current_date + (i % 3);
+            -- Dos de ellas las tomó la propia persona del pool; el resto las asignó coordinación
+            if i in (34, 36) then
+                v_assignee := case when i = 34 then 'a0000000-0000-0000-0000-000000000006'::uuid else 'a0000000-0000-0000-0000-000000000007'::uuid end;
+                v_claimed := now() - interval '2 hours';
+            end if;
+        else
+            v_status := 'pending';
+            v_assignee := null;
+            v_created := now() - make_interval(hours => 3 + (i % 20));
+            v_due := current_date + 1 + (i % 3);
+        end if;
+
+        insert into public.task (
+            id, organization_id, name, details, status, photo_required, assigned_to, claimed_at, due_at,
+            started_at, done_at, task_category_id, work_area_id, created_at, created_by, updated_at
+        ) values (
+            md5('task:' || i)::uuid, v_org,
+            v_names[1 + ((i - 1) % n)],
+            case when i % 4 = 0 then 'Seguir las instrucciones pegadas en el área. Avisar a coordinación si falta material.' end,
+            v_status,
+            -- Sólo las abiertas pueden exigir foto (no hay archivos de evidencia sembrados)
+            v_status <> 'done' and i % 6 = 0,
+            v_assignee, v_claimed, v_due, v_started, v_done,
+            md5('task_category:' || v_cats[1 + ((i - 1) % n)])::uuid,
+            md5('work_area:' || v_areas[1 + ((i - 1) % n)])::uuid,
+            v_created,
+            case when i % 3 = 0 then 'a0000000-0000-0000-0000-000000000001'::uuid else 'a0000000-0000-0000-0000-000000000005'::uuid end,
+            coalesce(v_done, v_started, v_created)
+        ) on conflict (id) do nothing;
+    end loop;
+end $$;
+
+-- Notas de turno (texto libre ficticio)
+insert into public.shift_note (id, organization_id, work_area_id, note_date, shift, body, created_at, created_by)
+select md5('shift_note:' || n)::uuid, '00000000-0000-0000-0000-000000000001', md5('work_area:' || wa)::uuid,
+       current_date - d, sh, b, now() - make_interval(days => d, hours => 1), who::uuid
+from (values
+    (1, 'kitchen', 0, 'morning', 'Se acabó el aceite; queda para un día. Avisar a donaciones.', 'a0000000-0000-0000-0000-000000000006'),
+    (2, 'dorm_women', 0, 'night', 'Falla la luz del pasillo del fondo. Ya se reportó a mantenimiento.', 'a0000000-0000-0000-0000-000000000007'),
+    (3, 'warehouse', 1, 'afternoon', 'Llegó una donación de cobijas: 30 piezas, ya están registradas y guardadas.', 'a0000000-0000-0000-0000-000000000005'),
+    (4, 'laundry', 2, 'general', 'La lavadora grande hace ruido; conviene revisarla antes del fin de semana.', 'a0000000-0000-0000-0000-000000000006'),
+    (5, 'dining', 3, 'night', 'Todo en orden. Quedó cena para quien llegue tarde en el refrigerador.', 'a0000000-0000-0000-0000-000000000007')
+) as s(n, wa, d, sh, b, who)
+on conflict (id) do nothing;

@@ -22,8 +22,27 @@ begin
     end if;
 end $$;
 
+-- Archivos de evidencia del Seguidor de tareas. Storage rechaza el borrado directo salvo que
+-- la sesion lo declare; si esa salvaguarda cambia en el futuro, el reinicio no se detiene:
+-- quedarian archivos huerfanos en un bucket privado, sin ninguna fila que los apunte.
+do $$
+begin
+    perform set_config('storage.allow_delete_query', 'true', true);
+    delete from storage.objects where bucket_id = 'task-evidence';
+exception when others then
+    raise notice 'No se pudieron limpiar los archivos del bucket task-evidence: %', sqlerrm;
+end $$;
+
 -- Datos de negocio. Se conservan: role (catalogo fijo de la migracion) y app_config.
 truncate table
+    public.task_evidence,
+    public.shift_note,
+    public.task,
+    public.routine_template_item,
+    public.routine_template,
+    public.task_setting,
+    public.task_category,
+    public.work_area,
     public.arco_request,
     public.attachment,
     public.sharing_event,

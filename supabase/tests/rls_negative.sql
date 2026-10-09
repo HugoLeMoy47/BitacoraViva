@@ -57,7 +57,11 @@ from (values
     ('aaaaaaaa-3000-0000-0000-000000000003', 'in@tst-a.invalid'),
     ('aaaaaaaa-3000-0000-0000-000000000004', 'vw@tst-a.invalid'),
     ('aaaaaaaa-3000-0000-0000-000000000005', 'nr@tst-a.invalid'),
-    ('bbbbbbbb-3000-0000-0000-000000000001', 'dir@tst-b.invalid')
+    ('aaaaaaaa-3000-0000-0000-000000000006', 'tm@tst-a.invalid'),
+    ('aaaaaaaa-3000-0000-0000-000000000007', 'vol@tst-a.invalid'),
+    ('aaaaaaaa-3000-0000-0000-000000000008', 'vol2@tst-a.invalid'),
+    ('bbbbbbbb-3000-0000-0000-000000000001', 'dir@tst-b.invalid'),
+    ('bbbbbbbb-3000-0000-0000-000000000002', 'vol@tst-b.invalid')
 ) as u(id, email);
 
 insert into public.user_profile (id, organization_id, email, full_name, active) values
@@ -66,14 +70,22 @@ insert into public.user_profile (id, organization_id, email, full_name, active) 
     ('aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-00000000000a', 'in@tst-a.invalid', 'In A', true),
     ('aaaaaaaa-3000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'vw@tst-a.invalid', 'Vw A', true),
     ('aaaaaaaa-3000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-00000000000a', 'nr@tst-a.invalid', 'Sin rol A', true),
-    ('bbbbbbbb-3000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'dir@tst-b.invalid', 'Dir B', true);
+    ('aaaaaaaa-3000-0000-0000-000000000006', 'aaaaaaaa-0000-0000-0000-00000000000a', 'tm@tst-a.invalid', 'Coordinación de tareas A', true),
+    ('aaaaaaaa-3000-0000-0000-000000000007', 'aaaaaaaa-0000-0000-0000-00000000000a', 'vol@tst-a.invalid', 'Voluntaria A', true),
+    ('aaaaaaaa-3000-0000-0000-000000000008', 'aaaaaaaa-0000-0000-0000-00000000000a', 'vol2@tst-a.invalid', 'Voluntario A2', true),
+    ('bbbbbbbb-3000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'dir@tst-b.invalid', 'Dir B', true),
+    ('bbbbbbbb-3000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-00000000000b', 'vol@tst-b.invalid', 'Voluntaria B', true);
 
 insert into public.user_role (user_id, role_name, area_id, granted_by, granted_at) values
     ('aaaaaaaa-3000-0000-0000-000000000001', 'director', null, 'aaaaaaaa-3000-0000-0000-000000000001', now()),
     ('aaaaaaaa-3000-0000-0000-000000000002', 'caseworker', 'aaaaaaaa-1000-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000001', now()),
     ('aaaaaaaa-3000-0000-0000-000000000003', 'intake_officer', null, 'aaaaaaaa-3000-0000-0000-000000000001', now()),
     ('aaaaaaaa-3000-0000-0000-000000000004', 'viewer', null, 'aaaaaaaa-3000-0000-0000-000000000001', now()),
-    ('bbbbbbbb-3000-0000-0000-000000000001', 'director', null, 'bbbbbbbb-3000-0000-0000-000000000001', now());
+    ('aaaaaaaa-3000-0000-0000-000000000006', 'task_manager', null, 'aaaaaaaa-3000-0000-0000-000000000001', now()),
+    ('aaaaaaaa-3000-0000-0000-000000000007', 'volunteer', null, 'aaaaaaaa-3000-0000-0000-000000000001', now()),
+    ('aaaaaaaa-3000-0000-0000-000000000008', 'volunteer', null, 'aaaaaaaa-3000-0000-0000-000000000001', now()),
+    ('bbbbbbbb-3000-0000-0000-000000000001', 'director', null, 'bbbbbbbb-3000-0000-0000-000000000001', now()),
+    ('bbbbbbbb-3000-0000-0000-000000000002', 'volunteer', null, 'bbbbbbbb-3000-0000-0000-000000000001', now());
 
 -- Personas, casos, bitácora, compartición y consentimientos
 insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date) values
@@ -116,6 +128,45 @@ insert into public.privacy_notice (organization_id, version, title, summary, ful
 insert into public.authority_request (organization_id, authority_name, request_type, official_letter_ref, received_at, extract_delivered) values
     ('bbbbbbbb-0000-0000-0000-00000000000b', 'Autoridad B', 'Consulta', 'B/0001', now(), false);
 
+-- Seguidor de tareas (E7): catálogos, rutinas, tareas, evidencia y notas de A y de B
+insert into public.task_category (id, organization_id, key, label_es) values
+    ('aaaaaaaa-9000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'limpieza', 'Limpieza'),
+    ('bbbbbbbb-9000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'limpieza', 'Limpieza B');
+insert into public.work_area (id, organization_id, key, label_es) values
+    ('aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'cocina', 'Cocina'),
+    ('bbbbbbbb-9100-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'cocina', 'Cocina B');
+insert into public.routine_template (id, organization_id, name, work_area_id, task_category_id, created_by) values
+    ('aaaaaaaa-9200-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Turno de cocina A', 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-9000-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('bbbbbbbb-9200-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'Turno de cocina B', 'bbbbbbbb-9100-0000-0000-000000000001', 'bbbbbbbb-9000-0000-0000-000000000001', 'bbbbbbbb-3000-0000-0000-000000000001');
+insert into public.routine_template_item (id, organization_id, routine_template_id, name, sort_order) values
+    ('aaaaaaaa-9300-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-9200-0000-0000-000000000001', 'Preparar el desayuno', 1),
+    ('aaaaaaaa-9300-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-9200-0000-0000-000000000001', 'Lavar la loza', 2),
+    ('bbbbbbbb-9300-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-9200-0000-0000-000000000001', 'Preparar el desayuno B', 1);
+-- Tareas de A: 01 coordinación→VOL · 02 VOL en curso con foto · 03 pool · 04 VOL2 · 05 VOL tomada y vencida
+--   06 VOL en curso (con evidencia) · 07 pool · 08 VOL tomada hoy · 09 VOL2 · 0a VOL2 en curso · 0b VOL2 en curso con foto
+insert into public.task (id, organization_id, name, status, photo_required, assigned_to, claimed_at, task_category_id, work_area_id, created_by) values
+    ('aaaaaaaa-a000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A1', 'pending', false, 'aaaaaaaa-3000-0000-0000-000000000007', null, 'aaaaaaaa-9000-0000-0000-000000000001', 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A2', 'in_progress', true, 'aaaaaaaa-3000-0000-0000-000000000007', null, 'aaaaaaaa-9000-0000-0000-000000000001', 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A3 (pool)', 'pending', false, null, null, 'aaaaaaaa-9000-0000-0000-000000000001', 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A4', 'pending', false, 'aaaaaaaa-3000-0000-0000-000000000008', null, null, null, 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A5 (tomada hace 3 días)', 'pending', false, 'aaaaaaaa-3000-0000-0000-000000000007', now() - interval '3 days', null, 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000006', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A6', 'in_progress', false, 'aaaaaaaa-3000-0000-0000-000000000007', null, null, 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000007', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A7 (pool)', 'pending', false, null, null, null, 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000008', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A8 (tomada hoy)', 'pending', false, 'aaaaaaaa-3000-0000-0000-000000000007', now(), null, 'aaaaaaaa-9100-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-000000000009', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A9', 'pending', false, 'aaaaaaaa-3000-0000-0000-000000000008', null, null, null, 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-00000000000a', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A10', 'in_progress', false, 'aaaaaaaa-3000-0000-0000-000000000008', null, null, null, 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('aaaaaaaa-a000-0000-0000-00000000000b', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Tarea A11 (exige foto)', 'in_progress', true, 'aaaaaaaa-3000-0000-0000-000000000008', null, null, null, 'aaaaaaaa-3000-0000-0000-000000000006'),
+    ('bbbbbbbb-a000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'Tarea B1', 'pending', false, 'bbbbbbbb-3000-0000-0000-000000000002', null, 'bbbbbbbb-9000-0000-0000-000000000001', 'bbbbbbbb-9100-0000-0000-000000000001', 'bbbbbbbb-3000-0000-0000-000000000001'),
+    ('bbbbbbbb-a000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-00000000000b', 'Tarea B2 (pool)', 'pending', false, null, null, null, null, 'bbbbbbbb-3000-0000-0000-000000000001');
+insert into public.task_evidence (id, organization_id, task_id, storage_path, mime_type, size_bytes) values
+    ('aaaaaaaa-9400-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-a000-0000-0000-000000000006',
+     'aaaaaaaa-0000-0000-0000-00000000000a/aaaaaaaa-a000-0000-0000-000000000006/inicial.jpg', 'image/jpeg', 1000),
+    ('bbbbbbbb-9400-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-a000-0000-0000-000000000001',
+     'bbbbbbbb-0000-0000-0000-00000000000b/bbbbbbbb-a000-0000-0000-000000000001/inicial.jpg', 'image/jpeg', 1000);
+insert into public.shift_note (id, organization_id, work_area_id, body, created_by) values
+    ('aaaaaaaa-9500-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-9100-0000-0000-000000000001', 'Nota de turno A (texto libre)', 'aaaaaaaa-3000-0000-0000-000000000007'),
+    ('bbbbbbbb-9500-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-9100-0000-0000-000000000001', 'Nota de turno B (texto libre)', 'bbbbbbbb-3000-0000-0000-000000000002');
+
 -- ---------------------------------------------------------------- Pruebas
 create temp table test_res (verdict text, name text, expected text, actual text);
 grant all on test_res to authenticated, anon;
@@ -129,6 +180,9 @@ begin
     if p_role is not null then
         perform set_config('request.jwt.claims', json_build_object('sub', p_uid, 'role', p_role)::text, true);
         execute format('set local role %I', p_role);
+    else
+        -- Prueba como propietario: sin sesión. Sin esto heredaría la identidad de la prueba anterior
+        perform set_config('request.jwt.claims', '', true);
     end if;
     begin
         execute p_sql into v;
@@ -151,13 +205,49 @@ declare
     alt text;
 begin
     foreach alt in array string_to_array(p_expected, '|') loop
-        ok := ok or case alt
-            when 'ERR' then a like 'ERR:%'
-            when 'OK'  then a not like 'ERR:%'
-            when '>0'  then a not like 'ERR:%' and a ~ '^[0-9]+$' and a::bigint > 0
+        ok := ok or case
+            when alt = 'ERR' then a like 'ERR:%'
+            -- 'ERR:TK012' exige ese SQLSTATE concreto
+            when alt like 'ERR:%' then a like alt || '%'
+            when alt = 'OK' then a not like 'ERR:%'
+            when alt = '>0' then a not like 'ERR:%' and a ~ '^[0-9]+$' and a::bigint > 0
             else a = alt end;
     end loop;
     insert into test_res values (case when ok then 'PASS' else 'FAIL' end, p_name, p_expected, a);
+end $$;
+
+-- Sustituye marcadores como {VOL} o {TA3} por el identificador entre comillas, para que las
+-- pruebas de tareas se lean sin repetir cuarenta UUID. A y B son las dos organizaciones.
+create or replace function pg_temp.q(p text)
+returns text language plpgsql as $$
+declare
+    r text := p;
+    kv text[];
+begin
+    foreach kv slice 1 in array array[
+        ['{ORGA}', 'aaaaaaaa-0000-0000-0000-00000000000a'], ['{ORGB}', 'bbbbbbbb-0000-0000-0000-00000000000b'],
+        ['{DIRB2}', 'bbbbbbbb-3000-0000-0000-000000000003'], ['{DIRB}', 'bbbbbbbb-3000-0000-0000-000000000001'],
+        ['{VOLB}', 'bbbbbbbb-3000-0000-0000-000000000002'], ['{DIR}', 'aaaaaaaa-3000-0000-0000-000000000001'],
+        ['{CW}', 'aaaaaaaa-3000-0000-0000-000000000002'], ['{INT}', 'aaaaaaaa-3000-0000-0000-000000000003'],
+        ['{VW}', 'aaaaaaaa-3000-0000-0000-000000000004'], ['{NR}', 'aaaaaaaa-3000-0000-0000-000000000005'],
+        ['{TM}', 'aaaaaaaa-3000-0000-0000-000000000006'], ['{VOL2}', 'aaaaaaaa-3000-0000-0000-000000000008'],
+        ['{VOL}', 'aaaaaaaa-3000-0000-0000-000000000007'], ['{DIRA2}', 'aaaaaaaa-3000-0000-0000-000000000009'],
+        ['{TA10}', 'aaaaaaaa-a000-0000-0000-00000000000a'], ['{TA11}', 'aaaaaaaa-a000-0000-0000-00000000000b'],
+        ['{TA1}', 'aaaaaaaa-a000-0000-0000-000000000001'], ['{TA2}', 'aaaaaaaa-a000-0000-0000-000000000002'],
+        ['{TA3}', 'aaaaaaaa-a000-0000-0000-000000000003'], ['{TA4}', 'aaaaaaaa-a000-0000-0000-000000000004'],
+        ['{TA5}', 'aaaaaaaa-a000-0000-0000-000000000005'], ['{TA6}', 'aaaaaaaa-a000-0000-0000-000000000006'],
+        ['{TA7}', 'aaaaaaaa-a000-0000-0000-000000000007'], ['{TA8}', 'aaaaaaaa-a000-0000-0000-000000000008'],
+        ['{TA9}', 'aaaaaaaa-a000-0000-0000-000000000009'],
+        ['{TB1}', 'bbbbbbbb-a000-0000-0000-000000000001'], ['{TB2}', 'bbbbbbbb-a000-0000-0000-000000000002'],
+        ['{RTA}', 'aaaaaaaa-9200-0000-0000-000000000001'], ['{RTB}', 'bbbbbbbb-9200-0000-0000-000000000001'],
+        ['{WAA}', 'aaaaaaaa-9100-0000-0000-000000000001'], ['{WAB}', 'bbbbbbbb-9100-0000-0000-000000000001'],
+        ['{CATA}', 'aaaaaaaa-9000-0000-0000-000000000001'], ['{CATB}', 'bbbbbbbb-9000-0000-0000-000000000001'],
+        ['{EVA}', 'aaaaaaaa-9400-0000-0000-000000000001'], ['{EVB}', 'bbbbbbbb-9400-0000-0000-000000000001'],
+        ['{NA}', 'aaaaaaaa-9500-0000-0000-000000000001'], ['{NB}', 'bbbbbbbb-9500-0000-0000-000000000001']
+    ] loop
+        r := replace(r, kv[1], '''' || kv[2] || '''');
+    end loop;
+    return r;
 end $$;
 
 do $do$
@@ -168,6 +258,12 @@ declare
     VW   constant text := 'aaaaaaaa-3000-0000-0000-000000000004';
     NR   constant text := 'aaaaaaaa-3000-0000-0000-000000000005';
     DIRB constant text := 'bbbbbbbb-3000-0000-0000-000000000001';
+    TM   constant text := 'aaaaaaaa-3000-0000-0000-000000000006';
+    VOL  constant text := 'aaaaaaaa-3000-0000-0000-000000000007';
+    VOL2 constant text := 'aaaaaaaa-3000-0000-0000-000000000008';
+    VOLB constant text := 'bbbbbbbb-3000-0000-0000-000000000002';
+    DIRB2 constant text := 'bbbbbbbb-3000-0000-0000-000000000003';
+    DIRA2 constant text := 'aaaaaaaa-3000-0000-0000-000000000009';
     ORG_A constant text := 'aaaaaaaa-0000-0000-0000-00000000000a';
     ORG_B constant text := 'bbbbbbbb-0000-0000-0000-00000000000b';
     t text;
@@ -177,7 +273,8 @@ declare
     report text;
 begin
     -- ===== Aislamiento por organización (BV-1.1): ni una fila de otra organización
-    foreach t in array array['person','"case"','case_status','case_vulnerability_marker','journal_entry','sharing_event','consent','arco_request','attachment','privacy_notice','authority_request','audit_event','area','status_axis','status_value','user_profile'] loop
+    foreach t in array array['person','"case"','case_status','case_vulnerability_marker','journal_entry','sharing_event','consent','arco_request','attachment','privacy_notice','authority_request','audit_event','area','status_axis','status_value','user_profile',
+                             'task_category','work_area','routine_template','routine_template_item','task','task_evidence','shift_note','task_setting'] loop
         perform pg_temp.expect('aislamiento: director A no ve ' || t || ' de B', DIR, 'authenticated',
             format('select count(*)::text from public.%s where organization_id = %L', t, ORG_B), '0');
         perform pg_temp.expect('aislamiento: director B no ve ' || t || ' de A', DIRB, 'authenticated',
@@ -241,7 +338,7 @@ begin
         replace(replace(replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), 'array[]::text[]', 'array[''unaccompanied_child'']'),
                 '''[{"consent_type":"general_care"}]''',
                 '''[{"consent_type":"general_care","is_minor_assent":true,"legal_guardian_name":"Tutor"},{"consent_type":"sensitive_data"}]'''), 'ERR');
-    foreach t in array array[CW, INT, VW, NR] loop
+    foreach t in array array[CW, INT, VW, NR, TM, VOL] loop
         perform pg_temp.expect('solo dirección lee auditoría (' || right(t, 1) || ')', t, 'authenticated', 'select count(*)::text from public.audit_event', '0');
     end loop;
     perform pg_temp.expect('control positivo: director lee auditoría', DIR, 'authenticated', 'select count(*)::text from public.audit_event', '>0');
@@ -274,6 +371,9 @@ begin
         perform pg_temp.expect('viewer no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), VW, 'authenticated', t, 'ERR');
         perform pg_temp.expect('sin rol no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), NR, 'authenticated', t, 'ERR');
         perform pg_temp.expect('director de otra organización no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), DIRB, 'authenticated', t, 'ERR');
+        -- Los roles de tareas no reciben ninguna función del expediente (ADR-0007)
+        perform pg_temp.expect('voluntariado no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), VOL, 'authenticated', t, 'ERR');
+        perform pg_temp.expect('coordinación de tareas no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), TM, 'authenticated', t, 'ERR');
     end loop;
 
     perform pg_temp.expect('control positivo: intake registra consentimiento', INT, 'authenticated',
@@ -298,8 +398,16 @@ begin
         'with u as (update public.journal_entry set visibility = ''shared'' where id = ''aaaaaaaa-6000-0000-0000-000000000001'' returning 1) select count(*)::text from u', 'ERR|0');
 
     -- ===== Regla Dura 3: nadie tiene DELETE sobre tablas de negocio
-    foreach t in array array['person','"case"','case_status','case_vulnerability_marker','journal_entry','sharing_event','consent','arco_request','audit_event','user_role','user_profile','organization','area'] loop
+    foreach t in array array['person','"case"','case_status','case_vulnerability_marker','journal_entry','sharing_event','consent','arco_request','audit_event','user_role','user_profile','organization','area',
+                             'task_category','work_area','routine_template','routine_template_item','task','task_evidence','shift_note','task_setting'] loop
         perform pg_temp.expect('DELETE denegado a director en ' || t, DIR, 'authenticated',
+            format('with d as (delete from public.%s returning 1) select count(*)::text from d', t), 'ERR');
+    end loop;
+    -- Ni la coordinación ni el voluntariado borran nada de tareas
+    foreach t in array array['task_category','work_area','routine_template','routine_template_item','task','task_evidence','shift_note','task_setting'] loop
+        perform pg_temp.expect('DELETE denegado a coordinación de tareas en ' || t, TM, 'authenticated',
+            format('with d as (delete from public.%s returning 1) select count(*)::text from d', t), 'ERR');
+        perform pg_temp.expect('DELETE denegado a voluntariado en ' || t, VOL, 'authenticated',
             format('with d as (delete from public.%s returning 1) select count(*)::text from d', t), 'ERR');
     end loop;
     perform pg_temp.expect('sin privilegios DELETE/TRUNCATE para anon/authenticated', null, null,
@@ -463,12 +571,520 @@ begin
                       values ('aaaaaaaa-0000-0000-0000-00000000000a','aaaaaaaa-4000-0000-0000-000000000001','aaaaaaaa-5000-0000-0000-000000000001','secondary_use_research','granted','aaaaaaaa-3000-0000-0000-000000000003') returning consent_text_id)
            select count(*)::text from i join public.consent_text ct on ct.id = i.consent_text_id where ct.active and ct.version = 2$q$, '1');
 
+    -- ============================================================================================
+    -- ===== Seguidor de tareas (E7) · ADR-0007: roles agregados
+    -- ============================================================================================
+
+    -- ----- Frontera con el expediente: los roles de tareas no reciben ni una fila
+    foreach t in array array['person','"case"','case_status','case_vulnerability_marker','journal_entry','sharing_event','consent','arco_request','attachment','privacy_notice','authority_request','audit_event','area','status_axis','status_value'] loop
+        perform pg_temp.expect('voluntariado no ve ' || t, VOL, 'authenticated', format('select count(*)::text from public.%s', t), '0');
+        perform pg_temp.expect('coordinación de tareas no ve ' || t, TM, 'authenticated', format('select count(*)::text from public.%s', t), '0');
+    end loop;
+    perform pg_temp.expect('control positivo: el voluntariado ve su organización', VOL, 'authenticated', 'select count(*)::text from public.organization', '1');
+    perform pg_temp.expect('control positivo: el voluntariado ve los perfiles de su organización', VOL, 'authenticated', 'select count(*)::text from public.user_profile', '>0');
+    perform pg_temp.expect('voluntariado no consulta indicadores de casos', VOL, 'authenticated', 'select public.fn_aggregate_metrics()::text', 'ERR');
+    perform pg_temp.expect('coordinación de tareas no consulta indicadores de casos', TM, 'authenticated', 'select public.fn_aggregate_metrics()::text', 'ERR');
+    perform pg_temp.expect('voluntariado no abre casos', VOL, 'authenticated', new_case, 'ERR');
+    perform pg_temp.expect('has_any_role es «rol de casos»: el voluntariado no lo tiene', VOL, 'authenticated', 'select public.has_any_role()::text', 'false');
+    perform pg_temp.expect('has_any_role es «rol de casos»: la coordinación de tareas no lo tiene', TM, 'authenticated', 'select public.has_any_role()::text', 'false');
+    perform pg_temp.expect('control positivo: has_any_role sigue siendo cierto para un viewer', VW, 'authenticated', 'select public.has_any_role()::text', 'true');
+    perform pg_temp.expect('has_active_role incluye a los roles de tareas', VOL, 'authenticated', 'select public.has_active_role()::text', 'true');
+    perform pg_temp.expect('el voluntariado tiene acceso a tareas', VOL, 'authenticated', 'select public.has_task_role()::text', 'true');
+    perform pg_temp.expect('el voluntariado no gestiona tareas', VOL, 'authenticated', 'select public.has_task_management()::text', 'false');
+    perform pg_temp.expect('la coordinación de tareas gestiona tareas', TM, 'authenticated', 'select public.has_task_management()::text', 'true');
+    perform pg_temp.expect('el director gestiona tareas', DIR, 'authenticated', 'select public.has_task_management()::text', 'true');
+    perform pg_temp.expect('caseworker tiene acceso a tareas pero no las gestiona', CW, 'authenticated',
+        'select (public.has_task_role() and not public.has_task_management())::text', 'true');
+    perform pg_temp.expect('intake_officer tiene acceso a tareas pero no las gestiona', INT, 'authenticated',
+        'select (public.has_task_role() and not public.has_task_management())::text', 'true');
+    perform pg_temp.expect('viewer no tiene acceso a tareas', VW, 'authenticated', 'select public.has_task_role()::text', 'false');
+    perform pg_temp.expect('sin rol no tiene acceso a tareas', NR, 'authenticated', 'select public.has_task_role()::text', 'false');
+    perform pg_temp.expect('user_has_task_role no es ejecutable por roles de aplicación', DIR, 'authenticated',
+        pg_temp.q('select public.user_has_task_role({VOL})::text'), 'ERR');
+
+    -- ----- Quién ve qué tareas
+    perform pg_temp.expect('voluntariado ve sus tareas y el pool', VOL, 'authenticated', 'select count(*)::text from public.task', '7');
+    perform pg_temp.expect('voluntariado no ve la tarea de otra persona', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where id = {TA4}'), '0');
+    perform pg_temp.expect('voluntariado no ve tareas de otra organización', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where organization_id = {ORGB}'), '0');
+    perform pg_temp.expect('coordinación de tareas ve todas las tareas de su organización', TM, 'authenticated', 'select count(*)::text from public.task', '11');
+    perform pg_temp.expect('el director ve todas las tareas de su organización', DIR, 'authenticated', 'select count(*)::text from public.task', '11');
+    perform pg_temp.expect('caseworker sin tareas asignadas ve sólo el pool', CW, 'authenticated', 'select count(*)::text from public.task', '2');
+    perform pg_temp.expect('viewer no ve tareas', VW, 'authenticated', 'select count(*)::text from public.task', '0');
+    perform pg_temp.expect('sin rol no ve tareas', NR, 'authenticated', 'select count(*)::text from public.task', '0');
+    perform pg_temp.expect('viewer no ve los ajustes de operación', VW, 'authenticated', 'select count(*)::text from public.task_setting', '0');
+    perform pg_temp.expect('viewer no ve los catálogos de tareas', VW, 'authenticated', 'select count(*)::text from public.task_category', '0');
+    perform pg_temp.expect('anon no ve tareas', null, 'anon', 'select count(*)::text from public.task', 'ERR|0');
+    perform pg_temp.expect('control positivo: el voluntariado ve los catálogos de tareas', VOL, 'authenticated', 'select count(*)::text from public.task_category', '>0');
+    perform pg_temp.expect('voluntariado de B no ve las tareas de A', VOLB, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where organization_id = {ORGA}'), '0');
+
+    -- ----- Pool: devolver lo vencido, tomar, tope y soltar
+    perform pg_temp.expect('devolución automática: lo tomado y vencido vuelve al pool', VOL2, 'authenticated',
+        'select public.fn_release_expired_claims()::text', '1');
+    perform pg_temp.expect('la tarea vencida quedó sin asignar', null, null,
+        pg_temp.q('select (assigned_to is null and claimed_at is null)::text from public.task where id = {TA5}'), 'true');
+    perform pg_temp.expect('lo asignado por coordinación nunca se desasigna solo', null, null,
+        pg_temp.q('select (assigned_to = {VOL}::uuid)::text from public.task where id = {TA1}'), 'true');
+    perform pg_temp.expect('control positivo: caseworker toma una tarea del pool', CW, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TA3})->>''status'''), 'pending');
+    perform pg_temp.expect('la tarea tomada queda a nombre de quien la tomó', null, null,
+        pg_temp.q('select (assigned_to = {CW}::uuid and claimed_at is not null)::text from public.task where id = {TA3}'), 'true');
+    perform pg_temp.expect('una tarea ya tomada no se toma dos veces', VOL2, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TA3})::text'), 'ERR:TK012');
+    perform pg_temp.expect('no se toma una tarea que ya se empezó', VOL2, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TA6})::text'), 'ERR:TK012|ERR:TK013');
+    perform pg_temp.expect('control positivo: la dirección fija un tope de 1 tarea tomada sin empezar', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 1, 1)) x$q$, '1');
+    perform pg_temp.expect('el tope se respeta: ya tiene una tomada sin empezar', VOL, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TA7})::text'), 'ERR:TK014');
+    perform pg_temp.expect('la dirección vuelve el tope a cero', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 0, 1)) x$q$, '1');
+    perform pg_temp.expect('control positivo: sin tope el voluntariado toma otra', VOL, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TA7})->>''status'''), 'pending');
+    perform pg_temp.expect('viewer no toma tareas', VW, 'authenticated', pg_temp.q('select public.fn_claim_open_task({TA3})::text'), 'ERR:TK010');
+    perform pg_temp.expect('sin rol no toma tareas', NR, 'authenticated', pg_temp.q('select public.fn_claim_open_task({TA3})::text'), 'ERR:TK010');
+    perform pg_temp.expect('anon no toma tareas', null, 'anon', pg_temp.q('select public.fn_claim_open_task({TA3})::text'), 'ERR');
+    perform pg_temp.expect('director de otra organización no toma tareas de A', DIRB, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TA3})::text'), 'ERR:TK011');
+    perform pg_temp.expect('voluntariado de A no toma tareas de B', VOL, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TB2})::text'), 'ERR:TK011');
+    perform pg_temp.expect('control positivo: se suelta lo que se tomó y no se empezó', VOL, 'authenticated',
+        pg_temp.q('select public.fn_release_task({TA8})->>''status'''), 'pending');
+    perform pg_temp.expect('lo soltado vuelve al pool', null, null,
+        pg_temp.q('select (assigned_to is null and claimed_at is null)::text from public.task where id = {TA8}'), 'true');
+    perform pg_temp.expect('no se suelta lo que coordinación asignó', VOL, 'authenticated',
+        pg_temp.q('select public.fn_release_task({TA1})::text'), 'ERR:TK019');
+    perform pg_temp.expect('no se suelta la tarea de otra persona', VOL2, 'authenticated',
+        pg_temp.q('select public.fn_release_task({TA7})::text'), 'ERR:TK017');
+    perform pg_temp.expect('no se suelta lo que ya se empezó', VOL, 'authenticated',
+        pg_temp.q('select public.fn_release_task({TA2})::text'), 'ERR:TK018');
+    perform pg_temp.expect('viewer no suelta tareas', VW, 'authenticated', pg_temp.q('select public.fn_release_task({TA7})::text'), 'ERR:TK010');
+    perform pg_temp.expect('voluntariado no toca el pool por UPDATE directo para llevarse una tarea ajena', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VOL} where id = {TA4} returning 1) select count(*)::text from u'), 'ERR|0');
+    perform pg_temp.expect('voluntariado no se asigna una tarea del pool por UPDATE directo sin tomarla', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VOL}, claimed_at = null where id = {TA5} returning 1) select count(*)::text from u'), 'ERR|0');
+
+    -- ----- Rutinas: una vez por plantilla y por día
+    perform pg_temp.expect('control positivo: el voluntariado inicia una rutina', VOL, 'authenticated',
+        pg_temp.q('select public.fn_start_routine({RTA})->>''tasks_created'''), '2');
+    perform pg_temp.expect('la rutina crea sus tareas, asignadas a quien la inició', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where assigned_to = {VOL} and routine_template_id = {RTA}'), '2');
+    perform pg_temp.expect('la misma rutina no se inicia dos veces el mismo día', VOL, 'authenticated',
+        pg_temp.q('select public.fn_start_routine({RTA})::text'), 'ERR:TK022');
+    perform pg_temp.expect('no se inicia una rutina de otra organización', VOL, 'authenticated',
+        pg_temp.q('select public.fn_start_routine({RTB})::text'), 'ERR:TK021');
+    perform pg_temp.expect('viewer no inicia rutinas', VW, 'authenticated', pg_temp.q('select public.fn_start_routine({RTA})::text'), 'ERR:TK010');
+    perform pg_temp.expect('anon no inicia rutinas', null, 'anon', pg_temp.q('select public.fn_start_routine({RTA})::text'), 'ERR');
+    perform pg_temp.expect('voluntariado no crea plantillas de rutina', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.routine_template (organization_id, name) values ({ORGA}, ''x'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('control positivo: la coordinación archiva una plantilla', TM, 'authenticated',
+        pg_temp.q('with u as (update public.routine_template set archived_at = now() where id = {RTA} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('una plantilla archivada no se inicia', VOL2, 'authenticated',
+        pg_temp.q('select public.fn_start_routine({RTA})::text'), 'ERR:TK021');
+
+    -- ----- Escribir tareas: qué puede cada nivel
+    perform pg_temp.expect('voluntariado no crea tareas', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.task (organization_id, name) values ({ORGA}, ''x'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('caseworker no crea tareas', CW, 'authenticated',
+        pg_temp.q('with i as (insert into public.task (organization_id, name) values ({ORGA}, ''x'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('control positivo: la coordinación crea tareas', TM, 'authenticated',
+        pg_temp.q('with i as (insert into public.task (organization_id, name) values ({ORGA}, ''Creada por coordinación'') returning 1) select count(*)::text from i'), '1');
+    perform pg_temp.expect('la coordinación no crea tareas en otra organización', TM, 'authenticated',
+        pg_temp.q('with i as (insert into public.task (organization_id, name) values ({ORGB}, ''x'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('una tarea no usa la categoría de otra organización', TM, 'authenticated',
+        pg_temp.q('with i as (insert into public.task (organization_id, name, task_category_id) values ({ORGA}, ''x'', {CATB}) returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('no se asigna una tarea a un viewer', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VW} where id = {TA9} returning 1) select count(*)::text from u'), 'ERR:TK007');
+    perform pg_temp.expect('no se asigna una tarea a una persona de otra organización', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VOLB} where id = {TA9} returning 1) select count(*)::text from u'), 'ERR');
+    perform pg_temp.expect('control positivo: la coordinación reasigna una tarea', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VOL} where id = {TA9} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('voluntariado no edita el nombre de su tarea', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set name = ''editada'' where id = {TA1} returning 1) select count(*)::text from u'), 'ERR:TK001');
+    perform pg_temp.expect('voluntariado no se reasigna su tarea a otra persona', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VOL2} where id = {TA1} returning 1) select count(*)::text from u'), 'ERR:TK001');
+    perform pg_temp.expect('voluntariado no cambia la fecha límite', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set due_at = current_date where id = {TA1} returning 1) select count(*)::text from u'), 'ERR:TK001');
+    perform pg_temp.expect('voluntariado no quita la exigencia de foto', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set photo_required = false where id = {TA2} returning 1) select count(*)::text from u'), 'ERR:TK001');
+    perform pg_temp.expect('voluntariado no archiva su tarea', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set archived_at = now() where id = {TA1} returning 1) select count(*)::text from u'), 'ERR:TK001');
+    perform pg_temp.expect('voluntariado no cambia la organización de su tarea', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set organization_id = {ORGB} where id = {TA1} returning 1) select count(*)::text from u'), 'ERR');
+    perform pg_temp.expect('voluntariado no edita la tarea de otra persona', VOL2, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''done'' where id = {TA1} returning 1) select count(*)::text from u'), '0|ERR');
+    perform pg_temp.expect('control positivo: el voluntariado avanza su tarea', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''in_progress'' where id = {TA1} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('la primera vez en curso sella el inicio', null, null,
+        pg_temp.q('select (started_at is not null)::text from public.task where id = {TA1}'), 'true');
+    perform pg_temp.expect('voluntariado no retrocede una tarea', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''pending'' where id = {TA1} returning 1) select count(*)::text from u'), 'ERR:TK002');
+    perform pg_temp.expect('sin evidencia no hay cierre cuando la tarea exige foto', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''done'' where id = {TA2} returning 1) select count(*)::text from u'), 'ERR:TK003');
+    perform pg_temp.expect('voluntariado no sube evidencia a la tarea de otra persona', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_evidence (organization_id, task_id, storage_path, mime_type, size_bytes) values ({ORGA}, {TA4}, {ORGA}::text || ''/'' || {TA4}::text || ''/x.jpg'', ''image/jpeg'', 100) returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('la ruta de la evidencia debe pertenecer a la tarea', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_evidence (organization_id, task_id, storage_path, mime_type, size_bytes) values ({ORGA}, {TA2}, {ORGA}::text || ''/'' || {TA6}::text || ''/x.jpg'', ''image/jpeg'', 100) returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('la evidencia sólo admite imágenes', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_evidence (organization_id, task_id, storage_path, mime_type, size_bytes) values ({ORGA}, {TA2}, {ORGA}::text || ''/'' || {TA2}::text || ''/x.gif'', ''image/gif'', 100) returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('la evidencia pesa a lo sumo 5 MB', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_evidence (organization_id, task_id, storage_path, mime_type, size_bytes) values ({ORGA}, {TA2}, {ORGA}::text || ''/'' || {TA2}::text || ''/x.jpg'', ''image/jpeg'', 6000000) returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('control positivo: el voluntariado sube evidencia a su tarea', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_evidence (organization_id, task_id, storage_path, mime_type, size_bytes) values ({ORGA}, {TA2}, {ORGA}::text || ''/'' || {TA2}::text || ''/foto1.jpg'', ''image/jpeg'', 1000) returning 1) select count(*)::text from i'), '1');
+    perform pg_temp.expect('control positivo: con evidencia el voluntariado cierra la tarea', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''done'' where id = {TA2} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('no se sube evidencia a una tarea ya cerrada', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_evidence (organization_id, task_id, storage_path, mime_type, size_bytes) values ({ORGA}, {TA2}, {ORGA}::text || ''/'' || {TA2}::text || ''/foto2.jpg'', ''image/jpeg'', 1000) returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('voluntariado no reabre una tarea cerrada', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''in_progress'' where id = {TA2} returning 1) select count(*)::text from u'), 'ERR:TK002');
+    perform pg_temp.expect('control positivo: la coordinación reabre una tarea cerrada', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''in_progress'' where id = {TA2} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('al reabrir se borra la marca de cierre', null, null,
+        pg_temp.q('select (done_at is null and started_at is not null)::text from public.task where id = {TA2}'), 'true');
+    perform pg_temp.expect('voluntariado sin evidencia no cierra la tarea que la exige', VOL2, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''done'' where id = {TA11} returning 1) select count(*)::text from u'), 'ERR:TK003');
+    perform pg_temp.expect('control positivo: la coordinación cierra sin foto (decisión de producto)', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''done'' where id = {TA11} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('las marcas de tiempo no se falsifican con sesión', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''done'', done_at = timestamptz ''2000-01-01'' where id = {TA6} returning done_at) select (done_at > timestamptz ''2020-01-01'')::text from u'), 'true');
+
+    -- ----- Ajustes de operación
+    perform pg_temp.expect('voluntariado no cambia los ajustes', VOL, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 0, 1)) x$q$, 'ERR:TK010');
+    perform pg_temp.expect('la coordinación de tareas no cambia los ajustes', TM, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 0, 1)) x$q$, 'ERR:TK010');
+    perform pg_temp.expect('caseworker no cambia los ajustes', CW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 0, 1)) x$q$, 'ERR:TK010');
+    perform pg_temp.expect('anon no cambia los ajustes', null, 'anon',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 0, 1)) x$q$, 'ERR');
+    perform pg_temp.expect('alcance de notas inválido se rechaza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('todos', 30, 0, 1)) x$q$, 'ERR:TK024');
+    perform pg_temp.expect('un tope negativo se rechaza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, -1, 1)) x$q$, 'ERR:TK024');
+    perform pg_temp.expect('el director no edita los ajustes con UPDATE directo', DIR, 'authenticated',
+        $q$with u as (update public.task_setting set pool_max_unstarted = 9 returning 1) select count(*)::text from u$q$, 'ERR');
+    perform pg_temp.expect('el director no inserta ajustes con INSERT directo', DIR, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_setting (organization_id) values ({ORGA}) returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('cambiar los ajustes de A no toca los de B', null, null,
+        pg_temp.q('select (pool_max_unstarted = 0 and pool_release_days = 1 and shift_note_scope = ''all'')::text from public.task_setting where organization_id = {ORGB}'), 'true');
+    perform pg_temp.expect('cada organización nace con sus ajustes', null, null,
+        $q$with o as (insert into public.organization (id, slug, legal_name, display_name, active) values ('cccccccc-0000-0000-0000-00000000000c', 'tst-c', 'Org C', 'Org C', true) returning 1)
+           select count(*)::text from o$q$, '1');
+    perform pg_temp.expect('la organización nueva tiene su fila de ajustes por omisión', null, null,
+        $q$select count(*)::text from public.task_setting where organization_id = 'cccccccc-0000-0000-0000-00000000000c'$q$, '1');
+
+    -- ----- Notas de turno
+    perform pg_temp.expect('control positivo: el voluntariado deja una nota de turno', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.shift_note (organization_id, body) values ({ORGA}, ''Se acabó el cloro'') returning 1) select count(*)::text from i'), '1');
+    perform pg_temp.expect('la autoría de la nota se sella, no se declara', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.shift_note (organization_id, body, created_by) values ({ORGA}, ''Suplantada'', {VOL2}) returning created_by) select (created_by = {VOL})::text from i'), 'true');
+    perform pg_temp.expect('una nota no se crea en otra organización', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.shift_note (organization_id, body) values ({ORGB}, ''x'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('una nota vacía se rechaza', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into public.shift_note (organization_id, body) values ({ORGA}, ''   '') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('el texto de una nota no se edita', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.shift_note set body = ''editada'' where id = {NA} returning 1) select count(*)::text from u'), 'ERR:TK023');
+    perform pg_temp.expect('la coordinación tampoco edita el texto de una nota', TM, 'authenticated',
+        pg_temp.q('with u as (update public.shift_note set body = ''editada'' where id = {NA} returning 1) select count(*)::text from u'), 'ERR:TK023');
+    perform pg_temp.expect('otra persona del voluntariado no retira la nota ajena', VOL2, 'authenticated',
+        pg_temp.q('with u as (update public.shift_note set archived_at = now() where id = {NA} returning 1) select count(*)::text from u'), '0|ERR');
+    perform pg_temp.expect('el voluntariado de B no ve las notas de A', VOLB, 'authenticated',
+        pg_temp.q('select count(*)::text from public.shift_note where organization_id = {ORGA}'), '0');
+    perform pg_temp.expect('el texto de la nota no se copia a la auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'shift_note' and new_values ? 'body'$q$, '0');
+    perform pg_temp.expect('la nota sí deja evento de auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'shift_note' and action = 'INSERT'$q$, '>0');
+    perform pg_temp.expect('control positivo: el director limita las notas a las propias', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('own', 30, 0, 1)) x$q$, '1');
+    perform pg_temp.expect('alcance «propias»: quien no escribió no ve notas de otros', VOL2, 'authenticated',
+        'select count(*)::text from public.shift_note', '0');
+    perform pg_temp.expect('alcance «propias»: la autora ve las suyas', VOL, 'authenticated',
+        'select count(*)::text from public.shift_note', '>0');
+    perform pg_temp.expect('alcance «propias»: la coordinación siempre ve todas', TM, 'authenticated',
+        'select count(*)::text from public.shift_note', '>0');
+    perform pg_temp.expect('el director limita las notas al área de trabajo', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('area', 30, 0, 1)) x$q$, '1');
+    perform pg_temp.expect('alcance «área»: quien trabaja en esa área ve la nota', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from public.shift_note where id = {NA}'), '1');
+    perform pg_temp.expect('alcance «área»: quien aún no tiene tareas en esa área no la ve', VOL2, 'authenticated',
+        pg_temp.q('select count(*)::text from public.shift_note where id = {NA}'), '0');
+    perform pg_temp.expect('el director abre de nuevo la lectura de notas', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 0, 1)) x$q$, '1');
+    perform pg_temp.expect('control positivo: la autora retira su nota (baja lógica)', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.shift_note set archived_at = now() where id = {NA} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('una nota retirada ya no la ve el voluntariado', VOL2, 'authenticated',
+        pg_temp.q('select count(*)::text from public.shift_note where id = {NA}'), '0');
+    perform pg_temp.expect('la autora conserva la vista de la nota que retiró', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from public.shift_note where id = {NA}'), '1');
+    perform pg_temp.expect('la coordinación aún ve la nota retirada', TM, 'authenticated',
+        pg_temp.q('select count(*)::text from public.shift_note where id = {NA}'), '1');
+    perform pg_temp.expect('una nota retirada no se modifica ni se restaura', null, null,
+        pg_temp.q('with u as (update public.shift_note set archived_at = null where id = {NA} returning 1) select count(*)::text from u'), 'ERR:TK009');
+
+    -- ----- Evidencia fotográfica
+    perform pg_temp.expect('control positivo: el voluntariado ve la evidencia de su tarea', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task_evidence where id = {EVA}'), '1');
+    perform pg_temp.expect('otra persona no ve la evidencia de una tarea ajena', VOL2, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task_evidence where id = {EVA}'), '0');
+    perform pg_temp.expect('viewer no ve evidencia', VW, 'authenticated', 'select count(*)::text from public.task_evidence', '0');
+    perform pg_temp.expect('control positivo: la coordinación ve la evidencia', TM, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task_evidence where id = {EVA}'), '1');
+    perform pg_temp.expect('el voluntariado no sustituye una evidencia', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task_evidence set storage_path = ''otra'' where id = {EVA} returning 1) select count(*)::text from u'), 'ERR|0');
+    perform pg_temp.expect('la coordinación tampoco edita una evidencia', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task_evidence set size_bytes = 1 where id = {EVA} returning 1) select count(*)::text from u'), 'ERR:TK023');
+    perform pg_temp.expect('control positivo: acceso a la evidencia devuelve la ruta', VOL, 'authenticated',
+        pg_temp.q('select (public.fn_task_evidence_access({EVA}) like ''%/inicial.jpg'')::text'), 'true');
+    perform pg_temp.expect('el acceso a la evidencia deja evento de auditoría', null, null,
+        pg_temp.q('select count(*)::text from public.audit_event where action = ''EVIDENCE_ACCESS'' and record_id = {EVA}'), '1');
+    perform pg_temp.expect('quien no tiene la tarea no obtiene la ruta de la evidencia', VOL2, 'authenticated',
+        pg_temp.q('select public.fn_task_evidence_access({EVA})::text'), 'ERR:TK010');
+    perform pg_temp.expect('viewer no obtiene la ruta de la evidencia', VW, 'authenticated',
+        pg_temp.q('select public.fn_task_evidence_access({EVA})::text'), 'ERR:TK010');
+    perform pg_temp.expect('otra organización no obtiene la ruta de la evidencia', DIRB, 'authenticated',
+        pg_temp.q('select public.fn_task_evidence_access({EVA})::text'), 'ERR:TK011');
+    perform pg_temp.expect('anon no obtiene la ruta de la evidencia', null, 'anon',
+        pg_temp.q('select public.fn_task_evidence_access({EVA})::text'), 'ERR');
+
+    -- Storage: bucket privado, sin actualización ni borrado
+    perform pg_temp.expect('el bucket de evidencia es privado', null, null,
+        $q$select "public"::text from storage.buckets where id = 'task-evidence'$q$, 'false');
+    perform pg_temp.expect('el bucket limita el tamaño a 5 MB', null, null,
+        $q$select file_size_limit::text from storage.buckets where id = 'task-evidence'$q$, '5242880');
+    perform pg_temp.expect('control positivo: el voluntariado sube un archivo a su tarea', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into storage.objects (bucket_id, name) values (''task-evidence'', {ORGA}::text || ''/'' || {TA1}::text || ''/f2.jpg'') returning 1) select count(*)::text from i'), '1');
+    perform pg_temp.expect('no se sube un archivo a la tarea de otra persona', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into storage.objects (bucket_id, name) values (''task-evidence'', {ORGA}::text || ''/'' || {TA4}::text || ''/f.jpg'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('no se sube un archivo bajo la ruta de otra organización', VOL, 'authenticated',
+        pg_temp.q('with i as (insert into storage.objects (bucket_id, name) values (''task-evidence'', {ORGB}::text || ''/'' || {TB1}::text || ''/f.jpg'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('viewer no sube archivos de evidencia', VW, 'authenticated',
+        pg_temp.q('with i as (insert into storage.objects (bucket_id, name) values (''task-evidence'', {ORGA}::text || ''/'' || {TA1}::text || ''/v.jpg'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('anon no sube archivos de evidencia', null, 'anon',
+        pg_temp.q('with i as (insert into storage.objects (bucket_id, name) values (''task-evidence'', {ORGA}::text || ''/'' || {TA1}::text || ''/a.jpg'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('control positivo: el voluntariado ve el archivo de su tarea', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from storage.objects where bucket_id = ''task-evidence'' and name like {ORGA}::text || ''/'' || {TA1}::text || ''/%'''), '>0');
+    perform pg_temp.expect('otra persona no ve el archivo de una tarea ajena', VOL2, 'authenticated',
+        pg_temp.q('select count(*)::text from storage.objects where bucket_id = ''task-evidence'' and name like {ORGA}::text || ''/'' || {TA1}::text || ''/%'''), '0');
+    perform pg_temp.expect('otra organización no ve el archivo', VOLB, 'authenticated',
+        pg_temp.q('select count(*)::text from storage.objects where bucket_id = ''task-evidence'' and name like {ORGA}::text || ''/%'''), '0');
+    perform pg_temp.expect('control positivo: la coordinación ve los archivos de evidencia', TM, 'authenticated',
+        pg_temp.q('select count(*)::text from storage.objects where bucket_id = ''task-evidence'' and name like {ORGA}::text || ''/%'''), '>0');
+    perform pg_temp.expect('nadie sustituye un archivo de evidencia', VOL, 'authenticated',
+        pg_temp.q('with u as (update storage.objects set name = {ORGA}::text || ''/'' || {TA1}::text || ''/x.jpg'' where bucket_id = ''task-evidence'' returning 1) select count(*)::text from u'), 'ERR|0');
+    perform pg_temp.expect('nadie borra un archivo de evidencia', TM, 'authenticated',
+        $q$with d as (delete from storage.objects where bucket_id = 'task-evidence' returning 1) select count(*)::text from d$q$, 'ERR|0');
+
+    -- ----- Baja lógica: archivar, no borrar
+    perform pg_temp.expect('control positivo: la coordinación archiva una tarea', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set archived_at = now() where id = {TA10} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('quien tenía la tarea archivada ya no la ve', VOL2, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where id = {TA10}'), '0');
+    perform pg_temp.expect('la coordinación aún ve la tarea archivada', TM, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where id = {TA10}'), '1');
+    perform pg_temp.expect('la baja deja al archivador como autor', null, null,
+        pg_temp.q('select (archived_by = {TM}::uuid)::text from public.task where id = {TA10}'), 'true');
+    perform pg_temp.expect('una tarea archivada no se modifica', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set name = ''x'' where id = {TA10} returning 1) select count(*)::text from u'), 'ERR:TK009');
+    perform pg_temp.expect('disparador: ni el propietario restaura una tarea archivada', null, null,
+        pg_temp.q('with u as (update public.task set archived_at = null where id = {TA10} returning 1) select count(*)::text from u'), 'ERR:TK009');
+    perform pg_temp.expect('caseworker no archiva tareas', CW, 'authenticated',
+        pg_temp.q('with u as (update public.task set archived_at = now() where id = {TA7} returning 1) select count(*)::text from u'), 'ERR|0');
+    perform pg_temp.expect('control positivo: el director archiva una tarea', DIR, 'authenticated',
+        pg_temp.q('with u as (update public.task set archived_at = now() where id = {TA4} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('control positivo: el director crea una categoría', DIR, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_category (organization_id, key, label_es) values ({ORGA}, ''cocina_x'', ''Cocina X'') returning 1) select count(*)::text from i'), '1');
+    perform pg_temp.expect('la coordinación no crea categorías', TM, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_category (organization_id, key, label_es) values ({ORGA}, ''otra'', ''Otra'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('el voluntariado no edita las áreas de trabajo', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.work_area set label_es = ''x'' where id = {WAA} returning 1) select count(*)::text from u'), 'ERR|0');
+    perform pg_temp.expect('una categoría repetida se rechaza', DIR, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_category (organization_id, key, label_es) values ({ORGA}, ''limpieza'', ''Otra'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('la clave de un catálogo debe ser estable y en minúsculas', DIR, 'authenticated',
+        pg_temp.q('with i as (insert into public.task_category (organization_id, key, label_es) values ({ORGA}, ''Mala Clave'', ''x'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('la organización de un registro no cambia', null, null,
+        pg_temp.q('with u as (update public.task set organization_id = {ORGB} where id = {TA1} returning 1) select count(*)::text from u'), 'ERR:TK008');
+
+    -- ----- Auditoría y privilegios
+    perform pg_temp.expect('toda escritura de tareas deja auditoría: alta', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'task' and action = 'INSERT'$q$, '>0');
+    perform pg_temp.expect('toda escritura de tareas deja auditoría: avance y pool', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'task' and action = 'UPDATE'$q$, '>0');
+    perform pg_temp.expect('el cambio de ajustes deja auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'task_setting' and action = 'UPDATE'$q$, '>0');
+    perform pg_temp.expect('el archivo de una categoría o tarea deja auditoría', null, null,
+        pg_temp.q('select count(*)::text from public.audit_event where table_name = ''task'' and record_id = {TA10} and action = ''UPDATE'''), '>0');
+    perform pg_temp.expect('anon no tiene privilegios sobre las tablas de tareas', null, null,
+        $q$select count(*)::text from information_schema.role_table_grants
+           where table_schema = 'public' and grantee = 'anon'
+             and table_name in ('task','task_category','work_area','task_evidence','routine_template','routine_template_item','shift_note','task_setting')$q$, '0');
+    perform pg_temp.expect('nadie escribe los ajustes por privilegio directo', null, null,
+        $q$select count(*)::text from information_schema.role_table_grants
+           where table_schema = 'public' and table_name = 'task_setting' and grantee = 'authenticated'
+             and privilege_type in ('INSERT','UPDATE')$q$, '0');
+    foreach t in array array[
+        'select public.fn_release_expired_claims()::text',
+        'select public.fn_claim_open_task(''aaaaaaaa-a000-0000-0000-000000000003'')::text',
+        'select public.fn_release_task(''aaaaaaaa-a000-0000-0000-000000000003'')::text',
+        'select public.fn_start_routine(''aaaaaaaa-9200-0000-0000-000000000001'')::text',
+        'select public.fn_update_task_setting(''all'', 30, 0, 1)::text',
+        'select public.fn_task_evidence_access(''aaaaaaaa-9400-0000-0000-000000000001'')::text'
+    ] loop
+        perform pg_temp.expect('anon no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), null, 'anon', t, 'ERR');
+        perform pg_temp.expect('sin rol no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), NR, 'authenticated', t, 'ERR');
+        perform pg_temp.expect('viewer no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), VW, 'authenticated', t, 'ERR');
+    end loop;
+
+    -- ----- Una cuenta desactivada pierde el acceso a tareas
+    perform pg_temp.expect('se desactiva una cuenta', null, null,
+        pg_temp.q('with u as (update public.user_profile set active = false where id = {VOL2} returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('una cuenta desactivada no ve tareas', VOL2, 'authenticated', 'select count(*)::text from public.task', '0');
+    perform pg_temp.expect('una cuenta desactivada no toma tareas', VOL2, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task({TA3})::text'), 'ERR:TK010');
+    perform pg_temp.expect('no se asigna una tarea a una cuenta desactivada', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VOL2} where id = {TA9} returning 1) select count(*)::text from u'), 'ERR:TK007');
+    perform pg_temp.expect('se reactiva la cuenta', null, null,
+        pg_temp.q('with u as (update public.user_profile set active = true where id = {VOL2} returning 1) select count(*)::text from u'), '1');
+
+    -- ===== Cuenta desactivada = sin acceso al expediente (migración 20261009000005)
+    -- Antes de la migración los helpers sólo miraban user_role.revoked_at: una cuenta con
+    -- active = false y roles sin revocar seguía leyendo y escribiendo. Cada negativa va
+    -- precedida de su control positivo con LA MISMA sentencia, para que un rechazo no pueda
+    -- deberse a otra causa (caso ya cerrado, dato ausente) y pasar por bueno.
+    declare
+        dis_read text[] := array[
+            'select count(*)::text from public.person',
+            'select count(*)::text from public."case"',
+            'select count(*)::text from public.journal_entry',
+            'select count(*)::text from public.consent',
+            'select count(*)::text from public.case_status'
+        ];
+        w_cw text := 'select count(*)::text from (select public.fn_create_journal_entry(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''note'', ''desactivada'', now(), false, ''aaaaaaaa-1000-0000-0000-000000000001''::uuid)) x';
+        w_int text := 'select count(*)::text from (select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''internal_sharing'')) x';
+        w_dir text := 'select jsonb_array_length(public.fn_generate_arco_access_extract(''aaaaaaaa-4000-0000-0000-000000000001''::uuid)->''cases'')::text';
+        w_met text := 'select jsonb_array_length(public.fn_aggregate_metrics()->''rows'')::text';
+        r text;
+        u text;
+    begin
+        -- Un segundo director vigente en A: sin él TK006 impediría desactivar a DIR
+        perform pg_temp.expect('se agrega un segundo director a A', null, null,
+            pg_temp.q($q$with a as (insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
+                                   values ({DIRA2}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dir2@tst-a.invalid', now(), now()) returning id),
+                              p as (insert into public.user_profile (id, organization_id, email, full_name, active)
+                                    select id, {ORGA}, 'dir2@tst-a.invalid', 'Dir A2', true from a returning id),
+                              r as (insert into public.user_role (user_id, role_name, granted_by, granted_at)
+                                    select id, 'director', {DIR}, now() from p returning 1)
+                         select count(*)::text from r$q$), '1');
+
+        -- Controles positivos: con la cuenta activa todo esto funciona
+        foreach r in array dis_read loop
+            perform pg_temp.expect('cuenta activa: director lee (control) ' || r, DIR, 'authenticated', r, '>0');
+            perform pg_temp.expect('cuenta activa: caseworker lee (control) ' || r, CW, 'authenticated', r, '>0');
+            -- intake no lee la bitácora por diseño (area_private): su control es el resto
+            if r not like '%journal_entry%' then
+                perform pg_temp.expect('cuenta activa: intake lee (control) ' || r, INT, 'authenticated', r, '>0');
+            end if;
+        end loop;
+        perform pg_temp.expect('cuenta activa: caseworker escribe en bitácora (control)', CW, 'authenticated', w_cw, '1');
+        perform pg_temp.expect('cuenta activa: intake registra consentimiento (control)', INT, 'authenticated', w_int, '1');
+        perform pg_temp.expect('cuenta activa: director emite extracto ARCO (control)', DIR, 'authenticated', w_dir, '1');
+        perform pg_temp.expect('cuenta activa: director lee auditoría (control)', DIR, 'authenticated', 'select count(*)::text from public.audit_event', '>0');
+        perform pg_temp.expect('cuenta activa: viewer obtiene indicadores (control)', VW, 'authenticated', w_met, 'OK');
+        perform pg_temp.expect('cuenta activa: has_role(director) es verdadero (control)', DIR, 'authenticated', 'select public.has_role(''director'')::text', 'true');
+        perform pg_temp.expect('cuenta activa: has_operational_role() es verdadero (control)', CW, 'authenticated', 'select public.has_operational_role()::text', 'true');
+        perform pg_temp.expect('cuenta activa: has_role_in_area es verdadero (control)', CW, 'authenticated', 'select public.has_role_in_area(''caseworker'', ''trabajo_social'')::text', 'true');
+        perform pg_temp.expect('cuenta activa: current_organization_id() existe (control)', DIR, 'authenticated', 'select (public.current_organization_id() is not null)::text', 'true');
+        perform pg_temp.expect('cuenta activa: lee su perfil (control)', CW, 'authenticated', 'select count(*)::text from public.user_profile where id = auth.uid()', '1');
+
+        -- Se desactivan cuentas CON sus roles intactos (es justo el caso del hallazgo)
+        foreach u in array array[DIR, CW, INT, VW] loop
+            perform pg_temp.expect('se desactiva la cuenta ' || right(u, 1) || ' sin revocar sus roles', null, null,
+                format('with u as (update public.user_profile set active = false where id = %L returning 1) select count(*)::text from u', u), '1');
+        end loop;
+        perform pg_temp.expect('los roles de la cuenta desactivada siguen sin revocar', null, null,
+            format('select count(*)::text from public.user_role where user_id = %L and revoked_at is null', DIR), '1');
+
+        -- Negativas: lecturas
+        foreach r in array dis_read loop
+            perform pg_temp.expect('cuenta desactivada: director no lee ' || r, DIR, 'authenticated', r, '0');
+            perform pg_temp.expect('cuenta desactivada: caseworker no lee ' || r, CW, 'authenticated', r, '0');
+            if r not like '%journal_entry%' then
+                perform pg_temp.expect('cuenta desactivada: intake no lee ' || r, INT, 'authenticated', r, '0');
+            end if;
+        end loop;
+        perform pg_temp.expect('cuenta desactivada: director no lee auditoría', DIR, 'authenticated', 'select count(*)::text from public.audit_event', '0');
+        perform pg_temp.expect('cuenta desactivada: director no lee requerimientos de autoridad', DIR, 'authenticated', 'select count(*)::text from public.authority_request', '0');
+        perform pg_temp.expect('cuenta desactivada: director no ve su organización', DIR, 'authenticated', 'select count(*)::text from public.organization', '0');
+        perform pg_temp.expect('cuenta desactivada: director no ve áreas', DIR, 'authenticated', 'select count(*)::text from public.area', '0');
+        perform pg_temp.expect('cuenta desactivada: caseworker no ve perfiles (ni el propio)', CW, 'authenticated', 'select count(*)::text from public.user_profile', '0');
+        perform pg_temp.expect('cuenta desactivada: caseworker no ve roles', CW, 'authenticated', 'select count(*)::text from public.user_role', '0');
+
+        -- Negativas: escrituras por función SECURITY DEFINER
+        perform pg_temp.expect('cuenta desactivada: caseworker no escribe en la bitácora', CW, 'authenticated', w_cw, 'ERR');
+        perform pg_temp.expect('cuenta desactivada: intake no registra consentimiento', INT, 'authenticated', w_int, 'ERR');
+        perform pg_temp.expect('cuenta desactivada: intake no abre casos', INT, 'authenticated', new_case, 'ERR');
+        perform pg_temp.expect('cuenta desactivada: director no emite extracto ARCO', DIR, 'authenticated', w_dir, 'ERR');
+        -- (su control positivo es «director anonimiza», al final del archivo)
+        perform pg_temp.expect('cuenta desactivada: director no anonimiza', DIR, 'authenticated',
+            'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''x'')) x', 'ERR');
+        perform pg_temp.expect('cuenta desactivada: viewer no obtiene indicadores', VW, 'authenticated', w_met, 'ERR');
+        -- Los helpers mismos
+        perform pg_temp.expect('cuenta desactivada: has_role(director) es falso', DIR, 'authenticated', 'select public.has_role(''director'')::text', 'false');
+        perform pg_temp.expect('cuenta desactivada: has_role_in_area es falso', CW, 'authenticated', 'select public.has_role_in_area(''caseworker'', ''trabajo_social'')::text', 'false');
+        perform pg_temp.expect('cuenta desactivada: has_operational_role() es falso', CW, 'authenticated', 'select public.has_operational_role()::text', 'false');
+        perform pg_temp.expect('cuenta desactivada: has_any_role() es falso', VW, 'authenticated', 'select public.has_any_role()::text', 'false');
+        perform pg_temp.expect('cuenta desactivada: has_active_role() es falso', CW, 'authenticated', 'select public.has_active_role()::text', 'false');
+        perform pg_temp.expect('cuenta desactivada: current_organization_id() es nulo', DIR, 'authenticated', 'select (public.current_organization_id() is null)::text', 'true');
+
+        -- Una cuenta desactivada no se auto-reactiva ni se reactiva a otra
+        perform pg_temp.expect('cuenta desactivada: no se reactiva a sí misma', CW, 'authenticated',
+            format('with u as (update public.user_profile set active = true where id = %L returning 1) select count(*)::text from u', CW), 'ERR|0');
+        perform pg_temp.expect('cuenta desactivada: el director no reactiva cuentas', DIR, 'authenticated',
+            format('with u as (update public.user_profile set active = true where id = %L returning 1) select count(*)::text from u', CW), 'ERR|0');
+
+        -- Aislamiento: desactivar a unos no afecta a quienes siguen activos
+        perform pg_temp.expect('el segundo director activo conserva su acceso', DIRA2, 'authenticated', 'select count(*)::text from public.person', '>0');
+        perform pg_temp.expect('el segundo director activo conserva sus funciones', DIRA2, 'authenticated', w_dir, '1');
+        perform pg_temp.expect('el voluntariado activo no gana acceso al expediente', VOL, 'authenticated', 'select count(*)::text from public.person', '0');
+
+        -- TK006 sigue vigente: DIRA2 es ahora el único director activo de A
+        perform pg_temp.expect('TK006: el único director activo de A no puede desactivar su cuenta', DIRA2, 'authenticated',
+            pg_temp.q('with u as (update public.user_profile set active = false where id = {DIRA2} returning 1) select count(*)::text from u'), 'ERR:TK006');
+
+        -- Reactivar devuelve el acceso (las cuentas no quedan marcadas de forma permanente)
+        foreach u in array array[DIR, CW, INT, VW] loop
+            perform pg_temp.expect('se reactiva la cuenta ' || right(u, 1), null, null,
+                format('with u as (update public.user_profile set active = true where id = %L returning 1) select count(*)::text from u', u), '1');
+        end loop;
+        perform pg_temp.expect('reactivada: el director vuelve a leer personas', DIR, 'authenticated', 'select count(*)::text from public.person', '>0');
+        perform pg_temp.expect('reactivada: el caseworker vuelve a escribir en la bitácora', CW, 'authenticated', w_cw, '1');
+    end;
+
     -- ===== Anónimo: nada
     perform pg_temp.expect('anon no lee personas', null, 'anon', 'select count(*)::text from public.person', 'ERR|0');
     perform pg_temp.expect('anon no abre casos', null, 'anon', new_case, 'ERR');
     perform pg_temp.expect('anon no lee app_config', null, 'anon', 'select count(*)::text from public.app_config', 'ERR');
     perform pg_temp.expect('authenticated no lee app_config', DIR, 'authenticated', 'select count(*)::text from public.app_config', 'ERR');
     perform pg_temp.expect('control positivo: anon consulta el entorno por función', null, 'anon', 'select public.fn_app_environment()', 'demo|production');
+
+    -- ===== TK006: la organización no se queda sin dirección (se prueba aquí porque cambia a B)
+    perform pg_temp.expect('el último director no puede revocar su propio rol', DIRB, 'authenticated',
+        pg_temp.q('with u as (update public.user_role set revoked_at = now(), revoked_by = {DIRB} where user_id = {DIRB} and role_name = ''director'' returning 1) select count(*)::text from u'), 'ERR:TK006');
+    perform pg_temp.expect('el último director no puede desactivar su cuenta', DIRB, 'authenticated',
+        pg_temp.q('with u as (update public.user_profile set active = false where id = {DIRB} returning 1) select count(*)::text from u'), 'ERR:TK006');
+    perform pg_temp.expect('se agrega un segundo director a B', null, null,
+        pg_temp.q($q$with a as (insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
+                               values ({DIRB2}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dir2@tst-b.invalid', now(), now()) returning id),
+                          p as (insert into public.user_profile (id, organization_id, email, full_name, active)
+                                select id, {ORGB}, 'dir2@tst-b.invalid', 'Dir B2', true from a returning id),
+                          r as (insert into public.user_role (user_id, role_name, granted_by, granted_at)
+                                select id, 'director', {DIRB}, now() from p returning 1)
+                     select count(*)::text from r$q$), '1');
+    perform pg_temp.expect('control positivo: con otro director vigente sí puede dejar su rol', DIRB, 'authenticated',
+        pg_temp.q('with u as (update public.user_role set revoked_at = now(), revoked_by = {DIRB} where user_id = {DIRB} and role_name = ''director'' returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('el director que queda ya no puede dejar su rol', DIRB2, 'authenticated',
+        pg_temp.q('with u as (update public.user_role set revoked_at = now(), revoked_by = {DIRB2} where user_id = {DIRB2} and role_name = ''director'' returning 1) select count(*)::text from u'), 'ERR:TK006');
 
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',

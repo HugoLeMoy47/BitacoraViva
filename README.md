@@ -57,7 +57,16 @@ Toda función `security definer` **se salta RLS**: si no repite la regla de acce
 npm run test:rls
 ```
 
-Corren 215 pruebas negativas contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
+Corren 582 pruebas negativas (215 del núcleo, 293 del Seguidor de tareas E7 y 74 de cuentas desactivadas) contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
+
+### Probar una migración nueva antes de empujarla
+
+```bash
+npm run test:rls -- --include=20261009
+npm run demo:reset -- --confirm <project-ref> --dry-run --include=20261009
+```
+
+`--include=<prefijo>` ejecuta las migraciones cuyo nombre empieza con ese prefijo **dentro de la misma transacción de prueba**, antes del escenario, y se revierten con ella: la migración se prueba contra el motor real sin pasar por `supabase db push` ni dejar rastro. Mientras una migración esté sin empujar, `test:rls` a secas falla en el escenario si las pruebas ya dependen de ella (las tablas nuevas no existen en la base); con `--include` pasa. Una vez empujada, el prefijo ya no hace falta.
 
 ## Reiniciar la demo
 

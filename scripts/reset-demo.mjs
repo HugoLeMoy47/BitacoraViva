@@ -9,7 +9,7 @@
 // entorno (public.app_config) no es "demo".
 
 import { execSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +37,25 @@ if (confirm !== linked) {
 const reset = readFileSync(join(root, 'supabase', 'demo', 'reset_demo.sql'), 'utf8');
 const seed = readFileSync(join(root, 'supabase', 'seed.sql'), 'utf8');
 
+// Probar una migración nueva junto con el reinicio y la semilla, SIN aplicarla: solo con --dry-run.
+//   npm run demo:reset -- --confirm <ref> --dry-run --include=20261009
+const include = args.find((a) => a.startsWith('--include='))?.slice('--include='.length);
+let migrations = '';
+if (include) {
+  if (!dryRun) {
+    console.error('--include solo se admite junto con --dry-run: las migraciones se aplican con `supabase db push`.');
+    process.exit(1);
+  }
+  const dir = join(root, 'supabase', 'migrations');
+  const files = readdirSync(dir).filter((f) => f.endsWith('.sql') && f.startsWith(include)).sort();
+  if (files.length === 0) {
+    console.error(`Ninguna migración empieza con «${include}».`);
+    process.exit(1);
+  }
+  console.log(`Se aplican dentro de la transacción de prueba (y se revierten): ${files.join(', ')}`);
+  migrations = files.map((f) => `-- >>> ${f}\n${readFileSync(join(dir, f), 'utf8')}\n`).join('\n');
+}
+
 const summary = `
 select
   (select value from public.app_config where key = 'environment') as entorno,
@@ -44,6 +63,9 @@ select
   (select count(*) from public."case") as casos,
   (select count(*) from public.person) as personas,
   (select count(*) from public.journal_entry) as entradas_bitacora,
+  (select count(*) from public.task) as tareas,
+  (select count(*) from public.routine_template) as rutinas,
+  (select count(*) from public.shift_note) as notas_turno,
   (select count(*) from public.audit_event) as eventos_auditoria`;
 
 // Dry-run: el resumen se calcula dentro de la transaccion y se devuelve como error, lo que la revierte.
@@ -51,12 +73,13 @@ const closing = dryRun
   ? `do $$ declare r text; begin
        select concat_ws(', ', 'entorno=' || s.entorno, 'usuarios_demo=' || s.usuarios_demo, 'casos=' || s.casos,
                         'personas=' || s.personas, 'entradas_bitacora=' || s.entradas_bitacora,
+                        'tareas=' || s.tareas, 'rutinas=' || s.rutinas, 'notas_turno=' || s.notas_turno,
                         'eventos_auditoria=' || s.eventos_auditoria) into r from (${summary}) s;
        raise exception 'DRY-RUN OK (revertido): %', r;
      end $$;`
   : `commit;\n${summary};`;
 
-const sql = `begin;\n${reset}\n${seed}\n${closing}\n`;
+const sql = `begin;\n${migrations}\n${reset}\n${seed}\n${closing}\n`;
 const file = join(mkdtempSync(join(tmpdir(), 'bv-reset-')), 'reset-and-seed.sql');
 writeFileSync(file, sql);
 

@@ -4,15 +4,36 @@
 //   npm run test:rls
 //
 // Sale con código 1 si alguna prueba falla.
+//
+// Validar migraciones SIN aplicarlas a la base:
+//
+//   npm run test:rls -- --include=20261009
+//
+// Las migraciones cuyo nombre empieza con el prefijo se ejecutan DENTRO de la misma
+// transacción de prueba, antes del escenario, y se revierten con ella. Así una migración
+// nueva se prueba contra el motor real sin pasar por `db push` ni dejar rastro.
 
 import { execSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const sql = readFileSync(join(root, 'supabase', 'tests', 'rls_negative.sql'), 'utf8');
+let sql = readFileSync(join(root, 'supabase', 'tests', 'rls_negative.sql'), 'utf8');
+
+const include = process.argv.find((a) => a.startsWith('--include='))?.slice('--include='.length);
+if (include) {
+  const dir = join(root, 'supabase', 'migrations');
+  const files = readdirSync(dir).filter((f) => f.endsWith('.sql') && f.startsWith(include)).sort();
+  if (files.length === 0) {
+    console.error(`Ninguna migración empieza con «${include}».`);
+    process.exit(1);
+  }
+  console.log(`Se aplican dentro de la transacción de prueba (y se revierten): ${files.join(', ')}`);
+  const body = files.map((f) => `-- >>> ${f}\n${readFileSync(join(dir, f), 'utf8')}\n`).join('\n');
+  sql = sql.replace(/^begin;\s*$/m, () => `begin;\n\n${body}`);
+}
 const file = join(mkdtempSync(join(tmpdir(), 'bv-rls-')), 'rls_negative.sql');
 writeFileSync(file, sql);
 
