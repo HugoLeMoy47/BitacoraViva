@@ -39,6 +39,18 @@ npx supabase db push                     # aplica las migraciones pendientes
 - `supabase/seed.sql` es **exclusivo de demo**: siembra 60 expedientes sintéticos, 4 cuentas demo y marca el entorno como `demo` (`app_config`). Nunca se ejecuta en producción.
 - Una base sin la fila de entorno se considera `production`: la interfaz no muestra el aviso de demo ni ofrece cuentas de acceso rápido.
 
+## Seguidor de tareas (E7)
+
+Integrado desde *CAFEMIN Task Tracker* (se absorbió el código, no hay fork) y alineado a las reglas duras. Rutas con `#/tareas`, `#/tareas/reportes`, `/rutinas`, `/notas`, `/catalogos` y `/ajustes`; los reportes llevan en la URL su estado (filtros por identificador; **la búsqueda por texto nunca viaja en el enlace**).
+
+- **Roles:** `task_manager` y `volunteer` conviven con los cuatro de casos (los roles se acumulan, `ADR-0007`). Sin rol de casos no se lee ni una fila de `person` ni de `case`.
+- **Baja lógica:** ninguna tabla de tareas admite `DELETE`; archivar es definitivo. Toda escritura deja `audit_event`.
+- **Evidencia fotográfica:** bucket **privado** `task-evidence`; se guarda la ruta, nunca una URL. El navegador reduce la foto (1600 px) y le quita la ubicación; ver una foto pasa por `fn_task_evidence_access` (deja evento) y firma una URL de 60 s.
+- **Pool, rutinas, notas de turno y ajustes** (`task_setting`, solo dirección). Lo tomado y no empezado vuelve al pool al abrirlo; no depende de `pg_cron`.
+- **Tareas ligadas a un caso:** solo viaja el folio; el nombre sale de un catálogo neutro y no hay texto libre. Las crea quien opera expedientes, desde la pestaña *Tareas* del expediente (`fn_create_case_task`, `fn_set_task_case`).
+- **Códigos de error:** SQLSTATE `TK001` a `TK028`, traducidos en `errors.task.*` de `src/locales/es.json`.
+- Lo que hace cada rol, en lenguaje de producto: `10_producto/estado_funciones_roles.md` (documentación fuera del repositorio).
+
 ## Auditoría de interfaz
 
 ```bash
@@ -57,7 +69,7 @@ Toda función `security definer` **se salta RLS**: si no repite la regla de acce
 npm run test:unit
 ```
 
-Vitest sobre la lógica **pura** del Seguidor de tareas (reportes, enlace compartible, CSV, flujo de estados, claves de catálogo): 56 pruebas junto a cada módulo (`src/lib/*.test.ts`). Es lo que se puede equivocar en silencio —promedios, cortes de semana, orden, escape de fórmulas— y por eso vive aislado de React y de Supabase para poder revisarlo sin navegador ni base.
+Vitest sobre la lógica **pura** del Seguidor de tareas (reportes, enlace compartible, CSV, flujo de estados, claves de catálogo): 62 pruebas junto a cada módulo (`src/lib/*.test.ts`): reportes, enlace compartible, CSV, flujo de estados, claves de catálogo y reglas de evidencia fotográfica. Es lo que se puede equivocar en silencio —promedios, cortes de semana, orden, escape de fórmulas, tamaño y tipo de foto— y por eso vive aislado de React y de Supabase para poder revisarlo sin navegador ni base.
 
 ## Pruebas de seguridad
 
@@ -65,16 +77,16 @@ Vitest sobre la lógica **pura** del Seguidor de tareas (reportes, enlace compar
 npm run test:rls
 ```
 
-Corren 582 pruebas negativas (215 del núcleo, 293 del Seguidor de tareas E7 y 74 de cuentas desactivadas) contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
+Corren 652 pruebas negativas (215 del núcleo, 363 del Seguidor de tareas E7 y 74 de cuentas desactivadas) contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
 
 ### Probar una migración nueva antes de empujarla
 
 ```bash
-npm run test:rls -- --include=20261009
-npm run demo:reset -- --confirm <project-ref> --dry-run --include=20261009
+npm run test:rls -- --include=20261009000007
+npm run demo:reset -- --confirm <project-ref> --dry-run --include=20261009000007
 ```
 
-`--include=<prefijo>` ejecuta las migraciones cuyo nombre empieza con ese prefijo **dentro de la misma transacción de prueba**, antes del escenario, y se revierten con ella: la migración se prueba contra el motor real sin pasar por `supabase db push` ni dejar rastro. Mientras una migración esté sin empujar, `test:rls` a secas falla en el escenario si las pruebas ya dependen de ella (las tablas nuevas no existen en la base); con `--include` pasa. Una vez empujada, el prefijo ya no hace falta.
+`--include=<prefijo>` ejecuta las migraciones cuyo nombre empieza con ese prefijo **dentro de la misma transacción de prueba**, antes del escenario, y se revierten con ella: la migración se prueba contra el motor real sin pasar por `supabase db push` ni dejar rastro. Mientras una migración esté sin empujar, `test:rls` a secas falla en el escenario si las pruebas ya dependen de ella (las tablas nuevas no existen en la base); con `--include` pasa. Una vez empujada, el prefijo ya no hace falta. **Usa el nombre completo de la migración nueva**, no el prefijo del día: las ya empujadas chocan al repetirse dentro de la transacción (por ejemplo, al borrar una restricción de la que otras dependen).
 
 ## Reiniciar la demo
 
