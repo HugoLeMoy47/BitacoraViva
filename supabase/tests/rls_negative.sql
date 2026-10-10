@@ -163,6 +163,9 @@ insert into public.task_evidence (id, organization_id, task_id, storage_path, mi
      'aaaaaaaa-0000-0000-0000-00000000000a/aaaaaaaa-a000-0000-0000-000000000006/inicial.jpg', 'image/jpeg', 1000),
     ('bbbbbbbb-9400-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-a000-0000-0000-000000000001',
      'bbbbbbbb-0000-0000-0000-00000000000b/bbbbbbbb-a000-0000-0000-000000000001/inicial.jpg', 'image/jpeg', 1000);
+insert into public.case_task_kind (id, organization_id, key, label_es) values
+    ('aaaaaaaa-9600-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'accompaniment', 'Acompañamiento'),
+    ('bbbbbbbb-9600-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'accompaniment', 'Acompañamiento B');
 insert into public.shift_note (id, organization_id, work_area_id, body, created_by) values
     ('aaaaaaaa-9500-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-9100-0000-0000-000000000001', 'Nota de turno A (texto libre)', 'aaaaaaaa-3000-0000-0000-000000000007'),
     ('bbbbbbbb-9500-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'bbbbbbbb-9100-0000-0000-000000000001', 'Nota de turno B (texto libre)', 'bbbbbbbb-3000-0000-0000-000000000002');
@@ -243,7 +246,9 @@ begin
         ['{WAA}', 'aaaaaaaa-9100-0000-0000-000000000001'], ['{WAB}', 'bbbbbbbb-9100-0000-0000-000000000001'],
         ['{CATA}', 'aaaaaaaa-9000-0000-0000-000000000001'], ['{CATB}', 'bbbbbbbb-9000-0000-0000-000000000001'],
         ['{EVA}', 'aaaaaaaa-9400-0000-0000-000000000001'], ['{EVB}', 'bbbbbbbb-9400-0000-0000-000000000001'],
-        ['{NA}', 'aaaaaaaa-9500-0000-0000-000000000001'], ['{NB}', 'bbbbbbbb-9500-0000-0000-000000000001']
+        ['{NA}', 'aaaaaaaa-9500-0000-0000-000000000001'], ['{NB}', 'bbbbbbbb-9500-0000-0000-000000000001'],
+        ['{KA}', 'aaaaaaaa-9600-0000-0000-000000000001'], ['{KB}', 'bbbbbbbb-9600-0000-0000-000000000001'],
+        ['{CASEA}', 'aaaaaaaa-5000-0000-0000-000000000001'], ['{CASEB}', 'bbbbbbbb-5000-0000-0000-000000000001']
     ] loop
         r := replace(r, kv[1], '''' || kv[2] || '''');
     end loop;
@@ -936,6 +941,166 @@ begin
         perform pg_temp.expect('viewer no ejecuta ' || split_part(split_part(t, 'public.', 2), '(', 1), VW, 'authenticated', t, 'ERR');
     end loop;
 
+    -- ===== Vínculo tarea–caso (migración 20261009000007, BV-7.16, decisión 6a)
+    -- Control positivo primero: quien opera expedientes crea una tarea ligada y la asigna.
+    perform pg_temp.expect('control positivo: el caseworker crea una tarea ligada a su caso', CW, 'authenticated',
+        pg_temp.q('select (public.fn_create_case_task({CASEA}, {KA}, {VOL}))::text is not null'), 'true');
+    perform pg_temp.expect('la tarea ligada recibe el folio del caso', null, null,
+        pg_temp.q('select case_number from public.task where case_id = {CASEA} and assigned_to = {VOL}'), 'TST-A-0001');
+    perform pg_temp.expect('el nombre de la tarea ligada sale del catálogo neutro', null, null,
+        pg_temp.q('select name from public.task where case_id = {CASEA} and assigned_to = {VOL}'), 'Acompañamiento');
+    perform pg_temp.expect('la tarea ligada no tiene texto libre', null, null,
+        pg_temp.q('select (details is null)::text from public.task where case_id = {CASEA} and assigned_to = {VOL}'), 'true');
+    perform pg_temp.expect('control positivo: el voluntariado ve su tarea ligada con el folio', VOL, 'authenticated',
+        pg_temp.q('select case_number from public.task where case_id is not null'), 'TST-A-0001');
+    perform pg_temp.expect('el voluntariado con una tarea ligada no lee ni una fila de case', VOL, 'authenticated',
+        'select count(*)::text from public."case"', '0');
+    perform pg_temp.expect('el voluntariado con una tarea ligada no lee ni una fila de person', VOL, 'authenticated',
+        'select count(*)::text from public.person', '0');
+    perform pg_temp.expect('el voluntariado no lee el caso por identificador', VOL, 'authenticated',
+        pg_temp.q('select count(*)::text from public."case" where id = {CASEA}'), '0');
+    perform pg_temp.expect('la coordinación de tareas ve el folio de la tarea ligada', TM, 'authenticated',
+        pg_temp.q('select case_number from public.task where case_id = {CASEA} and assigned_to = {VOL}'), 'TST-A-0001');
+    perform pg_temp.expect('la coordinación de tareas no lee case ni person', TM, 'authenticated',
+        'select ((select count(*) from public."case") + (select count(*) from public.person))::text', '0');
+
+    -- Quien opera expedientes lista las tareas de sus casos; el resto no gana lectura
+    perform pg_temp.expect('control positivo: el caseworker ve las tareas ligadas', CW, 'authenticated',
+        'select count(*)::text from public.task where case_id is not null', '>0');
+    perform pg_temp.expect('el caseworker no gana lectura de tareas ajenas fuera del pool', CW, 'authenticated',
+        'select count(*)::text from public.task where case_id is null and assigned_to is distinct from auth.uid() and not (assigned_to is null and status = ''pending'')', '0');
+    perform pg_temp.expect('intake ve las tareas ligadas', INT, 'authenticated',
+        'select count(*)::text from public.task where case_id is not null', '>0');
+    perform pg_temp.expect('viewer no ve tareas ligadas', VW, 'authenticated',
+        'select count(*)::text from public.task where case_id is not null', '0');
+    perform pg_temp.expect('otra organización no ve tareas ligadas de A', DIRB, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where organization_id = {ORGA}'), '0');
+    perform pg_temp.expect('otro voluntariado no ve la tarea ligada de otra persona', VOL2, 'authenticated',
+        'select count(*)::text from public.task where case_id is not null', '0');
+
+    -- Quién no vincula
+    perform pg_temp.expect('la coordinación de tareas no crea tareas ligadas', TM, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, {KA}, {VOL})::text'), 'ERR:TK026');
+    perform pg_temp.expect('la coordinación de tareas no liga una tarea existente', TM, 'authenticated',
+        pg_temp.q('select public.fn_set_task_case({TA3}, {CASEA}, {KA})::text'), 'ERR:TK026');
+    perform pg_temp.expect('el voluntariado no crea tareas ligadas', VOL, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, {KA}, {VOL})::text'), 'ERR:TK026');
+    perform pg_temp.expect('el voluntariado no liga su propia tarea', VOL, 'authenticated',
+        pg_temp.q('select public.fn_set_task_case({TA6}, {CASEA}, {KA})::text'), 'ERR:TK026');
+    perform pg_temp.expect('viewer no crea tareas ligadas', VW, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, {KA}, {VOL})::text'), 'ERR:TK026');
+    perform pg_temp.expect('sin rol no crea tareas ligadas', NR, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, {KA}, {VOL})::text'), 'ERR');
+    perform pg_temp.expect('anon no crea tareas ligadas', null, 'anon',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, {KA}, {VOL})::text'), 'ERR');
+    perform pg_temp.expect('anon no liga tareas', null, 'anon',
+        pg_temp.q('select public.fn_set_task_case({TA3}, {CASEA}, {KA})::text'), 'ERR');
+
+    -- Las columnas de vínculo no se escriben a mano, ni siquiera por quien edita tareas
+    perform pg_temp.expect('la coordinación no escribe case_id directo', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set case_id = {CASEA} where id = {TA3} returning 1) select count(*)::text from u'), 'ERR:TK025');
+    perform pg_temp.expect('el voluntariado no escribe case_id en su tarea', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set case_id = {CASEA} where id = {TA6} returning 1) select count(*)::text from u'), 'ERR:TK025');
+    perform pg_temp.expect('la coordinación no crea una tarea ya ligada por insert directo', TM, 'authenticated',
+        pg_temp.q('with i as (insert into public.task (organization_id, name, case_id, case_task_kind_id) values ({ORGA}, ''x'', {CASEA}, {KA}) returning 1) select count(*)::text from i'), 'ERR:TK025');
+    perform pg_temp.expect('el folio copiado no se edita', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set case_number = ''OTRO-0001'' where case_id = {CASEA} returning 1) select count(*)::text from u'), 'ERR:TK025');
+    perform pg_temp.expect('la coordinación no cambia el nombre de una tarea ligada', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set name = ''Cita médica'' where case_id = {CASEA} returning 1) select count(*)::text from u'), 'ERR:TK025');
+    perform pg_temp.expect('la coordinación no agrega texto libre a una tarea ligada', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set details = ''Cita en el hospital'' where case_id = {CASEA} returning 1) select count(*)::text from u'), 'ERR:TK025');
+    perform pg_temp.expect('el voluntariado no cambia el nombre de su tarea ligada', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set name = ''x'' where case_id = {CASEA} returning 1) select count(*)::text from u'), 'ERR');
+    perform pg_temp.expect('la base rechaza texto libre en una tarea ligada aun sin sesión', null, null,
+        pg_temp.q('with u as (update public.task set details = ''x'' where case_id = {CASEA} returning 1) select count(*)::text from u'), 'ERR:23514');
+    perform pg_temp.expect('control positivo: el voluntariado avanza su tarea ligada', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.task set status = ''in_progress'' where case_id = {CASEA} and assigned_to = {VOL} returning 1) select count(*)::text from u'), '1');
+
+    -- Validaciones de origen
+    perform pg_temp.expect('el caso de otra organización no se liga', DIR, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEB}, {KA}, {VOL})::text'), 'ERR:TK027');
+    perform pg_temp.expect('el tipo de otra organización no se usa', DIR, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, {KB}, {VOL})::text'), 'ERR:TK027');
+    perform pg_temp.expect('un caso inexistente se rechaza', DIR, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task(''aaaaaaaa-5000-0000-0000-0000000000ff'', {KA}, {VOL})::text'), 'ERR:TK027');
+    perform pg_temp.expect('otra organización no liga una tarea de A', DIRB, 'authenticated',
+        pg_temp.q('select public.fn_set_task_case({TA3}, {CASEB}, {KB})::text'), 'ERR:TK011');
+    perform pg_temp.expect('no se liga sin elegir el tipo', DIR, 'authenticated',
+        pg_temp.q('select public.fn_set_task_case({TA3}, {CASEA})::text'), 'ERR:TK027');
+    perform pg_temp.expect('no se asigna una tarea ligada a quien no tiene acceso a tareas', CW, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, {KA}, {VW})::text'), 'ERR:TK007');
+    perform pg_temp.expect('se crea un tipo temporal para probar el archivo', DIR, 'authenticated',
+        pg_temp.q('with i as (insert into public.case_task_kind (id, organization_id, key, label_es) values (''aaaaaaaa-9600-0000-0000-0000000000f1'', {ORGA}, ''temporal'', ''Temporal'') returning 1) select count(*)::text from i'), '1');
+    perform pg_temp.expect('se archiva el tipo temporal', DIR, 'authenticated',
+        pg_temp.q('with u as (update public.case_task_kind set archived_at = now() where id = ''aaaaaaaa-9600-0000-0000-0000000000f1'' returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('un tipo archivado no se usa', DIR, 'authenticated',
+        pg_temp.q('select public.fn_create_case_task({CASEA}, ''aaaaaaaa-9600-0000-0000-0000000000f1'', {VOL})::text'), 'ERR:TK027');
+
+    -- El pool no incluye lo vinculado
+    perform pg_temp.expect('control positivo: la dirección crea una tarea ligada sin asignar', DIR, 'authenticated',
+        pg_temp.q('select (public.fn_create_case_task({CASEA}, {KA}, null))::text is not null'), 'true');
+    perform pg_temp.expect('la tarea ligada sin asignar no aparece en el pool', VOL2, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where case_id is not null'), '0');
+    perform pg_temp.expect('control positivo: sí hay pool para el voluntariado', VOL2, 'authenticated',
+        'select count(*)::text from public.task where assigned_to is null', '>0');
+    perform pg_temp.expect('el voluntariado no toma una tarea ligada del pool', VOL2, 'authenticated',
+        pg_temp.q('select public.fn_claim_open_task((select id from public.task where case_id = {CASEA} and assigned_to is null limit 1))::text'), 'ERR');
+    perform pg_temp.expect('la tarea ligada sigue sin dueño tras el intento', null, null,
+        pg_temp.q('select count(*)::text from public.task where case_id = {CASEA} and assigned_to is null'), '1');
+    perform pg_temp.expect('la coordinación sí ve la tarea ligada sin asignar', TM, 'authenticated',
+        pg_temp.q('select count(*)::text from public.task where case_id = {CASEA} and assigned_to is null'), '1');
+    perform pg_temp.expect('control positivo: la coordinación la asigna', TM, 'authenticated',
+        pg_temp.q('with u as (update public.task set assigned_to = {VOL2} where case_id = {CASEA} and assigned_to is null returning 1) select count(*)::text from u'), '1');
+    perform pg_temp.expect('la persona asignada ya ve su tarea ligada', VOL2, 'authenticated',
+        pg_temp.q('select case_number from public.task where case_id is not null'), 'TST-A-0001');
+
+    -- Desvincular y volver a vincular, con su rastro de auditoría
+    -- El caseworker no ve tareas (no es gestión ni asignado): el identificador se toma como propietario
+    declare
+        v_linked uuid;
+    begin
+        select id into v_linked from public.task where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and assigned_to = VOL::uuid;
+        perform pg_temp.expect('control positivo: el caseworker desvincula una tarea', CW, 'authenticated',
+            format('select count(*)::text from (select public.fn_set_task_case(%L, null)) x', v_linked), '1');
+        perform pg_temp.expect('desvincular limpia el folio', null, null,
+            format('select count(*)::text from public.task where id = %L and (case_id is not null or case_number is not null or case_task_kind_id is not null)', v_linked), '0');
+        perform pg_temp.expect('el voluntariado deja de ver el folio de la tarea desvinculada', VOL, 'authenticated',
+            'select count(*)::text from public.task where case_number is not null', '0');
+        perform pg_temp.expect('control positivo: el caseworker vuelve a vincularla', CW, 'authenticated',
+            format('select count(*)::text from (select public.fn_set_task_case(%L, %L, %L)) x', v_linked, 'aaaaaaaa-5000-0000-0000-000000000001', 'aaaaaaaa-9600-0000-0000-000000000001'), '1');
+    end;
+    perform pg_temp.expect('vincular y desvincular dejan auditoría con el valor anterior y el nuevo', null, null,
+        $q$select count(*)::text from public.audit_event
+           where table_name = 'task' and action = 'UPDATE'
+             and (old_values ->> 'case_id') is distinct from (new_values ->> 'case_id')$q$, '>0');
+    perform pg_temp.expect('la creación de una tarea ligada deja auditoría con el caso', null, null,
+        pg_temp.q('select count(*)::text from public.audit_event where table_name = ''task'' and action = ''INSERT'' and new_values ->> ''case_id'' = {CASEA}::text'), '>0');
+
+    -- Catálogo neutro: lo administra la dirección
+    perform pg_temp.expect('control positivo: la dirección agrega un tipo', DIR, 'authenticated',
+        pg_temp.q('with i as (insert into public.case_task_kind (organization_id, key, label_es) values ({ORGA}, ''gestion_x'', ''Gestión X'') returning 1) select count(*)::text from i'), '1');
+    perform pg_temp.expect('la coordinación no agrega tipos', TM, 'authenticated',
+        pg_temp.q('with i as (insert into public.case_task_kind (organization_id, key, label_es) values ({ORGA}, ''otro'', ''Otro'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('el caseworker no agrega tipos', CW, 'authenticated',
+        pg_temp.q('with i as (insert into public.case_task_kind (organization_id, key, label_es) values ({ORGA}, ''otro2'', ''Otro'') returning 1) select count(*)::text from i'), 'ERR');
+    perform pg_temp.expect('el voluntariado no edita tipos', VOL, 'authenticated',
+        pg_temp.q('with u as (update public.case_task_kind set label_es = ''x'' where id = {KA} returning 1) select count(*)::text from u'), 'ERR|0');
+    perform pg_temp.expect('el caseworker lee los tipos para elegir', CW, 'authenticated',
+        'select count(*)::text from public.case_task_kind', '>0');
+    perform pg_temp.expect('el voluntariado lee los tipos vigentes', VOL, 'authenticated',
+        'select count(*)::text from public.case_task_kind', '>0');
+    perform pg_temp.expect('otra organización no ve los tipos de A', DIRB, 'authenticated',
+        pg_temp.q('select count(*)::text from public.case_task_kind where organization_id = {ORGA}'), '0');
+    perform pg_temp.expect('viewer no lee los tipos', VW, 'authenticated',
+        'select count(*)::text from public.case_task_kind', '0');
+    perform pg_temp.expect('anon no tiene privilegios sobre el catálogo de tipos', null, null,
+        $q$select count(*)::text from information_schema.role_table_grants
+           where table_schema = 'public' and table_name = 'case_task_kind' and grantee = 'anon'$q$, '0');
+    perform pg_temp.expect('nadie borra tipos (DELETE revocado)', null, null,
+        $q$select has_table_privilege('authenticated', 'public.case_task_kind', 'DELETE')::text$q$, 'false');
+    perform pg_temp.expect('el cambio de un tipo deja auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'case_task_kind'$q$, '>0');
+
     -- ----- Una cuenta desactivada pierde el acceso a tareas
     perform pg_temp.expect('se desactiva una cuenta', null, null,
         pg_temp.q('with u as (update public.user_profile set active = false where id = {VOL2} returning 1) select count(*)::text from u'), '1');
@@ -1089,6 +1254,13 @@ begin
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
+
+    perform pg_temp.expect('el folio sigue en la tarea tras anonimizar a la persona', null, null,
+        pg_temp.q('select case_number from public.task where case_id = {CASEA} and assigned_to = {VOL}'), 'TST-A-0001');
+    perform pg_temp.expect('el voluntariado sigue viendo el folio tras anonimizar a la persona', VOL, 'authenticated',
+        pg_temp.q('select case_number from public.task where case_id = {CASEA}'), 'TST-A-0001');
+    perform pg_temp.expect('el esqueleto del caso permanece tras anonimizar (el folio sigue siendo válido)', null, null,
+        pg_temp.q('select case_number from public."case" where id = {CASEA}'), 'TST-A-0001');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

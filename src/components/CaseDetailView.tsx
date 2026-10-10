@@ -21,7 +21,8 @@ import {
   Edit3,
   Trash2,
   CheckCircle2,
-  Scale
+  Scale,
+  ListChecks
 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { 
@@ -46,6 +47,7 @@ import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
 import { formatDate, formatDateTime, formatTime } from '../lib/format';
 import { ModalShell } from './ModalShell';
 import { Tabs } from './Tabs';
+import { CaseTasksPanel } from './CaseTasksPanel';
 import { StatusHistory } from './StatusHistory';
 
 interface CaseDetailViewProps {
@@ -99,7 +101,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onOpposeSecondary,
 }) => {
   const { statusAxes, statusValues } = useCatalog();
-  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy'>('axes');
+  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>('axes');
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   const [targetValueCode, setTargetValueCode] = useState<string>('');
   const [transitionReason, setTransitionReason] = useState<string>('');
@@ -126,6 +128,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const isDirector = activeRole === 'director';
   const isLegalCaseworker = activeRole === 'caseworker' && assignedAreaCode === 'legal';
   const canWriteJournal = activeRole === 'caseworker' || activeRole === 'intake_officer' || activeRole === 'director';
+  // Tareas ligadas: las crea quien opera expedientes (el rol de sólo lectura no)
+  const canLinkTasks = canWriteJournal;
   const canManageConsent = activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director';
   const canRectify = activeRole === 'intake_officer' || activeRole === 'director';
 
@@ -280,6 +284,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           ...(caseData.subfolios && caseData.subfolios.length > 0
             ? [{ id: 'subfolios', label: `${t('cases.tab_subfolios')} (${caseData.subfolios.length})`, icon: <Users className="h-4 w-4" aria-hidden="true" /> }]
             : []),
+          ...(canLinkTasks ? [{ id: 'tasks', label: t('tasks.case.tab'), icon: <ListChecks className="h-4 w-4" aria-hidden="true" /> }] : []),
           {
             id: 'privacy',
             label: t('arco.tab_title'),
@@ -741,6 +746,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Tab: Tareas ligadas al caso (Épica E7, BV-7.16) */}
+      {activeTab === 'tasks' && canLinkTasks && <CaseTasksPanel caseId={caseData.id} caseNumber={caseData.case_number} />}
 
       {/* Tab 6: Privacidad, Consentimientos y Derechos ARCO (Épica E5) */}
       {activeTab === 'privacy' && (

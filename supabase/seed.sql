@@ -862,6 +862,15 @@ from (values
 ) as a(k, l, o)
 on conflict (organization_id, key) do nothing;
 
+-- Tipos de tarea ligada a un caso (catálogo neutro: sin texto libre, decisión 6a)
+insert into public.case_task_kind (id, organization_id, key, label_es, sort_order)
+select md5('case_task_kind:' || k)::uuid, '00000000-0000-0000-0000-000000000001', k, l, o
+from (values
+    ('accompaniment', 'Acompañamiento', 1), ('procedure', 'Trámite', 2), ('follow_up', 'Seguimiento', 3),
+    ('transfer', 'Traslado', 4), ('management', 'Gestión', 5)
+) as c(k, l, o)
+on conflict (organization_id, key) do nothing;
+
 -- Plantillas de rutina
 insert into public.routine_template (id, organization_id, name, description, work_area_id, task_category_id, created_by)
 select md5('routine:' || k)::uuid, '00000000-0000-0000-0000-000000000001', n, d,

@@ -3,6 +3,7 @@ import { t } from './i18n';
 import { friendlyError } from './errors';
 import { EVIDENCE_SIGNED_URL_SECONDS, evidencePath, evidenceProblem, prepareEvidence } from './evidence';
 import {
+  CaseTaskKind,
   TaskEvidence,
   RoutineTemplate,
   RoutineTemplateItem,
@@ -29,6 +30,8 @@ export interface TaskData {
   workAreas: WorkArea[];
   /** Tareas que ya tienen al menos una evidencia fotográfica */
   evidenceTaskIds: Set<string>;
+  /** Tipos de tarea ligada a un caso (catálogo neutro) */
+  caseTaskKinds: CaseTaskKind[];
   /** Personas a quienes se puede asignar una tarea (activas, con acceso a tareas) */
   assignableUserIds: string[];
   routines: RoutineTemplate[];
@@ -43,6 +46,7 @@ export const EMPTY_TASK_DATA: TaskData = {
   categories: [],
   workAreas: [],
   evidenceTaskIds: new Set(),
+  caseTaskKinds: [],
   assignableUserIds: [],
   routines: [],
   routineItems: [],
@@ -69,7 +73,7 @@ async function rows<T>(query: PromiseLike<{ data: T[] | null; error: DbError | n
 }
 
 export async function loadTaskData(): Promise<TaskData> {
-  const [tasks, categories, workAreas, evidence, roles, routines, routineItems, notes, settings] = await Promise.all([
+  const [tasks, categories, workAreas, evidence, roles, routines, routineItems, notes, settings, caseTaskKinds] = await Promise.all([
     rows<Task>(supabase.from('task').select('*').order('created_at', { ascending: false }).limit(1000)),
     rows<TaskCategory>(supabase.from('task_category').select('*').order('sort_order').order('label_es')),
     rows<WorkArea>(supabase.from('work_area').select('*').order('sort_order').order('label_es')),
@@ -80,12 +84,14 @@ export async function loadTaskData(): Promise<TaskData> {
     // RLS decide qué notas llegan: el alcance y la ventana de lectura son un ajuste de la organización
     rows<ShiftNote>(supabase.from('shift_note').select('*').order('created_at', { ascending: false }).limit(300)),
     rows<TaskSetting>(supabase.from('task_setting').select('*').limit(1)),
+    rows<CaseTaskKind>(supabase.from('case_task_kind').select('*').order('sort_order').order('label_es')),
   ]);
   return {
     tasks,
     categories,
     workAreas,
     evidenceTaskIds: new Set(evidence.map((e) => e.task_id)),
+    caseTaskKinds,
     assignableUserIds: Array.from(new Set(roles.map((r) => r.user_id))),
     routines,
     routineItems,
@@ -230,6 +236,28 @@ export const evidenceApi = {
   },
 };
 
+// ---- Tareas ligadas a un caso (BV-7.16, decisión 6a)
+// Las crea y vincula quien opera expedientes, por función de la base. La tarea sólo lleva el folio y un
+// nombre de catálogo neutro: nada de texto libre.
+export const caseTaskApi = {
+  /** Tareas vigentes ligadas a un caso (las ven quienes operan expedientes y la gestión de tareas) */
+  forCase: (caseId: string) =>
+    rows<Task>(supabase.from('task').select('*').eq('case_id', caseId).is('archived_at', null).order('created_at', { ascending: false })),
+
+  kinds: () => rows<CaseTaskKind>(supabase.from('case_task_kind').select('*').is('archived_at', null).order('sort_order').order('label_es')),
+
+  /** Personas que reciben tareas (para el selector de asignación) */
+  async assignableUserIds(): Promise<string[]> {
+    const roles = await rows<{ user_id: string }>(supabase.from('user_role').select('user_id').is('revoked_at', null).in('role_name', TASK_ROLES));
+    return Array.from(new Set(roles.map((r) => r.user_id)));
+  },
+
+  create: (caseId: string, kindId: string, assignedTo: string | null, dueAt: string | null) =>
+    call<string>('fn_create_case_task', { p_case_id: caseId, p_kind_id: kindId, p_assigned_to: assignedTo, p_due_at: dueAt, p_work_area_id: null }),
+
+  unlink: (taskId: string) => call('fn_set_task_case', { p_task_id: taskId, p_case_id: null, p_kind_id: null }),
+};
+
 // ---- Notas de turno (BV-7.12): se agregan, no se editan; retirar es baja lógica.
 
 export interface ShiftNoteInput {
@@ -257,8 +285,8 @@ export const settingApi = {
 
 // ---- Catálogos de tareas (BV-7.9): categorías y áreas de trabajo. Sólo dirección escribe (RLS).
 
-export type CatalogKind = 'category' | 'workArea';
-const CATALOG_TABLE: Record<CatalogKind, string> = { category: 'task_category', workArea: 'work_area' };
+export type CatalogKind = 'category' | 'workArea' | 'caseKind';
+const CATALOG_TABLE: Record<CatalogKind, string> = { category: 'task_category', workArea: 'work_area', caseKind: 'case_task_kind' };
 
 /**
  * Clave estable del catálogo a partir de la etiqueta: minúsculas, sin acentos, con guiones bajos y única

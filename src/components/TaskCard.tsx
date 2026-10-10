@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Archive, CalendarClock, Camera, Check, ChevronDown, ChevronUp, Hand, MapPin, Pencil, Play, RotateCcw, Tag, Undo2, User } from 'lucide-react';
+import { Archive, CalendarClock, Link2, Camera, Check, ChevronDown, ChevronUp, Hand, MapPin, Pencil, Play, RotateCcw, Tag, Undo2, User } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { formatDate } from '../lib/format';
 import { Advance, availableAdvance, isOverdue } from '../lib/taskFlow';
@@ -101,6 +101,12 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <span className="inline-flex max-w-full items-center gap-1">
             <Tag className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{categoryLabel}</span>
+          </span>
+        )}
+        {task.case_number && (
+          <span className="inline-flex max-w-full items-center gap-1 rounded bg-sky-50 px-1.5 py-0.5 font-medium text-sky-900">
+            <Link2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">{t('tasks.case.folio').replace('{folio}', task.case_number)}</span>
           </span>
         )}
         {workAreaLabel && (

@@ -3,18 +3,19 @@ import { Archive, Check, Pencil, Plus, X } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CatalogKind } from '../lib/tasks';
 import { normalize } from '../lib/taskReports';
-import { TaskCategory, WorkArea } from '../types/database';
+import { CaseTaskKind, TaskCategory, WorkArea } from '../types/database';
 import { ModalShell } from './ModalShell';
 
 // Administración de catálogos de tareas (BV-7.9): categorías y áreas de trabajo. Sólo la dirección
 // escribe (lo exige la base). Nada se borra: archivar saca el valor de los selectores nuevos pero las
 // tareas que ya lo usan conservan su etiqueta. La clave interna es estable; la etiqueta se renombra.
 
-type Item = TaskCategory | WorkArea;
+type Item = TaskCategory | WorkArea | CaseTaskKind;
 
 interface TaskCatalogsViewProps {
   categories: TaskCategory[];
   workAreas: WorkArea[];
+  caseTaskKinds: CaseTaskKind[];
   busyId: string | null;
   saving: boolean;
   onCreate: (kind: CatalogKind, label: string, takenKeys: string[]) => Promise<boolean>;
@@ -145,7 +146,7 @@ const CatalogSection: React.FC<{
   );
 };
 
-export const TaskCatalogsView: React.FC<TaskCatalogsViewProps> = ({ categories, workAreas, busyId, saving, onCreate, onRename, onArchive }) => {
+export const TaskCatalogsView: React.FC<TaskCatalogsViewProps> = ({ categories, workAreas, caseTaskKinds, busyId, saving, onCreate, onRename, onArchive }) => {
   const [archiving, setArchiving] = useState<{ kind: CatalogKind; item: Item } | null>(null);
 
   const confirm = async () => {
@@ -159,6 +160,7 @@ export const TaskCatalogsView: React.FC<TaskCatalogsViewProps> = ({ categories, 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CatalogSection kind="category" items={categories} busyId={busyId} saving={saving} onCreate={onCreate} onRename={onRename} onAskArchive={(item) => setArchiving({ kind: 'category', item })} />
         <CatalogSection kind="workArea" items={workAreas} busyId={busyId} saving={saving} onCreate={onCreate} onRename={onRename} onAskArchive={(item) => setArchiving({ kind: 'workArea', item })} />
+        <CatalogSection kind="caseKind" items={caseTaskKinds} busyId={busyId} saving={saving} onCreate={onCreate} onRename={onRename} onAskArchive={(item) => setArchiving({ kind: 'caseKind', item })} />
       </div>
 
       {archiving && (

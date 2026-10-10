@@ -41,6 +41,7 @@ truncate table
     public.routine_template_item,
     public.routine_template,
     public.task_setting,
+    public.case_task_kind,
     public.task_category,
     public.work_area,
     public.arco_request,

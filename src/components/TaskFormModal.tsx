@@ -32,6 +32,8 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, categories, 
   const [dueAt, setDueAt] = useState(task?.due_at ?? '');
   const [photoRequired, setPhotoRequired] = useState(task?.photo_required ?? false);
 
+  // Una tarea ligada a un caso no tiene texto libre: su nombre sale de un catálogo (decisión 6a)
+  const linked = !!task?.case_id;
   const valid = name.trim().length > 0 && name.trim().length <= 120 && details.length <= 1000;
 
   // Si la persona asignada hoy ya no figura entre quienes reciben tareas, se conserva su opción
@@ -45,7 +47,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, categories, 
     if (!valid || busy) return;
     onSubmit({
       name: name.trim(),
-      details: details.trim() || null,
+      details: linked ? null : details.trim() || null,
       task_category_id: categoryId || null,
       work_area_id: workAreaId || null,
       assigned_to: assignedTo || null,
@@ -78,12 +80,14 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, categories, 
               required
               maxLength={120}
               value={name}
+              readOnly={linked}
               onChange={(e) => setName(e.target.value)}
-              className={FIELD}
+              className={`${FIELD}${linked ? ' bg-gray-50 text-gray-700' : ''}`}
             />
-            <p className="mt-1 text-xs text-gray-600">{t('tasks.f_name_hint')}</p>
+            <p className="mt-1 text-xs text-gray-600">{linked ? t('tasks.case.name_locked') : t('tasks.f_name_hint')}</p>
           </div>
 
+          {!linked && (
           <div>
             <label htmlFor={`${uid}-details`} className={LABEL}>
               {t('tasks.f_details')}
@@ -99,6 +103,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, categories, 
             {/* Riesgo R-17: el texto libre lo lee el voluntariado, que no tiene acceso al expediente */}
             <p className="mt-1 text-xs text-amber-900">{t('tasks.f_details_warning')}</p>
           </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

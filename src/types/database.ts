@@ -47,6 +47,10 @@ export interface Task {
   task_category_id: string | null;
   work_area_id: string | null;
   routine_template_id: string | null;
+  /** Vínculo con un caso (BV-7.16): sólo el folio llega al voluntariado, nunca más dato del caso */
+  case_id: string | null;
+  case_number: string | null;
+  case_task_kind_id: string | null;
   created_at: string;
   created_by: string | null;
   updated_at: string;
@@ -61,6 +65,9 @@ export interface TaskCategory {
   sort_order: number;
   archived_at: string | null;
 }
+
+/** Tipo de tarea ligada a un caso: catálogo neutro, sin texto libre (decisión 6a). */
+export type CaseTaskKind = TaskCategory;
 
 /** Plantilla de rutina: tareas recurrentes agrupadas bajo un perfil de jornada. */
 export interface RoutineTemplate {

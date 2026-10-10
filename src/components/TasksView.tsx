@@ -315,6 +315,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
       {section === 'catalogs' && (
         <TaskCatalogsView
           categories={categories}
+          caseTaskKinds={tasks.data.caseTaskKinds}
           workAreas={workAreas}
           busyId={tasks.busyId}
           saving={tasks.saving}

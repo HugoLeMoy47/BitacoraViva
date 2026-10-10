@@ -724,7 +724,11 @@
       "ev_type": "Solo se aceptan fotos JPG, PNG o WebP.",
       "ev_size": "La foto pesa más de 5 MB. Toma otra o elige una más pequeña.",
       "ev_empty": "El archivo está vacío. Elige otra foto.",
-      "ev_storage": "No se pudo subir o abrir la foto. Revisa tu conexión e inténtalo de nuevo."
+      "ev_storage": "No se pudo subir o abrir la foto. Revisa tu conexión e inténtalo de nuevo.",
+      "tk025": "El vínculo con un caso y el nombre de una tarea ligada no se editan a mano. Quien opera expedientes los cambia desde el caso.",
+      "tk026": "Solo quien opera expedientes puede ligar tareas a un caso.",
+      "tk027": "El caso o el tipo de tarea ya no existe. Recarga e inténtalo de nuevo.",
+      "tk028": "Una tarea ligada a un caso no se toma del pool: la asigna quien coordina."
     }
   },
   "config": {
@@ -956,7 +960,9 @@
       "archive_body": "El valor dejará de ofrecerse en los formularios nuevos. Archivar es definitivo: no se borra ni se restaura, y las tareas que ya lo usan conservan su etiqueta.",
       "toast_created": "Valor agregado.",
       "toast_renamed": "Nombre actualizado.",
-      "toast_archived": "Valor archivado."
+      "toast_archived": "Valor archivado.",
+      "caseKind_title": "Tipos de tarea ligada a un caso",
+      "caseKind_hint": "Nombres neutros para tareas que nacen de un caso: acompañamiento, trámite, seguimiento… Sin datos de personas ni de situaciones."
     },
     "tab_routines": "Rutinas",
     "tab_notes": "Notas de turno",
@@ -1070,6 +1076,31 @@
       "add": "Agregar foto",
       "open": "Fotos",
       "toast_uploaded": "Foto guardada."
+    },
+    "case": {
+      "tab": "Tareas",
+      "title": "Tareas ligadas a este caso",
+      "intro": "Una tarea ligada lleva solo el folio ({folio}) y un nombre de catálogo: el voluntariado la ve sin entrar al expediente. El detalle se queda aquí.",
+      "new": "Nueva tarea ligada",
+      "empty": "Este caso no tiene tareas ligadas.",
+      "no_kinds": "La dirección aún no ha dado de alta tipos de tarea ligada. Se administran en Tareas → Catálogos.",
+      "load_failed": "No se pudieron cargar las tareas. Vuelve a abrir la pestaña.",
+      "unassigned": "Sin asignar (la asigna coordinación)",
+      "folio": "Caso {folio}",
+      "form_title": "Nueva tarea ligada al caso",
+      "privacy": "El voluntariado verá el folio {folio} y el tipo de tarea, nada más. No hay campo de texto libre a propósito: «cita médica» junto a un folio ya cuenta algo del caso.",
+      "f_kind": "Tipo de tarea",
+      "f_kind_choose": "Elige un tipo…",
+      "f_unassigned": "Sin asignar (la asigna coordinación)",
+      "f_assignee_hint": "Una tarea ligada nunca queda en el pool: si no la asignas, solo la ve la coordinación hasta que la asigne.",
+      "create": "Crear tarea",
+      "unlink": "Desvincular",
+      "unlink_title": "Desvincular tarea",
+      "unlink_body": "La tarea deja de mostrar el folio del caso. Conserva su nombre y su estado. Quedará registrado en la auditoría.",
+      "unlink_confirm": "Desvincular",
+      "toast_created": "Tarea ligada al caso creada.",
+      "toast_unlinked": "Tarea desvinculada del caso.",
+      "name_locked": "El nombre de una tarea ligada a un caso sale de un catálogo y no se edita."
     }
   }
 }

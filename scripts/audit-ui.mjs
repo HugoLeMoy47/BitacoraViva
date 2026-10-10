@@ -332,6 +332,16 @@ try {
           record(role.key, vp.name, 'expediente/sección ' + (i + 1), await auditNow());
         }
 
+        // Tareas ligadas al caso (E7, BV-7.16): el formulario se abre y se cancela
+        const caseTasksTab = page.getByRole('tablist', { name: 'Secciones del expediente' }).getByRole('tab', { name: 'Tareas', exact: true });
+        if (await caseTasksTab.count()) {
+          await caseTasksTab.click();
+          await page.waitForTimeout(900);
+          const linkedModal = await checkModalOpening(page, page.getByRole('button', { name: /Nueva tarea ligada/i }), 'nueva tarea ligada', auditNow);
+          record(role.key, vp.name, 'expediente/tarea ligada formulario', linkedModal.items);
+          record(role.key, vp.name, '(modal tarea ligada)', linkedModal.issues);
+        }
+
         // Configuración de la organización: cada sección
         await page.evaluate(() => { location.hash = '#/configuracion'; });
         await page.waitForTimeout(1200);
