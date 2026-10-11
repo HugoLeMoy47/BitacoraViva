@@ -1545,6 +1545,46 @@ begin
                where r->>'metric' = 'sex' and r->>'count' is not null$q$, '1');
     end;
 
+    -- ============================================================================================
+    -- ===== Aclarar una entrada ya compartida: la aclaración le llega a quien recibió la original
+    -- ===== (migración 20261011000005)
+    -- ============================================================================================
+    declare
+        CW2 constant text := 'aaaaaaaa-3000-0000-0000-00000000000a';  -- caseworker del área jurídica (destino)
+        AR_LG constant text := 'aaaaaaaa-1000-0000-0000-000000000002';
+        nuevo text := $q$select count(*)::text from public.journal_entry n
+                         where n.id = (select o.superseded_by_id from public.journal_entry o where o.id = %L::uuid)$q$;
+    begin
+        insert into public.journal_entry (id, organization_id, case_id, area_id, author_user_id, entry_type_key, body, is_work_note, visibility)
+        values (pg_temp.id('6000', 20)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-5000-0000-0000-000000000001',
+                'aaaaaaaa-1000-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000002', 'note', 'Entrada que se compartirá y luego se aclara', false, 'area_private'),
+               (pg_temp.id('6000', 21)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-5000-0000-0000-000000000001',
+                'aaaaaaaa-1000-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000002', 'note', 'Entrada privada que se aclara', false, 'area_private');
+
+        perform pg_temp.expect('aclaración compartida: la autora comparte la original con el área jurídica', CW, 'authenticated',
+            format('select count(*)::text from (select public.fn_share_journal_entry(%L::uuid, %L::uuid, ''Prueba'')) x', pg_temp.id('6000', 20), AR_LG), '1');
+        perform pg_temp.expect('aclaración compartida control positivo: el área jurídica lee la original compartida', CW2, 'authenticated',
+            format('select count(*)::text from public.journal_entry where id = %L::uuid', pg_temp.id('6000', 20)), '1');
+        perform pg_temp.expect('aclaración compartida: la autora aclara la original', CW, 'authenticated',
+            format('select count(*)::text from (select public.fn_create_clarification_note(%L::uuid, ''Aclaración de la entrada compartida'')) x', pg_temp.id('6000', 20)), '1');
+        perform pg_temp.expect('aclaración compartida: el área jurídica lee la aclaración de lo que recibió', CW2, 'authenticated',
+            format(nuevo, pg_temp.id('6000', 20)), '1');
+        perform pg_temp.expect('aclaración compartida: dirección sigue leyéndola', DIR, 'authenticated',
+            format(nuevo, pg_temp.id('6000', 20)), '1');
+        perform pg_temp.expect('aclaración compartida: quien no es de esa área ni autor no la lee', INT, 'authenticated',
+            format(nuevo, pg_temp.id('6000', 20)), '0');
+        perform pg_temp.expect('aclaración compartida: no se inventan acuses (hereda el estado de la original)', null, null,
+            format($q$select count(*)::text from public.sharing_event s
+                      where s.journal_entry_id = (select superseded_by_id from public.journal_entry where id = %L::uuid)
+                        and s.acknowledged_by_user_id is not null$q$, pg_temp.id('6000', 20)), '0');
+        perform pg_temp.expect('aclaración privada: una entrada que nunca se compartió sigue privada (la otra área no la lee)', CW, 'authenticated',
+            format('select count(*)::text from (select public.fn_create_clarification_note(%L::uuid, ''Aclaración privada'')) x', pg_temp.id('6000', 21)), '1');
+        perform pg_temp.expect('aclaración privada control: el área jurídica no lee la aclaración privada', CW2, 'authenticated',
+            format($q$select count(*)::text from public.journal_entry n where n.id = (select o.superseded_by_id from public.journal_entry o where o.id = %L::uuid)$q$, pg_temp.id('6000', 21)), '0');
+        perform pg_temp.expect('aclaración privada control: dirección sí la lee', DIR, 'authenticated',
+            format($q$select count(*)::text from public.journal_entry n where n.id = (select o.superseded_by_id from public.journal_entry o where o.id = %L::uuid)$q$, pg_temp.id('6000', 21)), '1');
+    end;
+
     -- ===== Anónimo: nada
     perform pg_temp.expect('anon no lee personas', null, 'anon', 'select count(*)::text from public.person', 'ERR|0');
     perform pg_temp.expect('anon no abre casos', null, 'anon', new_case, 'ERR');
