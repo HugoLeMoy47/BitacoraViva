@@ -13,7 +13,7 @@
 // transacción de prueba, antes del escenario, y se revierten con ella. Así una migración
 // nueva se prueba contra el motor real sin pasar por `db push` ni dejar rastro.
 
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -45,15 +45,40 @@ const annotate = (msg) => {
   console.log('::error title=test-rls::' + esc.slice(0, 6000));
 };
 
-let text;
-try {
-  execSync(`npx supabase db query ${target} -f "${file}"`, { cwd: root, encoding: 'utf8', stdio: 'pipe' });
+// Ejecuta el archivo y devuelve { ok, text }. La prueba termina SIEMPRE con un error deliberado
+// (así la transacción se revierte), por lo que lo esperado es ok = false y el reporte en el texto.
+//  · --linked: API de gestión del proyecto enlazado (acepta un archivo con varias sentencias).
+//  · --local:  `supabase db query --local` usa el protocolo extendido y NO admite varias
+//              sentencias, así que se usa psql directo (o el psql del contenedor de Postgres).
+function run() {
+  if (target === '--local') {
+    const url = process.env.RLS_DB_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+    let r = spawnSync('psql', [url, '-X', '-q', '-v', 'ON_ERROR_STOP=1', '-f', file], { cwd: root, encoding: 'utf8' });
+    if (r.error && r.error.code === 'ENOENT') {
+      r = spawnSync(
+        'docker',
+        ['exec', '-i', 'supabase_db_bitacora-viva', 'psql', '-U', 'postgres', '-d', 'postgres', '-X', '-q', '-v', 'ON_ERROR_STOP=1'],
+        { input: sql, encoding: 'utf8' }
+      );
+    }
+    if (r.error) return { ok: false, text: `No se pudo ejecutar psql ni docker: ${r.error.message}` };
+    return { ok: r.status === 0, text: `${r.stdout || ''}${r.stderr || ''}` };
+  }
+  try {
+    execSync(`npx supabase db query ${target} -f "${file}"`, { cwd: root, encoding: 'utf8', stdio: 'pipe' });
+    return { ok: true, text: '' };
+  } catch (e) {
+    return { ok: false, text: `${e.stdout || ''}${e.stderr || ''}` };
+  }
+}
+
+const result = run();
+if (result.ok) {
   console.error('La transacción de prueba no terminó con el resultado esperado.');
   annotate('La transacción de prueba terminó sin error: debía revertirse con un error deliberado.');
   process.exit(1);
-} catch (e) {
-  text = `${e.stdout || ''}${e.stderr || ''}`;
 }
+const text = result.text;
 
 const start = text.indexOf('RLS_RESULTS');
 if (start < 0) {
