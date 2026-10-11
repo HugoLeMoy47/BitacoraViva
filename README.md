@@ -101,6 +101,17 @@ npm run demo:reset -- --confirm <project-ref>             # reinicia de verdad
 
 Vacía los datos de negocio, borra las cuentas demo y vuelve a sembrar. Se niega si la base no está marcada `demo`. **Borra también la auditoría de la demo.** Es un comando de operador y no una función de la aplicación a propósito: una función destructiva alcanzable desde un rol de aplicación contradiría las Reglas Duras 3 y 4.
 
+## Integración continua
+
+GitHub Actions (`.github/workflows/ci.yml`) corre en cada push a `main` y en cada pull request, con dos trabajos:
+
+- **Verificación estática:** `scan:secrets` (sin `service_role` ni llaves en el repositorio, Regla Dura 2), `build` (tipos y compilación), `check:i18n` (Regla Dura 9) y `test:unit`.
+- **Pruebas de seguridad (base local):** levanta Supabase **efímero** (`supabase start`: Postgres 17 con todas las migraciones desde cero y la semilla) y corre `npm run test:rls -- --local`. No toca la demo compartida ni usa tokens de ella; si una migración depende de algo que sólo existe en la demo, aquí falla.
+
+La herramienta de Supabase está fijada en `package.json` (`supabase@2.120.0`) para que CI y equipo usen la misma versión. Localmente: `npm run scan:secrets` y, con Docker encendido, `npx supabase start` + `npm run test:rls -- --local`.
+
+**Para que sea bloqueante** (ajuste de GitHub, no de código): *Settings → Branches →* regla para `main` → exigir los checks **Verificación estática** y **Pruebas de seguridad (base local)**. El CI **no despliega**: publicar el sitio y empujar migraciones siguen siendo pasos deliberados (R-13).
+
 ## Despliegue
 
 El despliegue del frontend en Cloudflare Workers es **manual** hoy: publicar en `main` no actualiza el sitio por sí solo. Al cerrar un ciclo, verifica que el paquete publicado corresponde al último commit (riesgo `R-13` en la documentación).

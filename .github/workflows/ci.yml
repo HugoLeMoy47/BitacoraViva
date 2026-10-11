@@ -1,0 +1,70 @@
+# Integración continua de Bitácora Viva (RNF-06 · riesgo R-01).
+#
+# Una base de Postgres EFÍMERA (supabase start) recibe todas las migraciones desde cero y la semilla,
+# y sobre ella corren las pruebas negativas de seguridad. No toca la demo compartida ni necesita
+# ningún token con acceso a ella. Si una migración depende de algo que solo existe en la demo,
+# aquí falla.
+#
+# Para que sea BLOQUEANTE: en GitHub → Settings → Branches → regla para `main` → exigir que pasen
+# los checks «Verificación estática» y «Pruebas de seguridad (base local)» antes de fusionar.
+#
+# No hace despliegues: publicar el sitio y empujar migraciones (`db push`) siguen siendo pasos
+# deliberados del Product Owner (R-13).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Verificación estática
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Sin secretos en el repositorio (Regla Dura 2)
+        run: |
+          npm run scan:secrets -- --self-test
+          npm run scan:secrets
+      - name: Tipos y compilación
+        run: npm run build
+      - name: Cero literales de texto en componentes (Regla Dura 9)
+        run: npm run check:i18n
+      - name: Pruebas unitarias
+        run: npm run test:unit
+
+  database:
+    name: Pruebas de seguridad (base local)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Levantar Supabase local (migraciones desde cero + semilla)
+        run: npx supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor,postgres-meta
+      - name: Pruebas negativas de RLS y reglas duras
+        run: npm run test:rls -- --local
+      - name: Diagnóstico si falló
+        if: failure()
+        run: |
+          docker ps -a
+          docker logs supabase_db_bitacora-viva 2>&1 | tail -60

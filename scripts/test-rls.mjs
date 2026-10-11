@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 let sql = readFileSync(join(root, 'supabase', 'tests', 'rls_negative.sql'), 'utf8');
 
+const target = process.argv.includes('--local') ? '--local' : '--linked';
 const include = process.argv.find((a) => a.startsWith('--include='))?.slice('--include='.length);
 if (include) {
   const dir = join(root, 'supabase', 'migrations');
@@ -39,7 +40,7 @@ writeFileSync(file, sql);
 
 let text;
 try {
-  execSync(`npx supabase db query --linked -f "${file}"`, { cwd: root, encoding: 'utf8', stdio: 'pipe' });
+  execSync(`npx supabase db query ${target} -f "${file}"`, { cwd: root, encoding: 'utf8', stdio: 'pipe' });
   console.error('La transacción de prueba no terminó con el resultado esperado.');
   process.exit(1);
 } catch (e) {
