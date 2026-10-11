@@ -3,6 +3,7 @@ import { X, Calendar, Shield, Clock, AlertTriangle, Eye, ArrowRight, ArrowLeft, 
 import { t } from '../lib/i18n';
 import { JournalEntry, JournalEntryType } from '../types/database';
 import { useCatalog } from '../lib/catalog';
+import { useSession } from '../lib/session';
 import { formatDateTime } from '../lib/format';
 import { ModalShell } from './ModalShell';
 
@@ -27,11 +28,20 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
   assignedAreaId,
   onEntryCreated,
 }) => {
-  const { areas } = useCatalog();
+  const { areas: allAreas } = useCatalog();
+  const { user } = useSession();
+  // Escribir a nombre de un área exige ser de esa área; Dirección, de cualquiera. Sin área asignada
+  // (ingreso) solo coordinación. La base lo exige igual; aquí solo se ofrece lo que se puede hacer.
+  const areas = user?.roles.includes('director')
+    ? allAreas
+    : user && user.areaIds.length > 0
+      ? allAreas.filter(a => user.areaIds.includes(a.id))
+      : allAreas.filter(a => a.code === 'coordinacion');
   const [step, setStep] = useState<'compose' | 'preview'>('compose');
   const [entryType, setEntryType] = useState<JournalEntryType>('follow_up');
   const [areaId, setAreaId] = useState<string>(
-    assignedAreaId || areas.find(a => a.code === 'trabajo_social')?.id || areas[0]?.id || ''
+    (assignedAreaId && areas.some(a => a.id === assignedAreaId) ? assignedAreaId : '') ||
+      areas.find(a => a.code === 'trabajo_social')?.id || areas[0]?.id || ''
   );
   const [occurredAt, setOccurredAt] = useState<string>(
     new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -41,7 +51,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentArea = areas.find(a => a.id === areaId) || areas[0];
+  const currentArea = areas.find(a => a.id === areaId) || areas[0] || allAreas[0];
 
   const handleProceedToPreview = (e: React.FormEvent) => {
     e.preventDefault();

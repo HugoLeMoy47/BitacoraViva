@@ -15,6 +15,8 @@ export interface SessionUser {
   /** Todos los roles vigentes de la persona: se acumulan (ADR-0007) */
   roles: RoleName[];
   userRole: UserRole;
+  /** Áreas a las que pertenece la persona por sus roles vigentes (compartimentación, Ethos C2) */
+  areaIds: string[];
   assignedAreaId?: string;
   assignedAreaCode?: string;
   assignedAreaName?: string;
@@ -63,6 +65,7 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
     role: userRole.role_name,
     roles: Array.from(new Set(roles.map((r) => r.role_name))),
     userRole,
+    areaIds: Array.from(new Set(roles.map((r) => r.area_id).filter((a): a is string => !!a))),
     assignedAreaId: area?.id,
     assignedAreaCode: area?.code,
     assignedAreaName: area?.name,

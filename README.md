@@ -61,7 +61,11 @@ Recorre la aplicación compilada con `playwright-core` y el Edge o Chrome del si
 
 ## Reglas para escribir funciones SQL
 
-Toda función `security definer` **se salta RLS**: si no repite la regla de acceso, la regla no existe. Una función nueva debe (1) comprobar sesión, rol operativo y organización, (2) ser ejecutable sólo por `authenticated` y (3) llevar su prueba negativa en `supabase/tests/rls_negative.sql`.
+Toda función `security definer` **se salta RLS**: si no repite la regla de acceso, la regla no existe. Una función nueva debe (1) comprobar sesión, rol operativo y organización (`fn_assert_same_org`), (2) ser ejecutable sólo por `authenticated`, (3) fijar su `search_path` y (4) llevar su prueba negativa en `supabase/tests/rls_negative.sql`. Si escribe en `audit_event`, **nunca guarda valores personales**: sólo nombres de campos (`fn_audit_trigger_fields`) o identificadores.
+
+## Cabeceras de seguridad
+
+`public/_headers` (CSP, `frame-ancestors`, `Referrer-Policy`, `X-Content-Type-Options`…) lo aplica Cloudflare Workers al servir `dist`. El origen de Supabase está escrito en `connect-src` e `img-src`: **si cambia el proyecto (p. ej. producción), cámbialo ahí**.
 
 ## Pruebas unitarias
 
@@ -77,7 +81,7 @@ Vitest sobre la lógica **pura** del Seguidor de tareas (reportes, enlace compar
 npm run test:rls
 ```
 
-Corren 652 pruebas negativas (215 del núcleo, 363 del Seguidor de tareas E7 y 74 de cuentas desactivadas) contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
+Corren 739 pruebas negativas (215 del núcleo, 363 del Seguidor de tareas E7, 74 de cuentas desactivadas y 87 del endurecimiento del 11 oct 2026: organización en ARCO, auditoría sin datos personales, compartimentación de la bitácora, estatus, escritura del núcleo solo por funciones y pseudonimización de terceros) contra el proyecto enlazado, **dentro de una transacción que siempre se revierte** (crean su propio escenario: dos organizaciones, usuarios de cada rol y un usuario sin rol). Deben pasar completas antes de cerrar un ciclo. Demuestran que lo prohibido está prohibido: aislamiento entre organizaciones, `viewer` sin datos identificables, ausencia de `DELETE`, `audit_event` append-only, bitácora inmutable, estatus que no se sobrescribe, y funciones de escritura cerradas a `anon`, sin rol y a otras organizaciones.
 
 ### Probar una migración nueva antes de empujarla
 

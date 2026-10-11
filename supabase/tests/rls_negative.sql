@@ -1226,6 +1226,272 @@ begin
         perform pg_temp.expect('reactivada: el caseworker vuelve a escribir en la bitácora', CW, 'authenticated', w_cw, '1');
     end;
 
+    -- ============================================================================================
+    -- ===== Endurecimiento 11 oct 2026 (reporte-auditoria-endurecimiento-2026-10-11.md)
+    -- ===== C-1 organización en ARCO · C-2 auditoría sin datos personales · A-2 compartimentación
+    -- ===== de la bitácora · A-3 estatus terminal y reapertura · M-1 search_path
+    -- ============================================================================================
+    declare
+        CW2   constant text := 'aaaaaaaa-3000-0000-0000-00000000000a';  -- caseworker del área jurídica
+        CW3   constant text := 'aaaaaaaa-3000-0000-0000-00000000000b';  -- caseworker del área de trabajo social (no autor)
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        AR_LG constant text := 'aaaaaaaa-1000-0000-0000-000000000002';
+        AR_B  constant text := 'bbbbbbbb-1000-0000-0000-000000000001';
+        PERS_A constant text := 'aaaaaaaa-4000-0000-0000-000000000001';
+        PERS_B constant text := 'bbbbbbbb-4000-0000-0000-000000000001';
+        n int;
+        sh text := 'select count(*)::text from (select public.fn_share_journal_entry(%L::uuid, %L::uuid, ''Prueba'')) x';
+        cl text := 'select count(*)::text from (select public.fn_create_clarification_note(%L::uuid, ''Aclaración'')) x';
+        wj text := 'select count(*)::text from (select public.fn_create_journal_entry(%L::uuid, ''note'', ''x'', now(), false, %L::uuid)) x';
+        st text := 'select count(*)::text from (select public.fn_change_case_status(%L::uuid, %L, %L, ''Prueba'')) x';
+    begin
+        create or replace function pg_temp.id(p_kind text, p_n int) returns text language sql as
+            $f$ select format('aaaaaaaa-%s-0000-0000-%s', p_kind, lpad(to_hex(p_n), 12, '0')) $f$;
+
+        -- Escenario: otra caseworker de trabajo social (no es autora) y una del área jurídica
+        insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at) values
+            (CW2::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cw2@tst-a.invalid', now(), now()),
+            (CW3::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cw3@tst-a.invalid', now(), now());
+        insert into public.user_profile (id, organization_id, email, full_name, active) values
+            (CW2::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'cw2@tst-a.invalid', 'Cw2 jurídico', true),
+            (CW3::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'cw3@tst-a.invalid', 'Cw3 trabajo social', true);
+        insert into public.user_role (user_id, role_name, area_id, granted_by, granted_at) values
+            (CW2::uuid, 'caseworker', AR_LG::uuid, 'aaaaaaaa-3000-0000-0000-000000000001', now()),
+            (CW3::uuid, 'caseworker', AR_TS::uuid, 'aaaaaaaa-3000-0000-0000-000000000001', now());
+
+        -- Personas y expedientes propios de estas pruebas (cada prueba destructiva usa el suyo)
+        insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date) values
+            (pg_temp.id('4000', 5)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Zeta', 'Anonimizable', '1985-03-04'),
+            (pg_temp.id('4000', 6)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Eta', 'Rectificable', '1985-03-04'),
+            (pg_temp.id('4000', 7)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Theta', 'Opositora', '1985-03-04'),
+            (pg_temp.id('4000', 2)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Iota', 'Estatus', '1985-03-04');
+        insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id)
+        select pg_temp.id('5000', k)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'TST-A-000' || k,
+               pg_temp.id('4000', 2)::uuid, 'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002'
+        from generate_series(2, 4) k;
+
+        -- Bitácora: 3, 15, 16, 17 y 19 son notas de trabajo protegidas; el resto, entradas ordinarias del área TS
+        for n in 3..19 loop
+            insert into public.journal_entry (id, organization_id, case_id, area_id, author_user_id, entry_type_key, body, is_work_note, visibility)
+            values (pg_temp.id('6000', n)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-5000-0000-0000-000000000001', AR_TS::uuid,
+                    'aaaaaaaa-3000-0000-0000-000000000002', 'note', 'Texto reservado ' || n, n in (3, 15, 16, 17, 19), 'area_private');
+        end loop;
+
+        -- ----- C-1: las funciones de ARCO y el acuse no cruzan organizaciones
+        perform pg_temp.expect('C-1: director de B no anonimiza a una persona de A', DIRB, 'authenticated',
+            format('select count(*)::text from (select public.fn_anonymize_person(%L::uuid, ''x'')) x', pg_temp.id('4000', 5)), 'ERR');
+        perform pg_temp.expect('C-1: director de B no emite el extracto ARCO de una persona de A', DIRB, 'authenticated',
+            format('select public.fn_generate_arco_access_extract(%L::uuid)::text', PERS_A), 'ERR');
+        perform pg_temp.expect('C-1: director de B no rectifica a una persona de A', DIRB, 'authenticated',
+            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''X'',''Y'',null,null,date ''1990-01-01'',false,1,1,null,null,''x'')) x', pg_temp.id('4000', 6)), 'ERR');
+        perform pg_temp.expect('C-1: director de B no registra oposición de una persona de A', DIRB, 'authenticated',
+            format('select count(*)::text from (select public.fn_apply_opposition(%L::uuid, ''x'')) x', pg_temp.id('4000', 7)), 'ERR');
+        perform pg_temp.expect('C-1: director de B no acusa recibo de una compartición de A', DIRB, 'authenticated',
+            'select count(*)::text from (select public.fn_acknowledge_sharing(''aaaaaaaa-7000-0000-0000-000000000001''::uuid)) x', 'ERR');
+        perform pg_temp.expect('C-1 control positivo: director de B registra oposición en su propia organización', DIRB, 'authenticated',
+            format('select count(*)::text from (select public.fn_apply_opposition(%L::uuid, ''x'')) x', PERS_B), '1');
+        perform pg_temp.expect('C-1 control positivo: director de A rectifica a su persona', DIR, 'authenticated',
+            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''Ana'',''PruebaA'',null,null,date ''1990-05-17'',false,1,1,null,null,''Corrección de prueba'')) x', PERS_A), '1');
+        perform pg_temp.expect('C-1 control positivo: director de A rectifica a otra persona suya', DIR, 'authenticated',
+            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''Eta'',''Rectificable'',null,null,date ''1985-03-04'',false,1,1,null,null,''x'')) x', pg_temp.id('4000', 6)), '1');
+
+        -- ----- C-2: el log guarda nombres de campos, nunca valores personales (decisión del PO, 11 oct 2026)
+        perform pg_temp.expect('C-2: el evento de rectificación no guarda nombres ni fechas', DIR, 'authenticated',
+            format($q$select count(*)::text from public.audit_event where action = 'RECTIFICATION' and record_id = %L::uuid
+                      and created_at >= transaction_timestamp()
+                      and (new_values ? 'given_name' or new_values ? 'paternal_family_name' or new_values ? 'birth_date' or old_values is not null)$q$, PERS_A), '0');
+        perform pg_temp.expect('C-2 control positivo: el evento de rectificación dice qué campos cambiaron y el motivo', DIR, 'authenticated',
+            format($q$select count(*)::text from public.audit_event where action = 'RECTIFICATION' and record_id = %L::uuid
+                      and created_at >= transaction_timestamp()
+                      and new_values->'changed_fields' ? 'birth_date' and new_values ? 'reason'$q$, PERS_A), '1');
+        perform pg_temp.expect('C-2: persona, consentimiento, solicitud ARCO, perfil y requerimiento solo auditan nombres de campos', DIR, 'authenticated',
+            $q$select count(*)::text from public.audit_event
+               where table_name in ('person', 'consent', 'arco_request', 'user_profile', 'authority_request')
+                 and action in ('INSERT', 'UPDATE') and created_at >= transaction_timestamp()
+                 and (old_values is not null or new_values is null or (new_values - 'changed_fields') <> '{}'::jsonb)$q$, '0');
+        perform pg_temp.expect('C-2 control positivo: el UPDATE de una persona sí deja qué campo cambió', DIR, 'authenticated',
+            format($q$select count(*)::text from public.audit_event where table_name = 'person' and record_id = %L::uuid and action = 'UPDATE'
+                      and created_at >= transaction_timestamp() and new_values->'changed_fields' ? 'birth_date'$q$, PERS_A), '>0');
+        perform pg_temp.expect('C-2: el extracto ARCO no deja el nombre de la persona en el log', DIR, 'authenticated',
+            format($q$select count(*)::text from public.audit_event where action = 'ARCO_ACCESS_EXTRACT_ISSUED' and record_id = %L::uuid
+                      and created_at >= transaction_timestamp() and new_values ? 'issued_to'$q$, PERS_A), '0');
+
+        -- ----- A-2: compartir una entrada = autoría, personas del área y dirección
+        perform pg_temp.expect('A-2: quien es de otra área no comparte una entrada ajena', CW2, 'authenticated',
+            format(sh, pg_temp.id('6000', 4), AR_LG), 'ERR');
+        perform pg_temp.expect('A-2: ingreso (sin área) no comparte una entrada ajena', INT, 'authenticated',
+            format(sh, pg_temp.id('6000', 5), AR_LG), 'ERR');
+        perform pg_temp.expect('A-2 control positivo: quien es del área de la entrada la comparte', CW3, 'authenticated',
+            format(sh, pg_temp.id('6000', 6), AR_LG), '1');
+        perform pg_temp.expect('A-2 control positivo: la persona autora la comparte', CW, 'authenticated',
+            format(sh, pg_temp.id('6000', 7), AR_LG), '1');
+        perform pg_temp.expect('A-2 control positivo: dirección la comparte', DIR, 'authenticated',
+            format(sh, pg_temp.id('6000', 8), AR_LG), '1');
+        perform pg_temp.expect('A-2: no se comparte hacia un área de otra organización', CW, 'authenticated',
+            format(sh, pg_temp.id('6000', 9), AR_B), 'ERR');
+        perform pg_temp.expect('A-2: una nota de trabajo protegida no se comparte (ni su autora)', CW, 'authenticated',
+            format(sh, pg_temp.id('6000', 15), AR_LG), 'ERR');
+        perform pg_temp.expect('A-2: una nota de trabajo protegida no se comparte (ni dirección)', DIR, 'authenticated',
+            format(sh, pg_temp.id('6000', 16), AR_LG), 'ERR');
+        -- La nota de trabajo la ven solo autoría, área y dirección
+        perform pg_temp.expect('A-2 control positivo: la autora lee su nota de trabajo', CW, 'authenticated',
+            format('select count(*)::text from public.journal_entry where id = %L::uuid', pg_temp.id('6000', 3)), '1');
+        perform pg_temp.expect('A-2: quien es del área lee la nota de trabajo', CW3, 'authenticated',
+            format('select count(*)::text from public.journal_entry where id = %L::uuid', pg_temp.id('6000', 3)), '1');
+        perform pg_temp.expect('A-2: dirección lee la nota de trabajo', DIR, 'authenticated',
+            format('select count(*)::text from public.journal_entry where id = %L::uuid', pg_temp.id('6000', 3)), '1');
+        perform pg_temp.expect('A-2: quien es de otra área no lee la nota de trabajo', CW2, 'authenticated',
+            format('select count(*)::text from public.journal_entry where id = %L::uuid', pg_temp.id('6000', 3)), '0');
+        perform pg_temp.expect('A-2: ingreso (sin área) no lee la nota de trabajo', INT, 'authenticated',
+            format('select count(*)::text from public.journal_entry where id = %L::uuid', pg_temp.id('6000', 3)), '0');
+
+        -- ----- A-2: aclarar una entrada = los mismos tres
+        perform pg_temp.expect('A-2: quien es de otra área no aclara una entrada ajena', CW2, 'authenticated',
+            format(cl, pg_temp.id('6000', 10)), 'ERR');
+        perform pg_temp.expect('A-2: ingreso (sin área) no aclara una entrada ajena', INT, 'authenticated',
+            format(cl, pg_temp.id('6000', 11)), 'ERR');
+        perform pg_temp.expect('A-2 control positivo: quien es del área aclara', CW3, 'authenticated',
+            format(cl, pg_temp.id('6000', 12)), '1');
+        perform pg_temp.expect('A-2 control positivo: dirección aclara', DIR, 'authenticated',
+            format(cl, pg_temp.id('6000', 13)), '1');
+        perform pg_temp.expect('A-2 control positivo: la persona autora aclara', CW, 'authenticated',
+            format(cl, pg_temp.id('6000', 14)), '1');
+        perform pg_temp.expect('A-2 control positivo: la autora aclara su nota de trabajo', CW, 'authenticated',
+            format(cl, pg_temp.id('6000', 17)), '1');
+        perform pg_temp.expect('A-2: la aclaración de una nota de trabajo sigue siendo nota de trabajo y privada', CW, 'authenticated',
+            format($q$select (je.is_work_note and je.visibility = 'area_private')::text
+                      from public.journal_entry o join public.journal_entry je on je.id = o.superseded_by_id where o.id = %L::uuid$q$, pg_temp.id('6000', 17)), 'true');
+        perform pg_temp.expect('A-2: una aclaración vacía se rechaza', CW, 'authenticated',
+            format('select count(*)::text from (select public.fn_create_clarification_note(%L::uuid, ''   '')) x', pg_temp.id('6000', 18)), 'ERR');
+
+        -- ----- A-2: escribir en el nombre de un área exige ser de esa área (o dirección)
+        perform pg_temp.expect('A-2: quien es de otra área no escribe a nombre del área de trabajo social', CW2, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_TS), 'ERR');
+        perform pg_temp.expect('A-2: la caseworker de trabajo social no escribe a nombre del área jurídica', CW, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_LG), 'ERR');
+        perform pg_temp.expect('A-2: nadie escribe a nombre de un área de otra organización', CW, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_B), 'ERR');
+        perform pg_temp.expect('A-2: ingreso (sin área) no escribe a nombre de un área operativa', INT, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_TS), 'ERR');
+        perform pg_temp.expect('A-2 control positivo: la caseworker escribe a nombre de su propia área', CW, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_TS), '1');
+        perform pg_temp.expect('A-2 control positivo: dirección escribe a nombre de cualquier área de su organización', DIR, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_LG), '1');
+        perform pg_temp.expect('A-2 control positivo: sin área indicada se usa el área de quien escribe', CW, 'authenticated',
+            'select count(*)::text from (select public.fn_create_journal_entry(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''note'', ''x'')) x', '1');
+
+        -- ----- A-2: la base impide que una nota de trabajo cambie de naturaleza o de visibilidad
+        perform pg_temp.expect('A-2: una nota de trabajo no pasa a compartida ni por el propietario', null, null,
+            format('with u as (update public.journal_entry set visibility = ''shared'' where id = %L::uuid returning 1) select count(*)::text from u', pg_temp.id('6000', 19)), 'ERR');
+        perform pg_temp.expect('A-2: una nota de trabajo no deja de serlo', null, null,
+            format('with u as (update public.journal_entry set is_work_note = false where id = %L::uuid returning 1) select count(*)::text from u', pg_temp.id('6000', 19)), 'ERR');
+
+        -- ----- A-3: anonymized solo por fn_anonymize_person; reabrir, solo dirección
+        perform pg_temp.expect('A-3 control positivo: un caseworker cambia la etapa', CW, 'authenticated',
+            format(st, pg_temp.id('5000', 2), 'case_stage', 'assessment'), '1');
+        perform pg_temp.expect('A-3: un caseworker no deja «anonimizada» la situación de un expediente', CW, 'authenticated',
+            format(st, pg_temp.id('5000', 2), 'engagement_status', 'anonymized'), 'ERR');
+        perform pg_temp.expect('A-3: ni dirección deja «anonimizada» la situación sin anonimizar a la persona', DIR, 'authenticated',
+            format(st, pg_temp.id('5000', 3), 'engagement_status', 'anonymized'), 'ERR');
+        perform pg_temp.expect('A-3: ni dirección deja «anonimizado» el estado del expediente sin anonimizar a la persona', DIR, 'authenticated',
+            format(st, pg_temp.id('5000', 3), 'record_status', 'anonymized'), 'ERR');
+        perform pg_temp.expect('A-3 control positivo: dirección cierra el expediente', DIR, 'authenticated',
+            format(st, pg_temp.id('5000', 4), 'record_status', 'closed'), '1');
+        perform pg_temp.expect('A-3: un caseworker no reabre un expediente cerrado', CW, 'authenticated',
+            format(st, pg_temp.id('5000', 4), 'record_status', 'open'), 'ERR');
+        perform pg_temp.expect('A-3: ingreso no reabre un expediente cerrado', INT, 'authenticated',
+            format(st, pg_temp.id('5000', 4), 'record_status', 'open'), 'ERR');
+        perform pg_temp.expect('A-3 control positivo: dirección reabre un expediente cerrado', DIR, 'authenticated',
+            format(st, pg_temp.id('5000', 4), 'record_status', 'open'), '1');
+
+        -- ----- M-1: toda función security definer fija su search_path
+        perform pg_temp.expect('M-1: ninguna función security definer de public queda sin search_path fijo', null, null,
+            $q$select count(*)::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+               where n.nspname = 'public' and p.prosecdef
+                 and not exists (select 1 from unnest(coalesce(p.proconfig, '{}'::text[])) c where c like 'search_path=%')$q$, '0');
+    end;
+
+    -- ============================================================================================
+    -- ===== A-1: el núcleo se escribe SOLO por funciones (migración 20261011000002)
+    -- ===== L-1: terceros pseudonimizados al anonimizar (migración 20261011000003)
+    -- ============================================================================================
+    declare
+        CW3   constant text := 'aaaaaaaa-3000-0000-0000-00000000000b';
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        ORG_A_ constant text := 'aaaaaaaa-0000-0000-0000-00000000000a';
+        ORG_B_ constant text := 'bbbbbbbb-0000-0000-0000-00000000000b';
+        CASE_A constant text := 'aaaaaaaa-5000-0000-0000-000000000001';
+        PERS_A constant text := 'aaaaaaaa-4000-0000-0000-000000000001';
+        t2 text;
+        who text;
+    begin
+        -- Datos de terceros que la anonimización debe pseudonimizar (L-1): se siembran como propietario
+        update public.consent
+           set legal_guardian_name = 'Tutora Secreta', authority_letter_ref = 'OFICIO-SECRETO-123', notes = 'nota privada del caso'
+         where id = 'aaaaaaaa-8000-0000-0000-000000000001';
+        insert into public.arco_request (organization_id, person_id, case_id, request_type, status, details, reason, requested_by_name, is_legal_representative, received_at)
+        values (ORG_A_::uuid, PERS_A::uuid, CASE_A::uuid, 'access', 'pending', 'Detalle secreto', 'Motivo secreto', 'Solicitante Secreto', false, now());
+
+        -- Ningún rol de aplicación conserva INSERT/UPDATE sobre las tablas de datos del núcleo
+        perform pg_temp.expect('A-1: sin INSERT/UPDATE directos para anon/authenticated en el núcleo', null, null,
+            $q$select count(*)::text from information_schema.role_table_grants
+               where table_schema = 'public' and privilege_type in ('INSERT', 'UPDATE') and grantee in ('anon', 'authenticated')
+                 and table_name in ('person', 'case', 'case_status', 'case_vulnerability_marker', 'journal_entry',
+                                    'sharing_event', 'attachment', 'consent', 'arco_request')$q$, '0');
+
+        -- Intentos concretos, con la identidad real de cada rol
+        perform pg_temp.expect('A-1: no se firma una entrada de bitácora con la autoría de otra persona', CW, 'authenticated',
+            format($q$with i as (insert into public.journal_entry (organization_id, case_id, area_id, author_user_id, entry_type_key, body)
+                      values (%L, %L, %L, %L, 'note', 'suplantada') returning 1) select count(*)::text from i$q$, ORG_A_, CASE_A, AR_TS, DIR), 'ERR');
+        perform pg_temp.expect('A-1: no se inserta una entrada ya «compartida» sin sharing_event', CW, 'authenticated',
+            format($q$with i as (insert into public.journal_entry (organization_id, case_id, area_id, author_user_id, entry_type_key, body, visibility)
+                      values (%L, %L, %L, %L, 'note', 'sin motivo', 'shared') returning 1) select count(*)::text from i$q$, ORG_A_, CASE_A, AR_TS, CW), 'ERR');
+        perform pg_temp.expect('A-1: no se escribe bitácora con la organización de otra', CW, 'authenticated',
+            format($q$with i as (insert into public.journal_entry (organization_id, case_id, area_id, author_user_id, entry_type_key, body)
+                      values (%L, %L, %L, %L, 'note', 'cruzada') returning 1) select count(*)::text from i$q$,
+                   ORG_B_, 'bbbbbbbb-5000-0000-0000-000000000001', 'bbbbbbbb-1000-0000-0000-000000000001', CW), 'ERR');
+        foreach who in array array[CW, INT, DIR] loop
+            perform pg_temp.expect('A-1: no se actualiza a una persona por escritura directa (' || right(who, 2) || ')', who, 'authenticated',
+                format($q$with u as (update public.person set phone_number = '5500000000' where id = %L returning 1) select count(*)::text from u$q$, PERS_A), 'ERR');
+            perform pg_temp.expect('A-1: no se revierte la anonimización por escritura directa (' || right(who, 2) || ')', who, 'authenticated',
+                format($q$with u as (update public.person set is_anonymized = false where id = %L returning 1) select count(*)::text from u$q$, PERS_A), 'ERR');
+        end loop;
+        perform pg_temp.expect('A-1: ingreso no inserta una persona directamente (se saltaría el consentimiento)', INT, 'authenticated',
+            format($q$with i as (insert into public.person (organization_id, given_name, paternal_family_name, birth_date) values (%L, 'Directa', 'Sin consentimiento', '1990-01-01') returning 1) select count(*)::text from i$q$, ORG_A_), 'ERR');
+        perform pg_temp.expect('A-1: dirección no inserta una persona directamente', DIR, 'authenticated',
+            format($q$with i as (insert into public.person (organization_id, given_name, paternal_family_name, birth_date) values (%L, 'Directa', 'Dirección', '1990-01-01') returning 1) select count(*)::text from i$q$, ORG_A_), 'ERR');
+        perform pg_temp.expect('A-1: ingreso no abre un caso directamente', INT, 'authenticated',
+            format($q$with i as (insert into public."case" (organization_id, case_number, titular_person_id, opened_by) values (%L, 'DIRECTO-1', %L, %L) returning 1) select count(*)::text from i$q$, ORG_A_, PERS_A, INT), 'ERR');
+        perform pg_temp.expect('A-1: ingreso no afirma marcadores de vulnerabilidad directamente (P-06)', INT, 'authenticated',
+            format($q$with i as (insert into public.case_vulnerability_marker (organization_id, case_id, marker_code, affirmed_by) values (%L, %L, 'victim_of_violence', %L) returning 1) select count(*)::text from i$q$, ORG_A_, CASE_A, INT), 'ERR');
+        perform pg_temp.expect('A-1: no se fabrica historial de estatus por inserción directa', CW, 'authenticated',
+            format($q$with i as (insert into public.case_status (organization_id, case_id, axis_id, value_id, valid_from, valid_to, reason)
+                      values (%L, %L, 'aaaaaaaa-2000-0000-0000-000000000005', 'aaaaaaaa-2100-0000-0000-000000000002', now() - interval '3 days', now() - interval '1 day', 'falso') returning 1) select count(*)::text from i$q$, ORG_A_, CASE_A), 'ERR');
+        perform pg_temp.expect('A-1: no se cierra un estatus por UPDATE directo', CW, 'authenticated',
+            format($q$with u as (update public.case_status set valid_to = now() where case_id = %L and valid_to is null returning 1) select count(*)::text from u$q$, CASE_A), 'ERR');
+        perform pg_temp.expect('A-1: no se registra un consentimiento por inserción directa', INT, 'authenticated',
+            format($q$with i as (insert into public.consent (organization_id, person_id, consent_type, status, granted_by_user_id) values (%L, %L, 'sensitive_data', 'granted', %L) returning 1) select count(*)::text from i$q$, ORG_A_, PERS_A, INT), 'ERR');
+        perform pg_temp.expect('A-1: no se edita un consentimiento ya otorgado', DIR, 'authenticated',
+            $q$with u as (update public.consent set status = 'revoked' where id = 'aaaaaaaa-8000-0000-0000-000000000001' returning 1) select count(*)::text from u$q$, 'ERR');
+        perform pg_temp.expect('A-1: no se crea una solicitud ARCO por inserción directa', DIR, 'authenticated',
+            format($q$with i as (insert into public.arco_request (organization_id, person_id, request_type, status, details, reason, requested_by_name, received_at)
+                      values (%L, %L, 'access', 'pending', 'x', 'x', 'x', now()) returning 1) select count(*)::text from i$q$, ORG_A_, PERS_A), 'ERR');
+        perform pg_temp.expect('A-1: no se modifica una solicitud ARCO por UPDATE directo', DIR, 'authenticated',
+            format($q$with u as (update public.arco_request set status = 'rejected' where person_id = %L returning 1) select count(*)::text from u$q$, PERS_A), 'ERR');
+        perform pg_temp.expect('A-1: no se altera la compartición por escritura directa', CW3, 'authenticated',
+            $q$with u as (update public.sharing_event set reason = 'otra' where id = 'aaaaaaaa-7000-0000-0000-000000000001' returning 1) select count(*)::text from u$q$, 'ERR');
+
+        -- Controles positivos: las funciones, que son el único camino, siguen funcionando
+        perform pg_temp.expect('A-1 control positivo: ingreso abre un expediente por la función', INT, 'authenticated', new_case, '1');
+        perform pg_temp.expect('A-1 control positivo: dirección abre un expediente por la función', DIR, 'authenticated', new_case, '1');
+        perform pg_temp.expect('A-1: quien no es de ingreso ni dirección no abre expedientes por la función', CW, 'authenticated', new_case, 'ERR');
+        perform pg_temp.expect('A-1: el área asignada debe ser de la propia organización', INT, 'authenticated',
+            replace(new_case, 'aaaaaaaa-1000-0000-0000-000000000001', 'bbbbbbbb-1000-0000-0000-000000000001'), 'ERR');
+        perform pg_temp.expect('A-1: la función interna del alta no es ejecutable por los roles de aplicación', INT, 'authenticated',
+            $q$select count(*)::text from (select public.fn_create_case_with_person_impl('X','Y',null,null,date '2000-01-01',false,1,93,'H',1,null,null,'fija',false,9,1,1,3,null,
+               'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], '[{"consent_type":"general_care"}]'::jsonb)) x$q$, 'ERR');
+    end;
+
     -- ===== Anónimo: nada
     perform pg_temp.expect('anon no lee personas', null, 'anon', 'select count(*)::text from public.person', 'ERR|0');
     perform pg_temp.expect('anon no abre casos', null, 'anon', new_case, 'ERR');
@@ -1261,6 +1527,35 @@ begin
         pg_temp.q('select case_number from public.task where case_id = {CASEA}'), 'TST-A-0001');
     perform pg_temp.expect('el esqueleto del caso permanece tras anonimizar (el folio sigue siendo válido)', null, null,
         pg_temp.q('select case_number from public."case" where id = {CASEA}'), 'TST-A-0001');
+
+    -- ===== C-2 / C7: tras anonimizar, nada identificable sobrevive en la persona ni en el log
+    perform pg_temp.expect('C-2: tras anonimizar, ningún evento de esta prueba conserva el apellido de la persona', null, null,
+        $q$select count(*)::text from public.audit_event where created_at >= transaction_timestamp()
+           and (coalesce(old_values::text, '') ilike '%pruebaa%' or coalesce(new_values::text, '') ilike '%pruebaa%')$q$, '0');
+    perform pg_temp.expect('C-2: tras anonimizar, la fecha de nacimiento queda en el año (rango de edad, ADR-0001)', null, null,
+        $q$select birth_date::text from public.person where id = 'aaaaaaaa-4000-0000-0000-000000000001'$q$, '1990-01-01');
+    perform pg_temp.expect('C-2 control positivo: el evento de anonimización permanece y conserva el esqueleto', null, null,
+        $q$select count(*)::text from public.audit_event where action = 'ANONYMIZATION' and record_id = 'aaaaaaaa-4000-0000-0000-000000000001'
+           and created_at >= transaction_timestamp() and new_values ? 'retained_skeleton'$q$, '1');
+    perform pg_temp.expect('A-3 control positivo: la anonimización por su función sí deja el estatus terminal', null, null,
+        $q$select count(*)::text from public.case_status cs join public.status_value sv on sv.id = cs.value_id
+           where cs.case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and cs.valid_to is null and sv.code = 'anonymized'$q$, '2');
+
+    -- ===== L-1: al anonimizar, los terceros de consentimientos y solicitudes ARCO quedan pseudonimizados
+    perform pg_temp.expect('L-1: ningún nombre ni referencia de terceros sobrevive en los consentimientos', null, null,
+        $q$select count(*)::text from public.consent where person_id = 'aaaaaaaa-4000-0000-0000-000000000001'
+           and (legal_guardian_name ilike '%secreta%' or authority_letter_ref ilike '%secreto%' or notes ilike '%privada%')$q$, '0');
+    perform pg_temp.expect('L-1: ningún dato de quien solicitó sobrevive en las solicitudes ARCO', null, null,
+        $q$select count(*)::text from public.arco_request where person_id = 'aaaaaaaa-4000-0000-0000-000000000001'
+           and (requested_by_name ilike '%secreto%' or details ilike '%secreto%' or reason ilike '%secreto%')$q$, '0');
+    perform pg_temp.expect('L-1 control positivo: el consentimiento sigue como evidencia, con seudónimo en lugar del nombre', null, null,
+        $q$select count(*)::text from public.consent where id = 'aaaaaaaa-8000-0000-0000-000000000001' and status = 'granted'
+           and legal_guardian_name like 'REPRESENTANTE-%' and authority_letter_ref like 'REFERENCIA-%'$q$, '1');
+    perform pg_temp.expect('L-1 control positivo: la solicitud ARCO sigue registrada, con seudónimo', null, null,
+        $q$select count(*)::text from public.arco_request where person_id = 'aaaaaaaa-4000-0000-0000-000000000001' and requested_by_name like 'SOLICITANTE-%'$q$, '1');
+    perform pg_temp.expect('L-1: ningún evento de auditoría de esta prueba conserva datos de terceros', null, null,
+        $q$select count(*)::text from public.audit_event where created_at >= transaction_timestamp()
+           and (coalesce(old_values::text, '') ilike '%secret%' or coalesce(new_values::text, '') ilike '%secret%')$q$, '0');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

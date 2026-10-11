@@ -36,6 +36,7 @@ import {
 } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
+import { useSession } from '../lib/session';
 import { NewJournalEntryModal } from './NewJournalEntryModal';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
 import { ShareEntryModal } from './ShareEntryModal';
@@ -128,6 +129,10 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const isDirector = activeRole === 'director';
   const isLegalCaseworker = activeRole === 'caseworker' && assignedAreaCode === 'legal';
   const canWriteJournal = activeRole === 'caseworker' || activeRole === 'intake_officer' || activeRole === 'director';
+  // Aclarar o compartir una entrada: su autoría, las personas de su área y Dirección (la base lo exige igual)
+  const myAreaIds = useSession().user?.areaIds ?? [];
+  const canActOnEntry = (entry: JournalEntry) =>
+    isDirector || entry.author_user_id === authorUserId || myAreaIds.includes(entry.area_id);
   // Tareas ligadas: las crea quien opera expedientes (el rol de sólo lectura no)
   const canLinkTasks = canWriteJournal;
   const canManageConsent = activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director';
@@ -540,7 +545,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       </div>
 
                       {/* Botones de Acción (solo en entradas activas) */}
-                      {!isSuperseded && canWriteJournal && (
+                      {!isSuperseded && canWriteJournal && canActOnEntry(entry) && (
                         <div className="flex items-center gap-2">
                           {/* Botón de Fe de Erratas */}
                           <button
@@ -552,7 +557,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                           </button>
 
                           {/* Botón de Compartir si es privada */}
-                          {!isShared && (
+                          {!isShared && !entry.is_work_note && (
                             <button
                               onClick={() => setSharingEntry(entry)}
                               className="flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100"
