@@ -38,10 +38,18 @@ if (include) {
 const file = join(mkdtempSync(join(tmpdir(), 'bv-rls-')), 'rls_negative.sql');
 writeFileSync(file, sql);
 
+// En GitHub Actions las fallas se publican además como anotaciones, legibles sin abrir el log.
+const annotate = (msg) => {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const esc = String(msg).split('%').join('%25').split('\r').join('%0D').split('\n').join('%0A');
+  console.log('::error title=test-rls::' + esc.slice(0, 6000));
+};
+
 let text;
 try {
   execSync(`npx supabase db query ${target} -f "${file}"`, { cwd: root, encoding: 'utf8', stdio: 'pipe' });
   console.error('La transacción de prueba no terminó con el resultado esperado.');
+  annotate('La transacción de prueba terminó sin error: debía revertirse con un error deliberado.');
   process.exit(1);
 } catch (e) {
   text = `${e.stdout || ''}${e.stderr || ''}`;
@@ -50,6 +58,7 @@ try {
 const start = text.indexOf('RLS_RESULTS');
 if (start < 0) {
   console.error('No se obtuvo el reporte de pruebas. Salida:\n' + text.slice(0, 2000));
+  annotate('Sin reporte de pruebas. Salida: ' + text.slice(0, 2500));
   process.exit(1);
 }
 
@@ -61,13 +70,17 @@ const lines = text
   .filter((l) => /^(PASS|FAIL)\^/.test(l));
 
 let failed = 0;
+const failures = [];
 for (const l of lines) {
   const [verdict, name, expected, actual] = l.split('^');
   if (verdict === 'FAIL') {
     failed++;
+    failures.push(`${name} (esperado ${expected} / obtenido ${String(actual).slice(0, 80)})`);
     console.log(`FALLA  ${name}  (esperado: ${expected} / obtenido: ${actual})`);
   }
 }
 const passed = lines.length - failed;
 console.log(`\n${passed} pruebas pasan, ${failed} fallan, ${lines.length} en total.`);
-process.exit(failed > 0 ? 1 : 0);
+if (failed > 0) annotate(`${failed} prueba(s) fallan:\n` + failures.slice(0, 40).join('\n'));
+if (lines.length === 0) annotate('El reporte llegó vacío. Texto: ' + text.slice(start, start + 1500));
+process.exit(failed > 0 || lines.length === 0 ? 1 : 0);

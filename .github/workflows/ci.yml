@@ -68,3 +68,6 @@ jobs:
         run: |
           docker ps -a
           docker logs supabase_db_bitacora-viva 2>&1 | tail -60
+          # Las anotaciones se leen sin abrir el log completo
+          LOGS=$(docker logs supabase_db_bitacora-viva 2>&1 | tail -30 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          echo "::error title=log-de-la-base::${LOGS:0:5000}"

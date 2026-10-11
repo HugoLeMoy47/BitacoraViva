@@ -47,7 +47,8 @@ function selfTest() {
     ['JWT service_role se detecta', `KEY=${jwt('service_role')}`, 1],
     ['JWT anon NO se marca (es pública por diseño)', `KEY=${jwt('anon')}`, 0],
     ['sb_secret_ se detecta', `KEY=sb_secret_${'a'.repeat(30)}`, 1],
-    ['llave privada PEM se detecta', '-----BEGIN PRIVATE KEY-----', 1],
+    // La muestra se arma en tiempo de ejecución: escrita literal, el escáner se detectaría a sí mismo
+    ['llave privada PEM se detecta', ['-----BEGIN', 'PRIVATE KEY-----'].join(' '), 1],
     ['texto normal no se marca', 'service_role nunca llega al navegador', 0],
   ];
   let bad = 0;
