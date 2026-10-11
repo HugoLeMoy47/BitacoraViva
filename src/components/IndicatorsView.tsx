@@ -228,6 +228,12 @@ export const IndicatorsView: React.FC = () => {
             <ShieldCheck className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
             <span>{t('indicators.threshold_note').replace('{n}', String(min))}</span>
           </p>
+          {!data.exact && data.rounded_to && (
+            <p className="mt-2 flex items-start gap-2 text-xs text-carbon-muted">
+              <ShieldCheck className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
+              <span>{t('indicators.rounded_note').replace('{n}', String(data.rounded_to))}</span>
+            </p>
+          )}
           {allSuppressed && (
             <p className="mt-3 rounded-lg bg-gray-50 border border-gray-200 p-3 text-xs text-gray-600">
               {t('indicators.all_suppressed').replace('{n}', String(min))}
@@ -283,10 +289,10 @@ export const IndicatorsView: React.FC = () => {
                         {r.suppressed ? (
                           <span
                             className="flex items-center gap-1 text-xs text-gray-500 shrink-0"
-                            title={t('indicators.suppressed_hint')}
+                            title={r.hidden_reason === 'complement' ? t('indicators.protected_hint') : t('indicators.suppressed_hint')}
                           >
                             <EyeOff className="w-3.5 h-3.5" />
-                            {t('indicators.suppressed').replace('{n}', String(min))}
+                            {r.hidden_reason === 'complement' ? t('indicators.protected') : t('indicators.suppressed').replace('{n}', String(min))}
                           </span>
                         ) : (
                           <span className="flex items-center gap-2 shrink-0">

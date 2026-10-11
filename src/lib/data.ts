@@ -294,12 +294,17 @@ export interface AggregateMetricRow {
   count: number | null;
   value: number | null;
   suppressed: boolean;
+  /** Por qué se oculta: «small» (menos de 5) o «complement» (se oculta junto a una celda pequeña para que no se deduzca por resta, R-19) */
+  hidden_reason: 'small' | 'complement' | null;
   prev_count: number | null;
   prev_value: number | null;
 }
 
 export interface AggregateMetrics {
   min_group_size: number;
+  /** Dirección ve cifras exactas; el resto, redondeadas a múltiplos de `rounded_to` (R-19) */
+  exact: boolean;
+  rounded_to: number | null;
   generated_at: string;
   period: { from: string | null; to: string | null; prev_from: string | null; prev_to: string | null };
   rows: AggregateMetricRow[];

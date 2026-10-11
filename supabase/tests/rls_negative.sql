@@ -1492,6 +1492,59 @@ begin
                'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], '[{"consent_type":"general_care"}]'::jsonb)) x$q$, 'ERR');
     end;
 
+    -- ============================================================================================
+    -- ===== M-2 / R-19: indicadores sin re-identificación por resta (migración 20261011000004)
+    -- ===== Escenario: 13 casos nuevos. intake_window_type: movil 7 · transaccional 6.
+    -- ===== sexo: 1 → (existentes + 4) · 2 → 6 · 3 → 3 (una sola celda menor a 5)
+    -- ============================================================================================
+    declare
+        mk text := $q$select coalesce(r->>%L, 'NULL') from jsonb_array_elements(public.fn_aggregate_metrics()->'rows') r
+                       where r->>'metric' = %L and r->>'bucket' = %L$q$;
+        i int;
+    begin
+        for i in 1..13 loop
+            insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date, sex_id)
+            values (pg_temp.id('4100', i)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Indicador' || i, 'Prueba', '1990-06-15',
+                    case when i <= 4 then 1 when i <= 7 then 3 else 2 end);
+            insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type)
+            values (pg_temp.id('5100', i)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'TST-A-M' || i, pg_temp.id('4100', i)::uuid,
+                    'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002',
+                    case when i <= 7 then 'movil' else 'transaccional' end);
+        end loop;
+
+        -- Opción 1: las cifras se redondean a múltiplos de 5 para quien no es de Dirección
+        perform pg_temp.expect('M-2: el observador ve la cifra redondeada a múltiplos de 5 (7 → 5)', VW, 'authenticated',
+            format(mk, 'count', 'intake_window_type', 'movil'), '5');
+        perform pg_temp.expect('M-2 control positivo: Dirección ve la cifra exacta (7)', DIR, 'authenticated',
+            format(mk, 'count', 'intake_window_type', 'movil'), '7');
+        perform pg_temp.expect('M-2: ninguna cifra visible del observador deja de ser múltiplo de 5', VW, 'authenticated',
+            $q$select count(*)::text from jsonb_array_elements(public.fn_aggregate_metrics()->'rows') r
+               where r->>'count' is not null and (r->>'count')::int % 5 <> 0$q$, '0');
+        perform pg_temp.expect('M-2: el redondeo nunca deja una cifra visible por debajo del umbral', VW, 'authenticated',
+            $q$select (coalesce(min((r->>'count')::int), 5) >= 5)::text from jsonb_array_elements(public.fn_aggregate_metrics()->'rows') r$q$, 'true');
+        perform pg_temp.expect('M-2: el resultado dice que está redondeado (observador)', VW, 'authenticated',
+            $q$select public.fn_aggregate_metrics()->>'exact'$q$, 'false');
+        perform pg_temp.expect('M-2 control positivo: el resultado dice que es exacto (Dirección)', DIR, 'authenticated',
+            $q$select public.fn_aggregate_metrics()->>'exact'$q$, 'true');
+
+        -- Opción 3: si en una partición se oculta una sola celda, se oculta también la visible más pequeña
+        perform pg_temp.expect('M-2: la celda menor a 5 sigue oculta por su tamaño', VW, 'authenticated',
+            format(mk, 'hidden_reason', 'sex', '3'), 'small');
+        perform pg_temp.expect('M-2: la celda visible más pequeña se oculta por complemento (no se deduce por resta)', VW, 'authenticated',
+            format(mk, 'hidden_reason', 'sex', '2'), 'complement');
+        perform pg_temp.expect('M-2: la celda protegida por complemento no trae cifra', VW, 'authenticated',
+            format(mk, 'count', 'sex', '2'), 'NULL');
+        perform pg_temp.expect('M-2: la protección por complemento también rige para Dirección', DIR, 'authenticated',
+            format(mk, 'hidden_reason', 'sex', '2'), 'complement');
+        perform pg_temp.expect('M-2 control positivo: la celda mayor sigue visible', VW, 'authenticated',
+            format(mk, 'suppressed', 'sex', '1'), 'false');
+        perform pg_temp.expect('M-2 control positivo: una partición sin celdas pequeñas no oculta nada', VW, 'authenticated',
+            format(mk, 'suppressed', 'intake_window_type', 'movil'), 'false');
+        perform pg_temp.expect('M-2: restar las celdas visibles del total ya no revela la celda oculta', DIR, 'authenticated',
+            $q$select count(*)::text from jsonb_array_elements(public.fn_aggregate_metrics()->'rows') r
+               where r->>'metric' = 'sex' and r->>'count' is not null$q$, '1');
+    end;
+
     -- ===== Anónimo: nada
     perform pg_temp.expect('anon no lee personas', null, 'anon', 'select count(*)::text from public.person', 'ERR|0');
     perform pg_temp.expect('anon no abre casos', null, 'anon', new_case, 'ERR');

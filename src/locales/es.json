@@ -563,6 +563,9 @@
     "all_suppressed": "Aún no hay grupos con {n} o más personas, por eso todas las cifras están ocultas. Es el comportamiento esperado con pocos expedientes.",
     "suppressed": "Menos de {n}",
     "suppressed_hint": "Cifra oculta por umbral de agregación",
+    "protected": "Cifra protegida",
+    "protected_hint": "Se oculta junto a un grupo menor de 5 para que no pueda deducirse por resta",
+    "rounded_note": "Las cifras se redondean a múltiplos de {n} para que no puedan deducirse grupos pequeños restando consultas. Dirección ve las cifras exactas.",
     "bucket_all": "Expedientes",
     "metric": {
       "total_cases": "Total de expedientes",
