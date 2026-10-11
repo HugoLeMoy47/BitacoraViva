@@ -1,0 +1,14 @@
+# Cabeceras de seguridad (Cloudflare Workers, activos estáticos). Auditoría 11 oct 2026, A-4.
+#
+# La sesión de Supabase vive en localStorage: una CSP estricta limita lo que un XSS podría hacer con ella.
+# Si cambia el proyecto de Supabase (p. ej. el de producción), cambia aquí el origen de connect-src e img-src.
+# Las cadenas visibles y la lógica no dependen de este archivo: solo endurece el navegador.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://lbmytnjvpkjepsaiqymd.supabase.co; font-src 'self'; connect-src 'self' https://lbmytnjvpkjepsaiqymd.supabase.co wss://lbmytnjvpkjepsaiqymd.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000
