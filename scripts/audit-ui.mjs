@@ -377,6 +377,14 @@ try {
           record(role.key, vp.name, 'expediente/sección ' + (i + 1), await auditNow());
         }
 
+        // Subfolio (BV-3.2): el formulario se abre y se cancela
+        const subfolioBtn = page.getByRole('button', { name: /Abrir subfolio/i });
+        if (await subfolioBtn.count()) {
+          const subModal = await checkModalOpening(page, subfolioBtn, 'abrir subfolio', auditNow);
+          record(role.key, vp.name, 'expediente/subfolio formulario', subModal.items);
+          record(role.key, vp.name, '(modal subfolio)', subModal.issues);
+        }
+
         // Tareas ligadas al caso (E7, BV-7.16): el formulario se abre y se cancela
         const caseTasksTab = page.getByRole('tablist', { name: 'Secciones del expediente' }).getByRole('tab', { name: 'Tareas', exact: true });
         if (await caseTasksTab.count()) {
