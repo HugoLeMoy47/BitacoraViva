@@ -1,0 +1,148 @@
+{
+  "_nota": "Referencias de documentación que antes se mostraban en los textos de la interfaz. NO se muestran a nadie: son la base del futuro modo de desarrollo (ver ADR de rol de desarrollo). Clave de traducción → referencias.",
+  "refs": {
+    "dashboard.security_status": [
+      "RLS"
+    ],
+    "cases.axes_section_title": [
+      "Regla Dura 7"
+    ],
+    "cases.change_modal_notice": [
+      "Regla Dura 7"
+    ],
+    "cases.field_reason": [
+      "Ethos C8"
+    ],
+    "cases.err_legal_restricted": [
+      "RLS"
+    ],
+    "cases.err_closed_restricted": [
+      "RLS"
+    ],
+    "cases.rule7_note": [
+      "Regla Dura 7"
+    ],
+    "intake.restricted_message": [
+      "RLS",
+      "BV-3.1"
+    ],
+    "intake.modal_subtitle": [
+      "BV-3.1",
+      "BV-5.1"
+    ],
+    "intake.travels_family_help": [
+      "BV-3.2"
+    ],
+    "intake.vulnerabilities_title": [
+      "BV-2.5"
+    ],
+    "intake.confirm_body": [
+      "Regla Dura 7",
+      "BV-2.2",
+      "BV-5.1"
+    ],
+    "audit.restricted_title": [
+      "Ethos C4",
+      "BV-1.3"
+    ],
+    "audit.restricted_message": [
+      "RLS"
+    ],
+    "audit.active_policy_label": [
+      "RLS"
+    ],
+    "authority_requests.title": [
+      "Ethos E-03"
+    ],
+    "authority_requests.restricted_title": [
+      "Ethos E-03"
+    ],
+    "authority_requests.governance_note": [
+      "Ethos E-02"
+    ],
+    "journal.work_note_badge": [
+      "Ethos E-02"
+    ],
+    "journal.new_modal.field_work_note_help": [
+      "Ethos E-02",
+      "MD-04"
+    ],
+    "journal.new_modal.preview_title": [
+      "Mitigación UX 5.1"
+    ],
+    "journal.new_modal.preview_warning": [
+      "ADR-0005",
+      "Regla Dura 3"
+    ],
+    "journal.clarification_modal.title": [
+      "BV-4.2"
+    ],
+    "journal.share_modal.title": [
+      "Ethos C3",
+      "BV-4.3"
+    ],
+    "journal.share_modal.field_reason": [
+      "Ethos C3"
+    ],
+    "journal.director_digest.title": [
+      "ADR-0005"
+    ],
+    "arco.section_consent_title": [
+      "BV-5.1"
+    ],
+    "arco.arco_section_desc": [
+      "Ethos C2"
+    ],
+    "arco.btn_access": [
+      "BV-5.2"
+    ],
+    "arco.btn_rectify": [
+      "BV-5.4"
+    ],
+    "arco.btn_oppose": [
+      "BV-5.5"
+    ],
+    "arco.btn_cancel": [
+      "BV-5.3"
+    ],
+    "arco.modal_consent.title": [
+      "BV-5.1"
+    ],
+    "arco.modal_rectify.title": [
+      "BV-5.4"
+    ],
+    "arco.modal_rectify.reason": [
+      "Ethos C8"
+    ],
+    "arco.modal_access.title": [
+      "BV-5.2"
+    ],
+    "arco.modal_access.subtitle": [
+      "Ethos E-02",
+      "MD-04"
+    ],
+    "arco.modal_access.work_note_disclaimer": [
+      "Ethos E-02",
+      "MD-04"
+    ],
+    "arco.modal_oppose.title": [
+      "BV-5.5"
+    ],
+    "arco.modal_oppose.reason": [
+      "Ethos C8"
+    ],
+    "arco.modal_anonymize.title": [
+      "ADR-0001",
+      "BV-5.3"
+    ],
+    "arco.modal_anonymize.reason": [
+      "ADR-0001"
+    ],
+    "login.demo_hint": [
+      "RLS"
+    ],
+    "indicators.threshold_note": [
+      "E-05"
+    ]
+  }
+}

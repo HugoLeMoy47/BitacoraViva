@@ -149,18 +149,35 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-2">
-                    {t('journal.new_modal.field_area')}
-                  </label>
-                  <select id="newjou-2" name="newjou-2" autoComplete="off"
-                    value={areaId}
-                    onChange={(e) => setAreaId(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none"
-                  >
-                    {areas.map(a => (
-                      <option key={a.id} value={a.id}>{a.name}</option>
-                    ))}
-                  </select>
+                  {areas.length > 1 ? (
+                    <>
+                      <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-2">
+                        {t('journal.new_modal.field_area')}
+                      </label>
+                      <select id="newjou-2" name="newjou-2" autoComplete="off"
+                        value={areaId}
+                        onChange={(e) => setAreaId(e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none"
+                      >
+                        {areas.map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    </>
+                  ) : (
+                    /* Una sola opción posible: no es una pregunta, es información */
+                    <>
+                      <span className="block text-xs font-semibold text-gray-700">{t('journal.new_modal.field_area')}</span>
+                      <p className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-carbon">
+                        <span className="block text-xs text-gray-500">
+                          {user && user.areaIds.length > 0
+                            ? t('journal.new_modal.area_fixed')
+                            : t('journal.new_modal.area_fixed_coordination')}
+                        </span>
+                        <strong>{currentArea?.name}</strong>
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 

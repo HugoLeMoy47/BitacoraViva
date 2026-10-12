@@ -234,6 +234,12 @@ export const IndicatorsView: React.FC = () => {
               <span>{t('indicators.rounded_note').replace('{n}', String(data.rounded_to))}</span>
             </p>
           )}
+          {data.rows.some((r) => r.hidden_reason === 'complement') && (
+            <p className="mt-2 flex items-start gap-2 text-xs text-carbon-muted">
+              <EyeOff className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
+              <span>{t('indicators.protected_legend')}</span>
+            </p>
+          )}
           {allSuppressed && (
             <p className="mt-3 rounded-lg bg-gray-50 border border-gray-200 p-3 text-xs text-gray-600">
               {t('indicators.all_suppressed').replace('{n}', String(min))}
