@@ -309,10 +309,19 @@ try {
         ...(sessions.has(role.key) ? { storageState: sessions.get(role.key) } : {}),
       });
       const page = await ctx.newPage();
+      const pageErrors = [];
+      page.on('console', (m) => { if (m.type() === 'error') pageErrors.push(m.text().slice(0, 140)); });
+      page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 140)));
+      page.on('requestfailed', (r) => pageErrors.push(`red: ${r.url().slice(0, 80)} ${r.failure()?.errorText ?? ''}`));
       await page.goto(BASE + '/', { waitUntil: 'networkidle' });
       const loginButton = page.getByRole('button', { name: role.button, exact: true });
-      if (await loginButton.isVisible().catch(() => false)) await loginButton.click();
-      await page.waitForSelector('header', { timeout: 20000 });
+      const hadQuickLogin = await loginButton.isVisible().catch(() => false);
+      if (hadQuickLogin) await loginButton.click();
+      await page.waitForSelector('header', { timeout: 20000 }).catch(async (e) => {
+        // Si no se inicia sesión, se dice qué se ve y qué falló (en CI no hay otra forma de saberlo)
+        const seen = (await page.evaluate(() => document.body.innerText).catch(() => '')).replace(/\s+/g, ' ').slice(0, 350);
+        throw new Error(`No se inició sesión como «${role.button}» (acceso rápido visible: ${hadQuickLogin}). Pantalla: «${seen}». Errores: ${JSON.stringify(pageErrors.slice(-4))}`, { cause: e });
+      });
       if (!sessions.has(role.key)) sessions.set(role.key, await ctx.storageState());
       await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
 

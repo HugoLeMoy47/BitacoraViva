@@ -27,6 +27,8 @@ const files = [];
 
 const ATTRS = new Set(['placeholder', 'title', 'aria-label', 'alt', 'label', 'aria-description']);
 const hasWords = (s) => /[A-Za-zÁÉÍÓÚáéíóúñÑ]{3,}/.test(s);
+// Códigos de documentación que nunca deben verse en pantalla («(C1)», «BV-4.3», «Ethos»…)
+const CODE = /\(C[1-8]\)|\bBV-\d|\bMD-\d|\bADR-\d|\bEthos\b|\bRegla Dura\b|\bP-0\d\b/;
 const found = [];
 
 for (const f of files) {
@@ -36,9 +38,21 @@ for (const f of files) {
     found.push(`${relative(root, f).replace(/\\/g, '/')}:${line + 1}  [${kind}]  ${text.replace(/\s+/g, ' ').trim().slice(0, 70)}`);
   };
   (function visit(n) {
-    if (ts.isJsxText(n) && hasWords(n.getText())) add(n, 'texto JSX', n.getText());
+    if (ts.isJsxText(n) && (hasWords(n.getText()) || CODE.test(n.getText()))) add(n, 'texto JSX', n.getText());
     if (ts.isJsxAttribute(n) && n.initializer && ts.isStringLiteral(n.initializer) && ATTRS.has(n.name.getText()) && hasWords(n.initializer.text)) {
       add(n, `atributo ${n.name.getText()}`, n.initializer.text);
+    }
+    // Atributo visible con expresión: title={cond ? 'Texto' : undefined}
+    if (ts.isJsxAttribute(n) && n.initializer && ts.isJsxExpression(n.initializer) && n.initializer.expression && ATTRS.has(n.name.getText())) {
+      (function strings(e) {
+        // t('clave') es justamente lo correcto: no se mira dentro de las llamadas a t(...)
+        if (ts.isCallExpression(e) && e.expression.getText() === 't') return;
+        // En `cond ? 'A' : 'B'` solo importan las ramas; una comparación (x === 'clave') no es texto visible
+        if (ts.isConditionalExpression(e)) { strings(e.whenTrue); strings(e.whenFalse); return; }
+        if (ts.isBinaryExpression(e) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken].includes(e.operatorToken.kind)) return;
+        if ((ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) && hasWords(e.text) && !/^\{\w+\}$/.test(e.text)) add(e, `atributo ${n.name.getText()}`, e.text);
+        else ts.forEachChild(e, strings);
+      })(n.initializer.expression);
     }
     if (ts.isJsxExpression(n) && n.expression && (ts.isStringLiteral(n.expression) || ts.isNoSubstitutionTemplateLiteral(n.expression)) && hasWords(n.expression.text)) {
       add(n, 'cadena en JSX', n.expression.text);

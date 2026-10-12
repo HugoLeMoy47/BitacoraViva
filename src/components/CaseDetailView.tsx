@@ -919,7 +919,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       ? 'bg-carbon text-white hover:bg-carbon-muted cursor-pointer'
                       : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
-                  title={!isDirector ? 'Reservado a Dirección (BV-5.2)' : undefined}
+                  title={!isDirector ? t('arco.reserved_director') : undefined}
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>{t('arco.btn_access')}</span>
@@ -945,7 +945,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       ? 'bg-turquesa text-carbon hover:bg-turquesa-light cursor-pointer'
                       : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
-                  title={!canRectify ? 'Reservado a Ingreso y Dirección (BV-5.4)' : undefined}
+                  title={!canRectify ? t('arco.reserved_intake_director') : undefined}
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>{t('arco.btn_rectify')}</span>
@@ -971,7 +971,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300 cursor-pointer'
                       : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
-                  title={!isDirector ? 'Reservado a Dirección (BV-5.5)' : undefined}
+                  title={!isDirector ? t('arco.reserved_director') : undefined}
                 >
                   <ShieldAlert className="w-3.5 h-3.5" />
                   <span>{t('arco.btn_oppose')}</span>
@@ -997,7 +997,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
                       : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
-                  title={!isDirector ? 'Reservado a Dirección (ADR-0001 / BV-5.3)' : undefined}
+                  title={!isDirector ? t('arco.reserved_director') : undefined}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>

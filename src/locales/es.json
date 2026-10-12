@@ -547,7 +547,9 @@
     "rectify_desc": "Corregir datos biográficos de la ficha de identificación, con motivo y auditoría obligatoria.",
     "oppose_desc": "Restringir tratamientos secundarios y reportes externos sin afectar el auxilio humanitario ni el alojamiento.",
     "cancel_desc": "Procedimiento irreversible: destruye los datos identificables, purga las bitácoras y conserva el esqueleto estadístico.",
-    "records_count": "{n} registros"
+    "records_count": "{n} registros",
+    "reserved_director": "Reservado a Dirección",
+    "reserved_intake_director": "Reservado a Ingreso y Dirección"
   },
   "rules_list": {
     "r1": "1. La seguridad vive en la base de datos, no en la pantalla: ocultar un botón no es una regla de acceso.",

@@ -483,7 +483,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-7">
-                    {t('intake.field_preferred_name')} <span className="text-turquesa-dark font-semibold">(C1)</span>
+                    {t('intake.field_preferred_name')}
                   </label>
                   <input id="newcas-7" name="newcas-7" autoComplete="off"
                     type="text"
