@@ -235,6 +235,7 @@ async function keyboardJourney(page) {
         if (cur && cur.value === 'yes' && cur.checked) break;
         if (cur && cur.value === 'yes') { await page.keyboard.press('Space'); break; }
         await page.keyboard.press('ArrowRight');
+        await page.waitForTimeout(150);
       }
     }
   };
@@ -273,6 +274,7 @@ async function keyboardJourney(page) {
         const c = await activeInfo(page);
         if (c && /Bitácora/i.test(c.text)) { found = true; break; }
         await page.keyboard.press('ArrowRight');
+        await page.waitForTimeout(150);
       }
       break;
     }
