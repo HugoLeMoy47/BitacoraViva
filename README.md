@@ -110,7 +110,17 @@ GitHub Actions (`.github/workflows/ci.yml`) corre en cada push a `main` y en cad
 
 La herramienta de Supabase está fijada en `package.json` (`supabase@2.120.0`) para que CI y equipo usen la misma versión. Localmente: `npm run scan:secrets` y, con Docker encendido, `npx supabase start` + `npm run test:rls -- --local`.
 
-**Para que sea bloqueante** (ajuste de GitHub, no de código): *Settings → Branches →* regla para `main` → exigir los checks **Verificación estática** y **Pruebas de seguridad (base local)**. El CI **no despliega**: publicar el sitio y empujar migraciones siguen siendo pasos deliberados (R-13).
+**`main` está protegida** (regla de rama de GitHub, activa desde el 11 oct 2026): exige que pasen los checks **Verificación estática** y **Pruebas de seguridad (base local)**. Un `git push` directo a `main` se rechaza. El CI **no despliega**: publicar el sitio y empujar migraciones siguen siendo pasos deliberados (R-13).
+
+### Flujo de trabajo con ramas
+
+1. Crear una rama desde `main` actualizada: `git checkout main && git pull && git checkout -b <tipo>/<tema>` (por ejemplo `feat/…`, `fix/…`, `docs/…`).
+2. Trabajar, probar en local (`npm run build`, `npm run check:i18n`, `npm run test:unit`, y `npm run test:rls -- --include=<migración completa>` si hay migración) y subir: `git push -u origin <rama>`.
+3. Abrir el pull request (GitHub muestra el enlace al empujar la rama). El CI corre sobre el pull request.
+4. Con los dos checks en verde, fusionar. Elegir **«Squash and merge»** deja un commit por cambio en `main`.
+5. `git checkout main && git pull` y borrar la rama.
+
+**Migraciones:** el CI las prueba desde cero, pero **`supabase db push` sigue siendo un paso aparte, con confirmación del Product Owner**: fusionar a `main` no toca la base de la demo. Orden recomendado: probar la migración con `--include`, fusionar el pull request con el CI en verde y entonces `db push`.
 
 ## Despliegue
 
