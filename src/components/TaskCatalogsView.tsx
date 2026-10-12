@@ -5,6 +5,7 @@ import { CatalogKind } from '../lib/tasks';
 import { normalize } from '../lib/taskReports';
 import { CaseTaskKind, TaskCategory, WorkArea } from '../types/database';
 import { ModalShell } from './ModalShell';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 // Administración de catálogos de tareas (BV-7.9): categorías y áreas de trabajo. Sólo la dirección
 // escribe (lo exige la base). Nada se borra: archivar saca el valor de los selectores nuevos pero las
@@ -37,6 +38,7 @@ const CatalogSection: React.FC<{
   const uid = useId();
   const active = items.filter((i) => !i.archived_at);
   const [draft, setDraft] = useState('');
+  const addReason = draft.trim() ? null : t('tasks.catalogs.reason_empty');
   const [editing, setEditing] = useState<{ id: string; label: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,9 +130,11 @@ const CatalogSection: React.FC<{
             className="mt-1 block min-h-11 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa"
           />
         </label>
+        <DisabledReason id={`${uid}-agregar`} reason={addReason} className="self-center" />
         <button
           type="submit"
-          disabled={saving || !draft.trim()}
+          disabled={saving || !!addReason}
+          {...describedBy(`${uid}-agregar`, addReason)}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />

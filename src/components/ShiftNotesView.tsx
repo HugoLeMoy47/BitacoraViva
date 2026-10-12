@@ -4,6 +4,7 @@ import { t } from '../lib/i18n';
 import { formatDate } from '../lib/format';
 import { ShiftNoteInput } from '../lib/tasks';
 import { ShiftKind, ShiftNote, TaskSetting, WorkArea } from '../types/database';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 // Notas de turno (BV-7.12): recados en texto libre para el turno siguiente. Se agregan y no se editan,
 // y retirar una es baja lógica (nada se borra). No son entradas de bitácora de un caso.
@@ -42,6 +43,7 @@ export const ShiftNotesView: React.FC<ShiftNotesViewProps> = ({ notes, workAreas
   const [workAreaId, setWorkAreaId] = useState('');
   const [confirming, setConfirming] = useState<string | null>(null);
 
+  const noteReason = !body.trim() ? t('tasks.notes.reason_empty') : null;
   const areaLabel = (id: string | null) => workAreas.find((a) => a.id === id)?.label_es;
   const scope = setting?.shift_note_scope ?? 'all';
   const days = setting?.shift_note_days ?? 30;
@@ -101,10 +103,12 @@ export const ShiftNotesView: React.FC<ShiftNotesViewProps> = ({ notes, workAreas
             </select>
           </label>
         </div>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <DisabledReason id="nota-turno" reason={noteReason} />
           <button
             type="submit"
-            disabled={!body.trim() || saving}
+            disabled={!!noteReason || saving}
+            {...describedBy('nota-turno', noteReason)}
             className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
           >
             <Send className="h-4 w-4" aria-hidden="true" />

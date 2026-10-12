@@ -2,6 +2,7 @@ import React, { useId, useState } from 'react';
 import { Save } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { ShiftNoteScope, TaskSetting } from '../types/database';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 // Ajustes de operación (BV-7.13), sólo dirección. Existen porque dos decisiones de este producto no
 // tienen una respuesta correcta que el código pueda elegir por la organización: quién lee las notas de
@@ -33,6 +34,7 @@ export const TaskSettingsView: React.FC<TaskSettingsViewProps> = ({ setting, sav
     : DEFAULTS;
   const [values, setValues] = useState<Values>(initial);
   const dirty = JSON.stringify(values) !== JSON.stringify(initial);
+  const saveReason = dirty ? null : t('common.reason_no_changes');
   const set = (patch: Partial<Values>) => setValues((v) => ({ ...v, ...patch }));
 
   const submit = async (e: React.FormEvent) => {
@@ -101,10 +103,12 @@ export const TaskSettingsView: React.FC<TaskSettingsViewProps> = ({ setting, sav
         </p>
       </section>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <DisabledReason id="ajustes-tareas" reason={saveReason} />
         <button
           type="submit"
-          disabled={!dirty || saving}
+          disabled={!!saveReason || saving}
+          {...describedBy('ajustes-tareas', saveReason)}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
         >
           <Save className="h-4 w-4" aria-hidden="true" />

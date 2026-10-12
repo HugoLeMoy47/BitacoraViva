@@ -7,6 +7,7 @@ import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
 import { ConsentInput, NewCaseInput, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
 import { ModalShell } from './ModalShell';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 type Step = 0 | 1 | 2 | 3 | 4;
 type Choice = 'yes' | 'no' | null;
@@ -110,16 +111,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const generalRefused = choices.general_care === 'no';
   const allDecided = CONSENT_KEYS.every(({ key }) => choices[key] !== null);
 
-  const step0Valid =
-    !!notice &&
-    noticeDelivered &&
-    allDecided &&
-    choices.general_care === 'yes' &&
-    CONSENT_KEYS.every(({ key }) => !consentRequired(key) || choices[key] === 'yes') &&
-    (!isUnaccompanied || isMinor) &&
-    (!isMinor || (guardianName.trim() !== '' && guardianRole.trim() !== '')) &&
-    (!isUnaccompanied || authorityRef.trim() !== '');
-
   const birthAge = ageYears(birthDate);
   const ageProblem = step >= 2 && ((birthAge < 18 && !isMinor) ? 'intake.consent.age_mismatch_minor'
     : (birthAge >= 18 && isMinor) ? 'intake.consent.age_mismatch_adult' : null);
@@ -195,9 +186,27 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
     { id: 4, label: t('intake.step_confirm') },
   ];
 
-  const nextDisabled =
-    (step === 0 && !step0Valid) ||
-    (step === 2 && (!givenName.trim() || !paternalName.trim() || !!ageProblem));
+  // Qué falta para avanzar, dicho con palabras (norma: ningún botón deshabilitado sin decir por qué)
+  const stepReason: string | null = (() => {
+    if (step === 0) {
+      if (!notice) return t('intake.reason.notice_loading');
+      if (!noticeDelivered) return t('intake.reason.notice_delivered');
+      if (!allDecided) return t('intake.reason.decide_all');
+      if (choices.general_care !== 'yes') return t('intake.reason.general_care');
+      if (!CONSENT_KEYS.every(({ key }) => !consentRequired(key) || choices[key] === 'yes')) return t('intake.reason.required_consent');
+      if (isUnaccompanied && !isMinor) return t('intake.reason.unaccompanied_minor');
+      if (isMinor && (guardianName.trim() === '' || guardianRole.trim() === '')) return t('intake.reason.guardian');
+      if (isUnaccompanied && authorityRef.trim() === '') return t('intake.reason.authority');
+    }
+    if (step === 2) {
+      if (!givenName.trim()) return t('intake.reason.given_name');
+      if (!paternalName.trim()) return t('intake.reason.paternal_name');
+      if (ageProblem) return t(ageProblem);
+    }
+    if (step === 4 && authorityProblem) return t(authorityProblem);
+    return null;
+  })();
+  const nextDisabled = step < 4 && !!stepReason;
 
   return (
     <ModalShell onClose={onClose} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -629,12 +638,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
               </div>
 
-              {authorityProblem && (
-                <p role="alert" className="rounded-lg border border-alerta/30 bg-alerta-bg p-2.5 text-xs text-alerta-dark">
-                  {t(authorityProblem)}
-                </p>
-              )}
-
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-2">
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">{t('intake.summary.person')}</span>
@@ -671,6 +674,8 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           )}
         </div>
 
+        <DisabledReason id="alta" reason={stepReason} className="border-t border-gray-200 bg-gray-50 px-6 pt-3" />
+
         {/* Botones de navegación del modal */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-xs">
           {step > 0 ? (
@@ -689,6 +694,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
             <button
               type="button"
               disabled={nextDisabled}
+              {...describedBy('alta', stepReason)}
               onClick={goNext}
               className="px-4 py-2 font-semibold text-carbon bg-turquesa hover:bg-turquesa-hover rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -698,6 +704,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
             <button
               type="button"
               disabled={!!authorityProblem}
+              {...describedBy('alta', stepReason)}
               onClick={handleFinish}
               className="px-5 py-2 font-bold text-white bg-carbon hover:bg-black rounded-lg shadow-md flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
