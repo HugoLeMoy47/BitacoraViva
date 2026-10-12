@@ -566,7 +566,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                               <span>{t('journal.btn_share')}</span>
                             </button>
                           )}
+                          {entry.is_work_note && (
+                            <span className="text-xs text-gray-500">{t('journal.work_note_no_share')}</span>
+                          )}
                         </div>
+                      )}
+                      {/* Sin acciones: se dice por qué, para que no parezca un fallo */}
+                      {!isSuperseded && canWriteJournal && !canActOnEntry(entry) && (
+                        <span className="text-xs text-gray-500">{t('journal.no_actions_hint')}</span>
                       )}
                     </div>
                   </div>
@@ -1124,9 +1131,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-500 space-y-1">
                 <p className="font-semibold text-carbon">{t('cases.rule7_note')}</p>
-                <p>
-                  Esta acción cerrará el registro anterior con marca de tiempo actual y abrirá el nuevo estado de manera transaccional. No es posible sobrescribir ni revertir sin dejar un nuevo rastro auditable.
-                </p>
+                <p>{t('cases.rule7_body')}</p>
               </div>
             </div>
 
