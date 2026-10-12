@@ -191,6 +191,7 @@ async function keyboardJourney(page) {
   const out = [];
   const fail = (detail) => out.push({ rule: 'recorrido-teclado', detail });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Dirección', exact: true }).waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
   await page.evaluate(() => document.activeElement?.blur?.());
   if (!(await tabTo(page, /^Dirección$/))) return [{ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Dirección con Tab' }];
   await page.keyboard.press('Enter');
@@ -315,7 +316,13 @@ try {
       page.on('requestfailed', (r) => pageErrors.push(`red: ${r.url().slice(0, 80)} ${r.failure()?.errorText ?? ''}`));
       await page.goto(BASE + '/', { waitUntil: 'networkidle' });
       const loginButton = page.getByRole('button', { name: role.button, exact: true });
-      const hadQuickLogin = await loginButton.isVisible().catch(() => false);
+      // La aplicación tarda en saber que es entorno demo (consulta a la base): se espera a que aparezca el
+      // acceso rápido O el encabezado (sesión reutilizada). Comprobar «¿se ve ya?» fallaba en el CI, más lento.
+      const first = await Promise.race([
+        loginButton.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'login'),
+        page.waitForSelector('header', { timeout: 20000 }).then(() => 'header'),
+      ]).catch(() => 'ninguno');
+      const hadQuickLogin = first === 'login';
       if (hadQuickLogin) await loginButton.click();
       await page.waitForSelector('header', { timeout: 20000 }).catch(async (e) => {
         // Si no se inicia sesión, se dice qué se ve y qué falló (en CI no hay otra forma de saberlo)
@@ -546,6 +553,7 @@ try {
     const out = [];
     try {
       await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: 'Voluntariado', exact: true }).waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
       await page.evaluate(() => document.activeElement?.blur?.());
       if (!(await tabTo(page, /^Voluntariado$/))) out.push({ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Voluntariado con Tab' });
       else {
