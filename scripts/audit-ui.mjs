@@ -19,6 +19,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 4179;
 const BASE = process.env.AUDIT_URL || `http://localhost:${PORT}`;
 
+// En GitHub Actions los hallazgos se publican además como anotaciones, legibles sin abrir el log completo.
+const annotate = (msg) => {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const esc = String(msg).split('%').join('%25').split('\r').join('%0D').split('\n').join('%0A');
+  console.log('::error title=audit-ui::' + esc.slice(0, 6000));
+};
+
 const VIEWPORTS = [
   { name: '360', width: 360, height: 740, touch: true },
   { name: '390', width: 390, height: 844, touch: true },
@@ -180,14 +187,27 @@ async function tabTo(page, re, { max = 60, each } = {}) {
   }
   return null;
 }
+// Espera a que la sesión quede iniciada; si no, falla diciendo qué se veía y qué errores hubo
+async function enterApp(page, who) {
+  const errs = [];
+  page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 140)); });
+  page.on('pageerror', (e) => errs.push(String(e).slice(0, 140)));
+  page.on('requestfailed', (r) => errs.push(`red: ${r.url().slice(0, 80)} ${r.failure()?.errorText ?? ''}`));
+  page.on('response', (r) => { if (r.status() >= 400) errs.push(`http ${r.status()}: ${r.url().slice(0, 90)}`); });
+  await page.waitForSelector('header', { timeout: 20000 }).catch(async (e) => {
+    const seen = await page.evaluate(() => document.body.innerText.replace(/s+/g, ' ').slice(0, 200)).catch(() => '?');
+    throw new Error(`No se inició sesión por teclado como «${who}». Pantalla: «${seen}». Errores: ${JSON.stringify(errs.slice(-5))}`, { cause: e });
+  });
+}
 async function keyboardJourney(page) {
   const out = [];
   const fail = (detail) => out.push({ rule: 'recorrido-teclado', detail });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Dirección', exact: true }).waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
   await page.evaluate(() => document.activeElement?.blur?.());
   if (!(await tabTo(page, /^Dirección$/))) return [{ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Dirección con Tab' }];
   await page.keyboard.press('Enter');
-  await page.waitForSelector('header', { timeout: 20000 });
+  await enterApp(page, 'Dirección');
   await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
 
   // Alta de expediente
@@ -231,7 +251,8 @@ async function keyboardJourney(page) {
 
   // Entrada de bitácora en un expediente
   await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; document.activeElement?.blur?.(); });
-  await page.waitForTimeout(1200);
+  await page.locator('main [role=tab]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(300);
   let found = false;
   for (let i = 0; i < 40 && !found; i++) {
     const a = await activeInfo(page);
@@ -302,10 +323,25 @@ try {
         ...(sessions.has(role.key) ? { storageState: sessions.get(role.key) } : {}),
       });
       const page = await ctx.newPage();
+      const pageErrors = [];
+      page.on('console', (m) => { if (m.type() === 'error') pageErrors.push(m.text().slice(0, 140)); });
+      page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 140)));
+      page.on('requestfailed', (r) => pageErrors.push(`red: ${r.url().slice(0, 80)} ${r.failure()?.errorText ?? ''}`));
       await page.goto(BASE + '/', { waitUntil: 'networkidle' });
       const loginButton = page.getByRole('button', { name: role.button, exact: true });
-      if (await loginButton.isVisible().catch(() => false)) await loginButton.click();
-      await page.waitForSelector('header', { timeout: 20000 });
+      // La aplicación tarda en saber que es entorno demo (consulta a la base): se espera a que aparezca el
+      // acceso rápido O el encabezado (sesión reutilizada). Comprobar «¿se ve ya?» fallaba en el CI, más lento.
+      const first = await Promise.race([
+        loginButton.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'login'),
+        page.waitForSelector('header', { timeout: 20000 }).then(() => 'header'),
+      ]).catch(() => 'ninguno');
+      const hadQuickLogin = first === 'login';
+      if (hadQuickLogin) await loginButton.click();
+      await page.waitForSelector('header', { timeout: 20000 }).catch(async (e) => {
+        // Si no se inicia sesión, se dice qué se ve y qué falló (en CI no hay otra forma de saberlo)
+        const seen = (await page.evaluate(() => document.body.innerText).catch(() => '')).replace(/\s+/g, ' ').slice(0, 350);
+        throw new Error(`No se inició sesión como «${role.button}» (acceso rápido visible: ${hadQuickLogin}). Pantalla: «${seen}». Errores: ${JSON.stringify(pageErrors.slice(-4))}`, { cause: e });
+      });
       if (!sessions.has(role.key)) sessions.set(role.key, await ctx.storageState());
       await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
 
@@ -530,11 +566,12 @@ try {
     const out = [];
     try {
       await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: 'Voluntariado', exact: true }).waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
       await page.evaluate(() => document.activeElement?.blur?.());
       if (!(await tabTo(page, /^Voluntariado$/))) out.push({ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Voluntariado con Tab' });
       else {
         await page.keyboard.press('Enter');
-        await page.waitForSelector('header', { timeout: 20000 });
+        await enterApp(page, 'Voluntariado');
         await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
         await page.evaluate(() => { location.hash = '#/tareas'; document.activeElement?.blur?.(); });
         await page.waitForTimeout(1200);
@@ -568,8 +605,12 @@ try {
       const w = [...g.where];
       console.log(`✗ ${g.rule} — ${g.detail}\n    en ${w.length} lugares, p. ej. ${w.slice(0, 3).join(', ')}`);
     }
+    annotate(`${groups.size} hallazgo(s) de interfaz:\n` + [...groups.values()].slice(0, 25).map((g) => `${g.rule} — ${g.detail} (en ${g.where.size} lugares, p. ej. ${[...g.where][0]})`).join('\n'));
   }
   process.exitCode = groups.size > 0 ? 1 : 0;
+} catch (e) {
+  annotate('Error del auditor de interfaz: ' + String(e?.message ?? e).slice(0, 1500));
+  throw e;
 } finally {
   await browser?.close();
   server?.kill();

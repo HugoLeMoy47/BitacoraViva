@@ -173,6 +173,27 @@
     ],
     "about.rules_title": [
       "Reglas duras (handoff §2)"
+    ],
+    "intake.field_preferred_name": [
+      "Compromiso C1"
+    ],
+    "arco.sensitive_alert_missing": [
+      "Control P-06"
+    ],
+    "arco.p06_active": [
+      "Control P-06"
+    ],
+    "operations.kpi.p06_hint": [
+      "Control P-06"
+    ],
+    "operations.p06.subtitle": [
+      "Control P-06"
+    ],
+    "arco.access_desc": [
+      "Ethos E-02"
+    ],
+    "arco.cancel_desc": [
+      "ADR-0001"
     ]
   }
 }

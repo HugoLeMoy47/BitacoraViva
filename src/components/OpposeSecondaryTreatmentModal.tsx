@@ -110,7 +110,7 @@ export const OpposeSecondaryTreatmentModal: React.FC<OpposeSecondaryTreatmentMod
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-carbon hover:bg-gray-50 transition"
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="submit"

@@ -98,7 +98,7 @@ export const ShareEntryModal: React.FC<ShareEntryModalProps> = ({
               className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa"
             />
             <p className="mt-1 text-xs text-amber-700">
-              * El motivo asentado notificará a la Dirección y quedará firmado de forma inmutable.
+              * {t('journal.share_modal.reason_note')}
             </p>
           </div>
 

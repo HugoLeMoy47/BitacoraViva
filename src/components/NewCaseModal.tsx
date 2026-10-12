@@ -483,7 +483,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-7">
-                    {t('intake.field_preferred_name')} <span className="text-turquesa-dark font-semibold">(C1)</span>
+                    {t('intake.field_preferred_name')}
                   </label>
                   <input id="newcas-7" name="newcas-7" autoComplete="off"
                     type="text"
@@ -543,14 +543,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setNationalityCountry(e.target.value)}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   >
-                    <option value="Honduras">Honduras</option>
-                    <option value="Guatemala">Guatemala</option>
-                    <option value="El Salvador">El Salvador</option>
-                    <option value="Venezuela">Venezuela</option>
-                    <option value="Haití">Haití</option>
-                    <option value="Cuba">Cuba</option>
-                    <option value="Colombia">Colombia</option>
-                    <option value="México">México</option>
+                    <option value="Honduras">{t('intake.countries.honduras')}</option>
+                    <option value="Guatemala">{t('intake.countries.guatemala')}</option>
+                    <option value="El Salvador">{t('intake.countries.el_salvador')}</option>
+                    <option value="Venezuela">{t('intake.countries.venezuela')}</option>
+                    <option value="Haití">{t('intake.countries.haiti')}</option>
+                    <option value="Cuba">{t('intake.countries.cuba')}</option>
+                    <option value="Colombia">{t('intake.countries.colombia')}</option>
+                    <option value="México">{t('intake.countries.mexico')}</option>
                     <option value="Otro">{t('intake.other_country')}</option>
                   </select>
                 </div>
