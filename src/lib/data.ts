@@ -260,6 +260,25 @@ export interface ConsentInput {
   notes?: string | null;
 }
 
+export interface SubfolioInput {
+  parent_case_id: string;
+  given_name: string;
+  paternal_family_name: string;
+  maternal_family_name: string | null;
+  preferred_name: string | null;
+  birth_date: string;
+  birth_date_is_estimated: boolean;
+  sex_id: number;
+  nationality_country_id: number;
+  other_nationality: string | null;
+  primary_language_id: number;
+  other_language: string | null;
+  guardian_role: string;
+  justification: string;
+  vulnerability_codes: string[];
+  consents: { consent_type: ConsentInput['consent_type']; status: 'granted'; is_minor_assent: boolean }[];
+}
+
 export interface NewCaseInput {
   given_name: string;
   paternal_family_name: string;
@@ -363,6 +382,26 @@ export const api = {
       p_entry_route_id: i.entry_route_id,
       p_entry_date_str: i.entry_date_str,
       p_assigned_area_id: i.assigned_area_id,
+      p_vulnerability_codes: i.vulnerability_codes,
+      p_consents: i.consents,
+    }),
+
+  createSubfolio: (i: SubfolioInput) =>
+    rpc<string>('fn_create_subfolio', {
+      p_parent_case_id: i.parent_case_id,
+      p_given_name: i.given_name,
+      p_paternal_family_name: i.paternal_family_name,
+      p_maternal_family_name: i.maternal_family_name,
+      p_preferred_name: i.preferred_name,
+      p_birth_date: i.birth_date,
+      p_birth_date_is_estimated: i.birth_date_is_estimated,
+      p_sex_id: i.sex_id,
+      p_nationality_country_id: i.nationality_country_id,
+      p_other_nationality: i.other_nationality,
+      p_primary_language_id: i.primary_language_id,
+      p_other_language: i.other_language,
+      p_guardian_role: i.guardian_role,
+      p_justification: i.justification,
       p_vulnerability_codes: i.vulnerability_codes,
       p_consents: i.consents,
     }),

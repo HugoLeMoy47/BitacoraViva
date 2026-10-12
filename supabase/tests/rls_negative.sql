@@ -1620,6 +1620,77 @@ begin
     perform pg_temp.expect('el director que queda ya no puede dejar su rol', DIRB2, 'authenticated',
         pg_temp.q('with u as (update public.user_role set revoked_at = now(), revoked_by = {DIRB2} where user_id = {DIRB2} and role_name = ''director'' returning 1) select count(*)::text from u'), 'ERR:TK006');
 
+    -- ============================================================================================
+    -- ===== BV-3.2: subfolio de niñez y adolescencia acompañadas (migración 20261012000001)
+    declare
+        sub text := $sf$select count(*)::text from (select public.fn_create_subfolio(
+            'aaaaaaaa-5000-0000-0000-0000000000d1'::uuid, 'Niño','HijoA',null,null,(current_date - interval '8 years')::date,false,1,93,'Honduras',1,'Español',
+            'madre','Viaja con su madre; se abre su expediente propio.', array[]::text[],
+            '[{"consent_type":"general_care","status":"granted"}]'::jsonb)) x$sf$;
+    begin
+        perform pg_temp.expect('BV-3.2: se prepara un caso padre abierto y principal', null, null,
+            pg_temp.q($q$with c as (insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id)
+                                    values ('aaaaaaaa-5000-0000-0000-0000000000d1', {ORGA}, 'TST-A-0099', 'aaaaaaaa-4000-0000-0000-000000000001', {INT}, {CW}) returning 1)
+                         select count(*)::text from c$q$), '1');
+        perform pg_temp.expect('BV-3.2 control positivo: ingreso crea el subfolio', INT, 'authenticated', sub, '1');
+        perform pg_temp.expect('BV-3.2: el primer subfolio toma el folio del caso padre con -S1', null, null,
+            $q$select case_number from public."case" where parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' order by created_at limit 1$q$, 'TST-A-0099-S1');
+        perform pg_temp.expect('BV-3.2 control positivo: dirección también crea subfolios', DIR, 'authenticated', sub, '1');
+        perform pg_temp.expect('BV-3.2: el segundo subfolio es -S2 (nunca repite el folio)', null, null,
+            $q$select string_agg(case_number, ',' order by case_number) from public."case" where parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1'$q$, 'TST-A-0099-S1,TST-A-0099-S2');
+        perform pg_temp.expect('BV-3.2: trabajo social no crea subfolios', CW, 'authenticated', sub, 'ERR');
+        perform pg_temp.expect('BV-3.2: el observador no crea subfolios', VW, 'authenticated', sub, 'ERR');
+        perform pg_temp.expect('BV-3.2: el voluntariado no crea subfolios', VOL, 'authenticated', sub, 'ERR');
+        perform pg_temp.expect('BV-3.2: sin sesión no se crean subfolios', null, 'anon', sub, 'ERR');
+        perform pg_temp.expect('BV-3.2: dirección de otra organización no cuelga subfolios de un caso ajeno', DIRB, 'authenticated', sub, 'ERR');
+        perform pg_temp.expect('BV-3.2: un subfolio no admite subfolios (profundidad 1)', INT, 'authenticated',
+            replace(sub, 'aaaaaaaa-5000-0000-0000-0000000000d1', (select id::text from public."case" where case_number = 'TST-A-0099-S1' limit 1)), 'ERR');
+        perform pg_temp.expect('BV-3.2: la persona del subfolio debe ser menor de 18 años', INT, 'authenticated',
+            replace(sub, '(current_date - interval ''8 years'')::date', 'date ''2000-01-01'''), 'ERR');
+        perform pg_temp.expect('BV-3.2: la nota de justificación es obligatoria', INT, 'authenticated',
+            replace(sub, 'Viaja con su madre; se abre su expediente propio.', '   '), 'ERR');
+        perform pg_temp.expect('BV-3.2: la nota de justificación no puede ser una palabra suelta', INT, 'authenticated',
+            replace(sub, 'Viaja con su madre; se abre su expediente propio.', 'ok'), 'ERR');
+        perform pg_temp.expect('BV-3.2: el parentesco de quien representa es obligatorio', INT, 'authenticated',
+            replace(sub, '''madre''', ''''''), 'ERR');
+        perform pg_temp.expect('BV-3.2: sin consentimiento general no se abre el subfolio', INT, 'authenticated',
+            replace(sub, '"consent_type":"general_care","status":"granted"', '"consent_type":"general_care","status":"denied"'), 'ERR');
+        perform pg_temp.expect('BV-3.2 (P-06): sin consentimiento de datos sensibles no se afirman marcadores', INT, 'authenticated',
+            replace(sub, 'array[]::text[]', 'array[''disability'']::text[]'), 'ERR');
+        perform pg_temp.expect('BV-3.2: el subfolio es de niñez acompañada; el marcador de no acompañada se rechaza', INT, 'authenticated',
+            replace(replace(sub, 'array[]::text[]', 'array[''unaccompanied_child'']::text[]'), '"status":"granted"}]', '"status":"granted"},{"consent_type":"sensitive_data","status":"granted"}]'), 'ERR');
+        perform pg_temp.expect('BV-3.2: el caso padre no cambia por crear subfolios', null, null,
+            $q$select count(*)::text from public."case" where id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and parent_case_id is null and closed_at is null$q$, '1');
+        perform pg_temp.expect('BV-3.2: quien representa se toma del caso padre, no de lo que envía el cliente', null, null,
+            $q$select count(*)::text from public.consent c join public."case" k on k.id = c.case_id
+               where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and c.legal_guardian_name = 'Ana PruebaA'
+                 and c.legal_guardian_role = 'madre' and c.is_minor_assent$q$, '>0');
+        perform pg_temp.expect('BV-3.2: aunque el cliente mande otro nombre de representante, se guarda el del caso padre', INT, 'authenticated',
+            replace(sub, '"status":"granted"}]', '"status":"granted","legal_guardian_name":"Persona Ajena"}]'), '1');
+        perform pg_temp.expect('BV-3.2: ningún consentimiento del subfolio quedó con un representante distinto al del caso padre', null, null,
+            $q$select count(*)::text from public.consent c join public."case" k on k.id = c.case_id
+               where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and c.legal_guardian_name <> 'Ana PruebaA'$q$, '0');
+        perform pg_temp.expect('BV-3.2: la nota de justificación queda en la bitácora del subfolio', null, null,
+            $q$select count(*)::text from public.journal_entry j join public."case" k on k.id = j.case_id
+               where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and j.body like '%Viaja con su madre; se abre su expediente propio.%'
+                 and j.visibility = 'area_private' and not j.is_work_note$q$, '>0');
+        perform pg_temp.expect('BV-3.2: el alta del subfolio deja evento de auditoría', null, null,
+            $q$select count(*)::text from public.audit_event a join public."case" k on k.id = a.record_id
+               where a.table_name = 'case' and a.action = 'INSERT' and k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1'$q$, '>0');
+        perform pg_temp.expect('BV-3.2: el subfolio nace abierto, en la organización del caso padre', null, null,
+            $q$select count(*)::text from public."case" where parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1'
+               and closed_at is null and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, '>0');
+        perform pg_temp.expect('BV-3.2: la persona del subfolio conserva la nacionalidad y el idioma capturados', null, null,
+            $q$select count(*)::text from public.person p join public."case" k on k.titular_person_id = p.id
+               where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and p.other_nationality = 'Honduras' and p.other_language = 'Español'$q$, '>0');
+        perform pg_temp.expect('BV-3.2: se prepara un caso padre cerrado', null, null,
+            pg_temp.q($q$with c as (insert into public."case" (id, organization_id, case_number, titular_person_id, closed_at)
+                                    values ('aaaaaaaa-5000-0000-0000-0000000000c1', {ORGA}, 'TST-A-CERRADO', 'aaaaaaaa-4000-0000-0000-000000000001', now()) returning 1)
+                         select count(*)::text from c$q$), '1');
+        perform pg_temp.expect('BV-3.2: a un caso padre cerrado no se le cuelgan subfolios', INT, 'authenticated',
+            replace(sub, 'aaaaaaaa-5000-0000-0000-0000000000d1', 'aaaaaaaa-5000-0000-0000-0000000000c1'), 'ERR');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
