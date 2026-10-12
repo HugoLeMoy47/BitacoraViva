@@ -251,7 +251,8 @@ async function keyboardJourney(page) {
 
   // Entrada de bitácora en un expediente
   await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; document.activeElement?.blur?.(); });
-  await page.waitForTimeout(1200);
+  await page.locator('main [role=tab]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(300);
   let found = false;
   for (let i = 0; i < 40 && !found; i++) {
     const a = await activeInfo(page);
