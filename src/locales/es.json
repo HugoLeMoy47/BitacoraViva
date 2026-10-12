@@ -565,10 +565,11 @@
     "suppressed_hint": "Cifra oculta por umbral de agregación",
     "protected": "Cifra protegida",
     "protected_hint": "Se oculta junto a un grupo menor de 5 para que no pueda deducirse por resta",
-    "rounded_note": "Las cifras se redondean a múltiplos de {n} para que no puedan deducirse grupos pequeños restando consultas. Dirección ve las cifras exactas.",
+    "rounded_note": "Estas cifras son aproximadas (redondeadas a múltiplos de {n}) para que no puedan deducirse grupos pequeños restando consultas. El personal de la organización ve las cifras exactas.",
     "bucket_all": "Expedientes",
     "metric": {
       "total_cases": "Total de expedientes",
+      "total_cases_approx": "Total aproximado de expedientes",
       "intake_window_type": "Tipo de ventanilla de ingreso",
       "case_stage": "Etapa del caso",
       "legal_status": "Situación jurídica",
