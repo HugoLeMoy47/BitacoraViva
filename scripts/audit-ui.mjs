@@ -303,6 +303,9 @@ async function checkModalOpening(page, opener, label, audit) {
   await opener.click();
   await page.waitForSelector('[role=dialog]');
   const items = await audit();
+  // Un modal más alto que la ventana no debe quedar cortado por arriba (contenido al que no se puede llegar)
+  const headingTop = await page.evaluate(() => document.querySelector('[role=dialog]').querySelector('h1,h2,h3')?.getBoundingClientRect().top ?? 0);
+  if (headingTop < 0) issues.push({ rule: 'modal-recortado', detail: label + ': el encabezado queda fuera de la pantalla (' + Math.round(headingTop) + ' px)' });
   if (!(await page.locator('[role=dialog][aria-modal=true][aria-labelledby]').count())) issues.push({ rule: 'modal', detail: label + ': sin role=dialog, aria-modal y nombre' });
   if (!(await page.evaluate(() => document.querySelector('[role=dialog]').contains(document.activeElement)))) issues.push({ rule: 'modal', detail: label + ': el foco no entra al modal' });
   await page.keyboard.press('Escape');
