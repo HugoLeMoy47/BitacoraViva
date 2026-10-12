@@ -187,6 +187,18 @@ async function tabTo(page, re, { max = 60, each } = {}) {
   }
   return null;
 }
+// Espera a que la sesión quede iniciada; si no, falla diciendo qué se veía y qué errores hubo
+async function enterApp(page, who) {
+  const errs = [];
+  page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 140)); });
+  page.on('pageerror', (e) => errs.push(String(e).slice(0, 140)));
+  page.on('requestfailed', (r) => errs.push(`red: ${r.url().slice(0, 80)} ${r.failure()?.errorText ?? ''}`));
+  page.on('response', (r) => { if (r.status() >= 400) errs.push(`http ${r.status()}: ${r.url().slice(0, 90)}`); });
+  await page.waitForSelector('header', { timeout: 20000 }).catch(async (e) => {
+    const seen = await page.evaluate(() => document.body.innerText.replace(/s+/g, ' ').slice(0, 200)).catch(() => '?');
+    throw new Error(`No se inició sesión por teclado como «${who}». Pantalla: «${seen}». Errores: ${JSON.stringify(errs.slice(-5))}`, { cause: e });
+  });
+}
 async function keyboardJourney(page) {
   const out = [];
   const fail = (detail) => out.push({ rule: 'recorrido-teclado', detail });
@@ -195,7 +207,7 @@ async function keyboardJourney(page) {
   await page.evaluate(() => document.activeElement?.blur?.());
   if (!(await tabTo(page, /^Dirección$/))) return [{ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Dirección con Tab' }];
   await page.keyboard.press('Enter');
-  await page.waitForSelector('header', { timeout: 20000 });
+  await enterApp(page, 'Dirección');
   await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
 
   // Alta de expediente
@@ -558,7 +570,7 @@ try {
       if (!(await tabTo(page, /^Voluntariado$/))) out.push({ rule: 'recorrido-teclado', detail: 'login: no se llega a la cuenta de Voluntariado con Tab' });
       else {
         await page.keyboard.press('Enter');
-        await page.waitForSelector('header', { timeout: 20000 });
+        await enterApp(page, 'Voluntariado');
         await page.waitForFunction(() => !document.body.innerText.includes('Cargando'), null, { timeout: 20000 });
         await page.evaluate(() => { location.hash = '#/tareas'; document.activeElement?.blur?.(); });
         await page.waitForTimeout(1200);
