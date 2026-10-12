@@ -311,6 +311,8 @@ export interface CaseVulnerabilityMarker {
   marker_code: VulnerabilityMarkerCode;
   notes?: string | null;
   affirmed_by: string;
+  /** Nombre de quien afirmó el marcador (se resuelve al cargar; nunca se muestra el identificador) */
+  affirmed_by_name?: string;
   affirmed_at: string;
   removed_by?: string | null;
   removed_at?: string | null;

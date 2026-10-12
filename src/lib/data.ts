@@ -204,7 +204,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
         ...c,
         person: personById.get(c.titular_person_id)!,
         parentCaseNumber: c.parent_case_id ? caseById.get(c.parent_case_id)?.case_number ?? null : null,
-        vulnerabilities: markers.filter((m) => m.case_id === c.id),
+        vulnerabilities: markers.filter((m) => m.case_id === c.id).map((m) => ({ ...m, affirmed_by_name: userName(m.affirmed_by) })),
         statuses,
         journal_entries: journalEntries.filter((e) => e.case_id === c.id),
         consents: consents

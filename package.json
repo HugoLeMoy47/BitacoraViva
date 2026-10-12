@@ -13,7 +13,8 @@
     "test:unit": "vitest run",
     "check:i18n": "node scripts/check-i18n.mjs",
     "audit:ui": "node scripts/audit-ui.mjs",
-    "scan:secrets": "node scripts/scan-secrets.mjs"
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "check:literals": "node scripts/check-literals.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

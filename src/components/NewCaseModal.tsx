@@ -543,14 +543,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
                     onChange={(e) => setNationalityCountry(e.target.value)}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
                   >
-                    <option value="Honduras">Honduras</option>
-                    <option value="Guatemala">Guatemala</option>
-                    <option value="El Salvador">El Salvador</option>
-                    <option value="Venezuela">Venezuela</option>
-                    <option value="Haití">Haití</option>
-                    <option value="Cuba">Cuba</option>
-                    <option value="Colombia">Colombia</option>
-                    <option value="México">México</option>
+                    <option value="Honduras">{t('intake.countries.honduras')}</option>
+                    <option value="Guatemala">{t('intake.countries.guatemala')}</option>
+                    <option value="El Salvador">{t('intake.countries.el_salvador')}</option>
+                    <option value="Venezuela">{t('intake.countries.venezuela')}</option>
+                    <option value="Haití">{t('intake.countries.haiti')}</option>
+                    <option value="Cuba">{t('intake.countries.cuba')}</option>
+                    <option value="Colombia">{t('intake.countries.colombia')}</option>
+                    <option value="México">{t('intake.countries.mexico')}</option>
                     <option value="Otro">{t('intake.other_country')}</option>
                   </select>
                 </div>

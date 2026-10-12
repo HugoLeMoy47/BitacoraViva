@@ -1,8 +1,7 @@
 {
   "app": {
     "title": "Bitácora Viva",
-    "tagline": "Memoria institucional y acompañamiento ético",
-    "badge_poc": "POC v0.2 — Épicas E1, E2 y E3 (Fundación, Estatus y Casos)"
+    "tagline": "Memoria institucional y acompañamiento ético"
   },
   "roles": {
     "director": {
@@ -176,7 +175,14 @@
       "empty": "Aún no hay expedientes.",
       "no_results": "Ningún expediente coincide con los filtros."
     },
-    "rule7_body": "Esta acción cerrará el registro anterior con marca de tiempo actual y abrirá el nuevo estado de manera transaccional. No es posible sobrescribir ni revertir sin dejar un nuevo rastro auditable."
+    "rule7_body": "Esta acción cerrará el registro anterior con marca de tiempo actual y abrirá el nuevo estado de manera transaccional. No es posible sobrescribir ni revertir sin dejar un nuevo rastro auditable.",
+    "opened_label": "Apertura:",
+    "not_specified": "No especificado",
+    "no_phone": "Sin teléfono",
+    "markers_subtitle": "Marcadores objetivos conforme al estándar humanitario MAP-OIM v3.",
+    "no_markers": "No se han afirmado marcadores de vulnerabilidad para este caso.",
+    "affirmed_by": "Afirmado por:",
+    "subfolios_subtitle": "Subfolios vinculados: NNA acompañados con expediente propio."
   },
   "intake": {
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",
@@ -189,7 +195,7 @@
     "field_given_name": "Nombres:",
     "field_paternal_name": "Primer apellido:",
     "field_maternal_name": "Segundo apellido:",
-    "field_preferred_name": "Nombre preferido (Compromiso C1):",
+    "field_preferred_name": "Nombre preferido:",
     "field_preferred_name_help": "Cómo solicita que se le llame con respeto a su dignidad.",
     "field_birth_date": "Fecha de nacimiento:",
     "field_birth_estimated": "La fecha de nacimiento es aproximada/estimada",
@@ -261,6 +267,16 @@
       "person": "Persona:",
       "nationality": "Nacionalidad:",
       "selected": "seleccionadas"
+    },
+    "countries": {
+      "honduras": "Honduras",
+      "guatemala": "Guatemala",
+      "el_salvador": "El Salvador",
+      "venezuela": "Venezuela",
+      "haiti": "Haití",
+      "cuba": "Cuba",
+      "colombia": "Colombia",
+      "mexico": "México"
     }
   },
   "audit": {
@@ -365,7 +381,8 @@
       "field_target_area": "Área destino:",
       "field_reason": "Motivo de la compartición (obligatorio):",
       "field_reason_placeholder": "Explique por qué otra área requiere acceso a esta información confidencial…",
-      "btn_submit": "Confirmar y notificar a dirección"
+      "btn_submit": "Confirmar y notificar a dirección",
+      "reason_note": "El motivo asentado notificará a la Dirección y quedará firmado de forma inmutable."
     },
     "director_digest": {
       "title": "Bandeja directiva de novedades",
@@ -378,7 +395,9 @@
       "reason_label": "Motivo asentado:",
       "btn_acknowledge": "Acusar recibo",
       "acknowledged_notice": "Acuse de recibo registrado en auditoría.",
-      "acknowledged_on": "Acusado el"
+      "acknowledged_on": "Acusado el",
+      "pending_heading": "Pendientes de acuse",
+      "acknowledged_heading": "Acusadas anteriormente"
     },
     "captured": "Capturado:",
     "origin_area": "Área de origen:",
@@ -390,7 +409,7 @@
     "section_consent_title": "Consentimientos informados del expediente",
     "section_consent_desc": "Cumplimiento normativo con la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (vigente 2025) y directrices de ACNUR/OIM.",
     "privacy_notice_badge": "Aviso de Privacidad v1.0 Activo",
-    "sensitive_alert_missing": "Atención: No se ha registrado consentimiento expreso para datos sensibles. La captura y tratamiento de datos de salud, persecución o condición migratoria está restringida (Control P-06).",
+    "sensitive_alert_missing": "Atención: no se ha registrado consentimiento expreso para datos sensibles. La captura y el tratamiento de datos de salud, persecución o condición migratoria está restringida.",
     "sensitive_alert_ok": "Consentimiento expreso para datos sensibles activo y verificado.",
     "btn_manage_consents": "Gestionar / otorgar consentimientos",
     "arco_section_title": "Mecanismos de remediación y ejercicio de derechos ARCO",
@@ -480,7 +499,10 @@
       "btn_copy_json": "Copiar formato estructurado",
       "btn_close": "Cerrar extracto",
       "copied_notice": "Extracto copiado al portapapeles.",
-      "official_extract": "Extracto oficial para ejercicio de derecho de Acceso conforme a la Ley de Protección de Datos Personales"
+      "official_extract": "Extracto oficial para ejercicio de derecho de Acceso conforme a la Ley de Protección de Datos Personales",
+      "phone": "Teléfono:",
+      "email": "Correo:",
+      "facts_count": "{n} hechos registrados"
     },
     "modal_oppose": {
       "title": "Oposición a tratamientos secundarios",
@@ -515,11 +537,17 @@
       "legal": "Situación migratoria:",
       "shelter": "Situación de alojamiento:"
     },
-    "p06_active": "Control P-06 activo",
+    "p06_active": "Protección de datos sensibles activa",
     "right_access": "Derecho de acceso",
     "right_rectification": "Derecho de rectificación",
     "right_opposition": "Derecho de oposición",
-    "right_cancellation": "Derecho de cancelación"
+    "right_cancellation": "Derecho de cancelación",
+    "no_record": "No se ha asentado registro para esta modalidad.",
+    "access_desc": "Expedir extracto oficial depurado (excluye las notas de trabajo protegidas).",
+    "rectify_desc": "Corregir datos biográficos de la ficha de identificación, con motivo y auditoría obligatoria.",
+    "oppose_desc": "Restringir tratamientos secundarios y reportes externos sin afectar el auxilio humanitario ni el alojamiento.",
+    "cancel_desc": "Procedimiento irreversible: destruye los datos identificables, purga las bitácoras y conserva el esqueleto estadístico.",
+    "records_count": "{n} registros"
   },
   "rules_list": {
     "r1": "1. La seguridad vive en la base de datos, no en la pantalla: ocultar un botón no es una regla de acceso.",
@@ -638,7 +666,7 @@
       "digest": "Pendientes del Digest",
       "digest_hint": "Comparticiones sin acuse",
       "p06": "Sin consentimiento sensible",
-      "p06_hint": "Control P-06"
+      "p06_hint": "Consentimiento para datos sensibles"
     },
     "attention": {
       "title": "Expedientes que requieren atención",
@@ -660,7 +688,7 @@
     },
     "p06": {
       "title": "Sin consentimiento expreso para datos sensibles",
-      "subtitle": "Control P-06: en estos expedientes no deben existir marcadores de vulnerabilidad hasta recabarlo.",
+      "subtitle": "En estos expedientes no debe haber marcadores de vulnerabilidad hasta recabar el consentimiento.",
       "empty": "Todos los expedientes tienen consentimiento expreso para datos sensibles."
     }
   },

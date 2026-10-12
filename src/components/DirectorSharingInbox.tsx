@@ -69,7 +69,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
               {pendingEvents.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Pendientes de Acuse ({pendingEvents.length})
+                    {t('journal.director_digest.pending_heading')} ({pendingEvents.length})
                   </h4>
                   {pendingEvents.map((evt) => (
                     <div
@@ -125,7 +125,7 @@ export const DirectorSharingInbox: React.FC<DirectorSharingInboxProps> = ({
               {acknowledgedEvents.length > 0 && (
                 <div className="space-y-3 pt-3 border-t border-gray-100">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Acusadas Previamente ({acknowledgedEvents.length})
+                    {t('journal.director_digest.acknowledged_heading')} ({acknowledgedEvents.length})
                   </h4>
                   {acknowledgedEvents.map((evt) => (
                     <div

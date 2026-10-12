@@ -19,6 +19,13 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 4179;
 const BASE = process.env.AUDIT_URL || `http://localhost:${PORT}`;
 
+// En GitHub Actions los hallazgos se publican además como anotaciones, legibles sin abrir el log completo.
+const annotate = (msg) => {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const esc = String(msg).split('%').join('%25').split('\r').join('%0D').split('\n').join('%0A');
+  console.log('::error title=audit-ui::' + esc.slice(0, 6000));
+};
+
 const VIEWPORTS = [
   { name: '360', width: 360, height: 740, touch: true },
   { name: '390', width: 390, height: 844, touch: true },
@@ -568,8 +575,12 @@ try {
       const w = [...g.where];
       console.log(`✗ ${g.rule} — ${g.detail}\n    en ${w.length} lugares, p. ej. ${w.slice(0, 3).join(', ')}`);
     }
+    annotate(`${groups.size} hallazgo(s) de interfaz:\n` + [...groups.values()].slice(0, 25).map((g) => `${g.rule} — ${g.detail} (en ${g.where.size} lugares, p. ej. ${[...g.where][0]})`).join('\n'));
   }
   process.exitCode = groups.size > 0 ? 1 : 0;
+} catch (e) {
+  annotate('Error del auditor de interfaz: ' + String(e?.message ?? e).slice(0, 1500));
+  throw e;
 } finally {
   await browser?.close();
   server?.kill();

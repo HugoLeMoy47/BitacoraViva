@@ -43,8 +43,10 @@ jobs:
           npm run scan:secrets
       - name: Tipos y compilación
         run: npm run build
-      - name: Cero literales de texto en componentes (Regla Dura 9)
+      - name: Toda clave de traducción usada existe (Regla Dura 9)
         run: npm run check:i18n
+      - name: Cero literales de texto en componentes (Regla Dura 9)
+        run: npm run check:literals
       - name: Pruebas unitarias
         run: npm run test:unit
 
@@ -71,3 +73,30 @@ jobs:
           # Las anotaciones se leen sin abrir el log completo
           LOGS=$(docker logs supabase_db_bitacora-viva 2>&1 | tail -30 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
           echo "::error title=log-de-la-base::${LOGS:0:5000}"
+
+  ui:
+    name: Auditoría de interfaz (base local)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Levantar Supabase local (migraciones desde cero + semilla demo)
+        run: npx supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,supavisor,postgres-meta
+      - name: Compilar contra la base local
+        run: |
+          # Las variables del entorno tienen prioridad sobre .env.production (que apunta a la demo)
+          eval "$(npx supabase status -o env | grep -E '^(API_URL|ANON_KEY)=' | sed 's/^/export /')"
+          echo "API_URL definida: ${API_URL:+sí} · ANON_KEY definida: ${ANON_KEY:+sí}"
+          VITE_SUPABASE_URL="$API_URL" VITE_SUPABASE_ANON_KEY="$ANON_KEY" npm run build
+      - name: Auditoría de interfaz (6 roles × 5 anchos, teclado, contraste, modales)
+        run: npm run audit:ui
+      - name: Diagnóstico si falló
+        if: failure()
+        run: |
+          docker ps -a
+          which google-chrome microsoft-edge || true

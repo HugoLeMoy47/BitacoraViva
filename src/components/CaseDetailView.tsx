@@ -251,7 +251,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             <span>·</span>
             <span>{caseData.person.other_nationality || 'Honduras'}</span>
             <span>·</span>
-            <span>Apertura: {formatDate(caseData.opened_at)}</span>
+            <span>{t('cases.opened_label')} {formatDate(caseData.opened_at)}</span>
           </div>
         </div>
 
@@ -605,7 +605,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div>
                 <span className="text-gray-500 block">{t('cases.field_preferred_name')}</span>
                 <span className="font-semibold text-turquesa-dark text-sm">
-                  {caseData.person.preferred_name || 'No especificado'}
+                  {caseData.person.preferred_name || t('cases.not_specified')}
                 </span>
               </div>
               <div>
@@ -629,7 +629,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div>
                 <span className="text-gray-500 block">{t('cases.field_phone')}</span>
                 <span className="font-semibold text-carbon text-sm">
-                  {caseData.person.phone_number || 'Sin teléfono'}
+                  {caseData.person.phone_number || t('cases.no_phone')}
                 </span>
               </div>
             </div>
@@ -667,13 +667,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               {t('cases.tab_vulnerabilities')} ({caseData.vulnerabilities.length})
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Marcadores objetivos conforme al estándar MAP-OIM v3 (Fase 3).
+              {t('cases.markers_subtitle')}
             </p>
           </div>
 
           {caseData.vulnerabilities.length === 0 ? (
             <div className="text-xs text-gray-500 italic p-4 text-center">
-              No se han afirmado marcadores de vulnerabilidad para este caso.
+              {t('cases.no_markers')}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -701,7 +701,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       )}
                     </div>
                     <div className="mt-3 pt-2 border-t border-gray-200/60 text-xs text-gray-500 flex items-center justify-between">
-                      <span>Afirmado por: {v.affirmed_by}</span>
+                      <span>{t('cases.affirmed_by')} {v.affirmed_by_name ?? '—'}</span>
                       <span>{formatDate(v.affirmed_at)}</span>
                     </div>
                   </div>
@@ -720,7 +720,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               {t('cases.tab_subfolios')} ({caseData.subfolios?.length || 0})
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Subfolios subordinados (NNA acompañados con expediente propio).
+              {t('cases.subfolios_subtitle')}
             </p>
           </div>
 
@@ -879,7 +879,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                       </div>
                     ) : (
                       <p className="text-xs text-gray-500 italic mt-2">
-                        No se ha asentado registro para esta modalidad.
+                        {t('arco.no_record')}
                       </p>
                     )}
                   </div>
@@ -908,7 +908,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     <span>{t('arco.right_access')}</span>
                   </div>
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    Expedir extracto oficial depurado (excluye notas de trabajo profesional protegidas por Ethos E-02).
+                    {t('arco.access_desc')}
                   </p>
                 </div>
                 <button
@@ -934,7 +934,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     <span>{t('arco.right_rectification')}</span>
                   </div>
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    Corregir datos biográficos de la ficha de identificación con motivo y auditoría obligatoria.
+                    {t('arco.rectify_desc')}
                   </p>
                 </div>
                 <button
@@ -960,7 +960,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     <span>{t('arco.right_opposition')}</span>
                   </div>
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    Restringir tratamientos secundarios y reportes externos sin afectar auxilio humanitario ni alojamiento.
+                    {t('arco.oppose_desc')}
                   </p>
                 </div>
                 <button
@@ -986,7 +986,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     <span>{t('arco.right_cancellation')}</span>
                   </div>
                   <p className="text-xs text-red-700 leading-relaxed">
-                    Procedimiento irreversible (ADR-0001): Destruye datos identificables, purga bitácoras y preserva esqueleto estadístico.
+                    {t('arco.cancel_desc')}
                   </p>
                 </div>
                 <button
@@ -1015,7 +1015,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 {t('arco.history_title')}
               </h3>
               <span className="text-xs font-mono text-gray-500">
-                {arcoRequests.length} registros
+                {t('arco.records_count').replace('{n}', String(arcoRequests.length))}
               </span>
             </div>
 

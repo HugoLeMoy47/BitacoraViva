@@ -170,13 +170,13 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
               </div>
               {caseData.person.phone_number && (
                 <div>
-                  <span className="text-gray-500 block text-xs">Teléfono:</span>
+                  <span className="text-gray-500 block text-xs">{t('arco.modal_access.phone')}</span>
                   <span>{caseData.person.phone_number}</span>
                 </div>
               )}
               {caseData.person.email && (
                 <div>
-                  <span className="text-gray-500 block text-xs">Correo:</span>
+                  <span className="text-gray-500 block text-xs">{t('arco.modal_access.email')}</span>
                   <span>{caseData.person.email}</span>
                 </div>
               )}
@@ -191,7 +191,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
             <div className="border border-gray-200 rounded-lg p-3 space-y-2 text-xs">
               <div className="flex justify-between items-center">
                 <span className="font-mono font-bold text-turquesa-dark">{caseData.case_number}</span>
-                <span className="text-gray-500 text-xs">Apertura: {formatDate(caseData.opened_at)}</span>
+                <span className="text-gray-500 text-xs">{t('cases.opened_label')} {formatDate(caseData.opened_at)}</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t text-xs">
                 <div>
@@ -217,7 +217,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
                 {t('arco.modal_access.journal_header')}
               </h4>
               <span className="text-xs text-gray-500">
-                ({accessibleEntries.length} hechos registrados)
+                ({t('arco.modal_access.facts_count').replace('{n}', String(accessibleEntries.length))})
               </span>
             </div>
 
