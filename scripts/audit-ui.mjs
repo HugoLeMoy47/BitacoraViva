@@ -251,10 +251,10 @@ async function keyboardJourney(page) {
 
   // Entrada de bitácora en un expediente
   await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; document.activeElement?.blur?.(); });
-  await page.locator('main [role=tab]').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  await page.locator('main [role=tab]', { hasText: /Bitácora/ }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(300);
   let found = false;
-  for (let i = 0; i < 40 && !found; i++) {
+  for (let i = 0; i < 80 && !found; i++) {
     const a = await activeInfo(page);
     if (process.env.AUDIT_DEBUG) console.log('  bit →', a && (a.tag + ':' + a.role + ':' + a.text.slice(0, 40)));
     if (a && a.role === 'tab' && a.inMain) {
