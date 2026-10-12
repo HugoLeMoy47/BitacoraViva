@@ -7,6 +7,7 @@ import { useToast } from '../lib/toast';
 import { caseTaskApi, taskErrorMessage } from '../lib/tasks';
 import { CaseTaskKind, Task } from '../types/database';
 import { ModalShell } from './ModalShell';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 // Tareas ligadas a un caso (BV-7.16, decisión 6a). Desde aquí quien opera expedientes crea una tarea para
 // el equipo de apoyo SIN pasarle datos del caso: la tarea lleva el folio y un nombre de catálogo neutro
@@ -35,6 +36,7 @@ export const CaseTasksPanel: React.FC<CaseTasksPanelProps> = ({ caseId, caseNumb
   const [unlinking, setUnlinking] = useState<Task | null>(null);
   const [busy, setBusy] = useState(false);
   const [kindId, setKindId] = useState('');
+  const kindReason = kindId ? null : t('tasks.case.reason_kind');
   const [assignedTo, setAssignedTo] = useState('');
   const [dueAt, setDueAt] = useState('');
 
@@ -110,13 +112,14 @@ export const CaseTasksPanel: React.FC<CaseTasksPanelProps> = ({ caseId, caseNumb
           type="button"
           onClick={openCreate}
           disabled={kinds.length === 0}
+          aria-describedby={kinds.length === 0 ? `${uid}-sin-tipos` : undefined}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('tasks.case.new')}
         </button>
       </div>
-      {tasks !== null && kinds.length === 0 && <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{t('tasks.case.no_kinds')}</p>}
+      {tasks !== null && kinds.length === 0 && <p id={`${uid}-sin-tipos`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{t('tasks.case.no_kinds')}</p>}
 
       {failed ? (
         <p className="rounded-lg border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-600">{t('tasks.case.load_failed')}</p>
@@ -202,11 +205,12 @@ export const CaseTasksPanel: React.FC<CaseTasksPanelProps> = ({ caseId, caseNumb
                 </label>
                 <input id={`${uid}-due`} type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} className={FIELD} />
               </div>
-              <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4">
+              <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4">
+                <DisabledReason id={`${uid}-crear`} reason={kindReason} className="w-full text-right" />
                 <button type="button" onClick={() => setCreating(false)} className="min-h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
                   {t('common.cancel')}
                 </button>
-                <button type="submit" disabled={!kindId || busy} className="min-h-11 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50">
+                <button type="submit" disabled={!kindId || busy} {...describedBy(`${uid}-crear`, kindReason)} className="min-h-11 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50">
                   {t('tasks.case.create')}
                 </button>
               </div>
