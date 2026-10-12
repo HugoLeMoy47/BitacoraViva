@@ -48,9 +48,6 @@
     "audit.restricted_message": [
       "RLS"
     ],
-    "audit.active_policy_label": [
-      "RLS"
-    ],
     "authority_requests.title": [
       "Ethos E-03"
     ],
@@ -143,6 +140,39 @@
     ],
     "indicators.threshold_note": [
       "E-05"
+    ],
+    "rules_list.r1": [
+      "Regla Dura 1"
+    ],
+    "rules_list.r2": [
+      "Regla Dura 2"
+    ],
+    "rules_list.r3": [
+      "Regla Dura 3"
+    ],
+    "rules_list.r4": [
+      "Regla Dura 4"
+    ],
+    "rules_list.r5": [
+      "Regla Dura 5"
+    ],
+    "rules_list.r6": [
+      "Regla Dura 6"
+    ],
+    "rules_list.r7": [
+      "Regla Dura 7"
+    ],
+    "rules_list.r8": [
+      "Regla Dura 8"
+    ],
+    "rules_list.r9": [
+      "Regla Dura 9"
+    ],
+    "rules_list.r10": [
+      "Regla Dura 10"
+    ],
+    "about.rules_title": [
+      "Reglas duras (handoff §2)"
     ]
   }
 }

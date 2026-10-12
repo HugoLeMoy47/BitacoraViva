@@ -2,13 +2,12 @@
   "app": {
     "title": "Bitácora Viva",
     "tagline": "Memoria institucional y acompañamiento ético",
-    "badge_poc": "POC v0.2 — Épicas E1, E2 y E3 (Fundación, Estatus y Casos)",
-    "ethos_commitment": "Compromiso C4 activo: Auditoría inmutable por disparador PostgreSQL"
+    "badge_poc": "POC v0.2 — Épicas E1, E2 y E3 (Fundación, Estatus y Casos)"
   },
   "roles": {
     "director": {
       "title": "Dirección",
-      "description": "Supervisión global del albergue, gobernanza de roles, digest de alertas, auditoría, requerimientos de autoridad y cierres formales",
+      "description": "Supervisión global del albergue, gobierno de roles, bandeja de alertas, auditoría, requerimientos de autoridad y cierres formales",
       "badge": "Acceso directivo"
     },
     "caseworker": {
@@ -23,7 +22,7 @@
     },
     "viewer": {
       "title": "Observador / auditor",
-      "description": "Lectura de métricas agregadas y anonimizadas (umbral n >= 5); sin acceso a datos identificables",
+      "description": "Lectura de cifras agregadas y aproximadas, solo de grupos de 5 o más personas; sin acceso a datos identificables",
       "badge": "Solo métricas"
     },
     "task_manager": {
@@ -41,7 +40,6 @@
     "current_role": "Rol activo en sesión:",
     "switch_role": "Simular cambio de rol:",
     "organization": "Albergue activo:",
-    "status_connected": "Supabase Cloud / migración E1-E3",
     "mode_emulation": "Modo nube activo",
     "assigned_area": "Área de adscripción:",
     "transversal_role": "Transversal (Organización completa)",
@@ -269,9 +267,6 @@
     "restricted_title": "Acceso restringido a Dirección",
     "restricted_badge": "Exclusivo Dirección",
     "restricted_message": "El registro de auditoría, que no se puede modificar, es accesible exclusivamente para el rol Dirección. Los roles Operación de caso, Ingreso y Observador no tienen acceso, para preservar la compartimentación de la información.",
-    "restricted_detail": "Cualquier intento de consulta desde un rol no directivo es bloqueado por la regla de seguridad a nivel de motor PostgreSQL.",
-    "active_policy_label": "Política activa:",
-    "active_policy_code": "create policy \"Solo directores leen auditoría de su organización\" on public.audit_event for select using (public.has_role('director'));",
     "subtitle": "Registro de sólo adición, protegido por la base de datos · Sólo Dirección",
     "count": "{n} eventos",
     "system": "Sistema",
@@ -527,16 +522,16 @@
     "right_cancellation": "Derecho de cancelación"
   },
   "rules_list": {
-    "r1": "1. La seguridad vive en la base de datos (RLS en toda tabla)",
-    "r2": "2. service_role nunca llega al cliente",
-    "r3": "3. Ningún rol de aplicación tiene DELETE sobre tablas de negocio",
-    "r4": "4. audit_event es estrictamente append-only",
-    "r5": "5. Toda escritura genera evento de auditoría por disparador",
-    "r6": "6. journal_entry nace area_private por defecto",
-    "r7": "7. El estatus no se sobrescribe: se cierra el vigente y se abre uno nuevo",
-    "r8": "8. Nombres estandarizados según el glosario de términos",
-    "r9": "9. Cero literales de texto visibles en componentes (i18n)",
-    "r10": "10. Cero cambios de esquema desde consola (migraciones versionadas)"
+    "r1": "1. La seguridad vive en la base de datos, no en la pantalla: ocultar un botón no es una regla de acceso.",
+    "r2": "2. La llave maestra del sistema nunca llega al navegador ni al código.",
+    "r3": "3. Nadie puede borrar registros: lo que sale de la vista se archiva o se anonimiza.",
+    "r4": "4. El registro de auditoría no se puede modificar ni borrar, por nadie.",
+    "r5": "5. Toda escritura queda en la auditoría de forma automática, sin depender de la aplicación.",
+    "r6": "6. Cada entrada de bitácora nace privada a su área.",
+    "r7": "7. El estatus no se sobrescribe: se cierra el vigente y se abre uno nuevo, con fecha y motivo.",
+    "r8": "8. Todo el sistema usa los mismos nombres, tomados de un glosario compartido.",
+    "r9": "9. Todo texto visible vive en un archivo de traducción, listo para otros idiomas.",
+    "r10": "10. Ningún cambio al sistema se hace a mano: todo queda versionado y revisable."
   },
   "login": {
     "title": "Iniciar sesión",
@@ -684,8 +679,8 @@
     "roles_title": "Qué ve cada rol",
     "roles_note": "Las pantallas de cada rol se definen en un solo lugar. La protección real de los datos la impone la base de datos, no la interfaz.",
     "sees": "Ve:",
-    "rules_title": "Las 10 reglas duras",
-    "rules_intro": "Contrato de handoff inmutable. Violarlas es un defecto estructural, no una diferencia de criterio.",
+    "rules_title": "Diez garantías del sistema",
+    "rules_intro": "Son reglas que el sistema se impone a sí mismo. Si alguna se rompe, es un defecto del sistema, no una diferencia de criterio.",
     "tagline": "Bitácora Viva · Plataforma libre para la dignidad y la soberanía informativa de la sociedad civil."
   },
   "toast": {
