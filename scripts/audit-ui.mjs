@@ -235,6 +235,7 @@ async function keyboardJourney(page) {
         if (cur && cur.value === 'yes' && cur.checked) break;
         if (cur && cur.value === 'yes') { await page.keyboard.press('Space'); break; }
         await page.keyboard.press('ArrowRight');
+        await page.waitForTimeout(150);
       }
     }
   };
@@ -263,20 +264,27 @@ async function keyboardJourney(page) {
   await page.locator('main [role=tab]', { hasText: /Bitácora/ }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(300);
   let found = false;
+  const trail = [];
   for (let i = 0; i < 80 && !found; i++) {
     const a = await activeInfo(page);
+    trail.push(a ? `${a.tag}:${a.role}:${a.text.slice(0, 22)}${a.inMain ? '·main' : ''}` : 'nada');
     if (process.env.AUDIT_DEBUG) console.log('  bit →', a && (a.tag + ':' + a.role + ':' + a.text.slice(0, 40)));
     if (a && a.role === 'tab' && a.inMain) {
       for (let k = 0; k < 10; k++) {
         const c = await activeInfo(page);
         if (c && /Bitácora/i.test(c.text)) { found = true; break; }
         await page.keyboard.press('ArrowRight');
+        await page.waitForTimeout(150);
       }
       break;
     }
     await page.keyboard.press('Tab');
   }
-  if (!found) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega a la pestaña Bitácora con teclado' }];
+  if (!found) {
+    const url = await page.evaluate(() => location.hash);
+    const tabs = await page.locator('main [role=tab]').count();
+    return [...out, { rule: 'recorrido-teclado', detail: `bitácora: no se llega a la pestaña Bitácora con teclado (url ${url}, ${tabs} pestañas; foco: ${trail.slice(-6).join(' > ')})` }];
+  }
   await page.keyboard.press('Enter');
   await page.waitForTimeout(500);
   if (!(await tabTo(page, /Nueva entrada de bitácora/i))) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega a «Nueva entrada de bitácora» con Tab' }];
