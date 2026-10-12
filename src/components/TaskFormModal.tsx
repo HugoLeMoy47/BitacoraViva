@@ -4,6 +4,7 @@ import { t } from '../lib/i18n';
 import { TaskInput } from '../lib/tasks';
 import { Task, TaskCategory, WorkArea } from '../types/database';
 import { ModalShell } from './ModalShell';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 // Alta y edición de una tarea (gestión de tareas). La base vuelve a exigir quién puede hacerlo.
 
@@ -35,6 +36,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, categories, 
   // Una tarea ligada a un caso no tiene texto libre: su nombre sale de un catálogo (decisión 6a)
   const linked = !!task?.case_id;
   const valid = name.trim().length > 0 && name.trim().length <= 120 && details.length <= 1000;
+  const saveReason = name.trim().length === 0 ? t('tasks.reason_name') : name.trim().length > 120 ? t('tasks.reason_name_long') : details.length > 1000 ? t('tasks.reason_details_long') : null;
 
   // Si la persona asignada hoy ya no figura entre quienes reciben tareas, se conserva su opción
   const assigneeOptions =
@@ -159,13 +161,15 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({ task, categories, 
             <span>{t('tasks.f_photo')}</span>
           </label>
 
-          <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-3">
+            <DisabledReason id="tarea" reason={saveReason} className="w-full text-right" />
             <button type="button" onClick={onClose} className="min-h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={!valid || busy}
+              {...describedBy('tarea', saveReason)}
               className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
             >
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />

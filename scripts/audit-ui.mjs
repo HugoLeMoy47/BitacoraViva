@@ -142,6 +142,15 @@ const pageAudit = `(opts) => {
   });
   bad.forEach((v, k) => add('contraste-bajo', v.ratio + ':1 «' + v.text + '» ' + k));
 
+  // 11. Norma de usabilidad: ningún botón deshabilitado sin decir por qué.
+  // El motivo es texto visible (no sólo un tooltip, que no existe en celular) enlazado con aria-describedby.
+  document.querySelectorAll('button:disabled, [aria-disabled="true"]').forEach((e) => {
+    if (!visible(e) || e.getAttribute('aria-busy') === 'true') return;
+    const ids = (e.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+    const ok = ids.some((id) => { const d = document.getElementById(id); return d && visible(d) && d.textContent.trim().length > 3; });
+    if (!ok) add('boton-sin-motivo', nameOf(e).slice(0, 50));
+  });
+
   return out;
 }`;
 

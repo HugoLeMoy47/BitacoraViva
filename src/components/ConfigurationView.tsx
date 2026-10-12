@@ -4,6 +4,7 @@ import { formatDate } from '../lib/format';
 import { listConsentTexts, listPrivacyNotices, OrganizationIdentityInput } from '../lib/data';
 import { ConsentText, ConsentType, Organization, PrivacyNotice } from '../types/database';
 import { Tabs } from './Tabs';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 // Configuración de la organización (E9). La plataforma ofrece el mecanismo (versionado, bloqueo,
 // auditoría); cada asociación declara su contenido y responde por él. Solo Dirección entra aquí
@@ -138,6 +139,7 @@ const IdentityForm: React.FC<{
   const prefixOk = form.folio_prefix === '' || /^[A-Za-z]{2,5}$/.test(form.folio_prefix);
   const valid = form.display_name.trim() !== '' && form.legal_name.trim() !== '' && prefixOk;
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  const saveReason = !valid ? t('config.identity.reason_required') : !dirty ? t('common.reason_no_changes') : null;
   const nextFolio = `${(form.folio_prefix || organization?.slug?.slice(0, 3) || 'BV').toUpperCase()}-${new Date().getFullYear()}-0001`;
 
   return (
@@ -196,8 +198,9 @@ const IdentityForm: React.FC<{
           <textarea className={FIELD} rows={3} value={form.about_text} onChange={set('about_text')} />
         </label>
       </div>
-      <div className="flex justify-end">
-        <button type="submit" disabled={!valid || !dirty || busy} className={BTN}>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <DisabledReason id="identidad" reason={saveReason} />
+        <button type="submit" disabled={!!saveReason || busy} {...describedBy('identidad', saveReason)} className={BTN}>
           {t('config.identity.save')}
         </button>
       </div>
@@ -228,6 +231,7 @@ const NoticeForm: React.FC<{
 
   const valid = title.trim() !== '' && summary.trim() !== '' && fullText.trim() !== '';
   const changed = !current || title !== current.title || summary !== current.summary || fullText !== current.full_text;
+  const publishReason = !valid ? t('config.notice.reason_required') : !changed ? t('config.reason_unchanged') : !confirm ? t('config.notice.reason_confirm') : null;
 
   return (
     <div className="space-y-5">
@@ -273,8 +277,9 @@ const NoticeForm: React.FC<{
           <input type="checkbox" checked={confirm} onChange={(e) => setConfirm(e.target.checked)} className="mt-0.5 rounded border-gray-300 text-turquesa" />
           <span>{t('config.notice.confirm')}</span>
         </label>
-        <div className="flex justify-end">
-          <button type="submit" disabled={!valid || !changed || !confirm || busy} className={BTN}>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <DisabledReason id="aviso" reason={publishReason} />
+          <button type="submit" disabled={!!publishReason || busy} {...describedBy('aviso', publishReason)} className={BTN}>
             {t('config.notice.publish')}
           </button>
         </div>
@@ -331,6 +336,7 @@ const ConsentCard: React.FC<{
 
   const valid = title.trim() !== '' && description.trim() !== '';
   const changed = !current || title !== current.title || description !== current.description || required !== current.required;
+  const publishReason = !valid ? t('config.consents.reason_required') : !changed ? t('config.reason_unchanged') : null;
 
   return (
     <form
@@ -364,8 +370,9 @@ const ConsentCard: React.FC<{
         />
         <span>{alwaysRequired ? t('config.consents.always_required') : t('config.consents.required')}</span>
       </label>
-      <div className="flex justify-end">
-        <button type="submit" disabled={!valid || !changed || busy} className={BTN}>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <DisabledReason id="consentimiento" reason={publishReason} />
+        <button type="submit" disabled={!!publishReason || busy} {...describedBy('consentimiento', publishReason)} className={BTN}>
           {t('config.consents.publish')}
         </button>
       </div>

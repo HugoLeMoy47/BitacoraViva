@@ -278,6 +278,18 @@
       "cuba": "Cuba",
       "colombia": "Colombia",
       "mexico": "México"
+    },
+    "reason": {
+      "notice_loading": "El aviso de privacidad aún está cargando; espera un momento.",
+      "notice_delivered": "Marca que entregaste o leíste el aviso de privacidad.",
+      "decide_all": "Falta decidir cada consentimiento: elige «Otorga» o «No otorga» en todos.",
+      "general_care": "Sin el consentimiento de atención general no se puede abrir el expediente.",
+      "required_consent": "Falta otorgar un consentimiento obligatorio.",
+      "unaccompanied_minor": "Una persona no acompañada debe registrarse como menor de edad.",
+      "guardian": "Indica el nombre y el parentesco de quien responde por la persona menor.",
+      "authority": "Indica la referencia de la autoridad que interviene.",
+      "given_name": "Escribe al menos un nombre.",
+      "paternal_name": "Escribe el primer apellido."
     }
   },
   "audit": {
@@ -699,7 +711,8 @@
     "yes": "Sí",
     "no": "No",
     "cancel": "Cancelar",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "reason_no_changes": "No hay cambios que guardar."
   },
   "about": {
     "title": "Acerca de este sistema",
@@ -791,7 +804,8 @@
       "arco_contact": "Contacto para ejercer derechos ARCO",
       "arco_contact_hint": "Correo o teléfono al que las personas pueden dirigirse. Se imprime en el extracto de acceso.",
       "about": "Acerca de la asociación",
-      "save": "Guardar identidad"
+      "save": "Guardar identidad",
+      "reason_required": "Revisa los datos obligatorios: nombre, razón social y prefijo de folio."
     },
     "notice": {
       "intro": "El aviso vigente se muestra en el paso cero del alta. Publicar una versión nueva no modifica la anterior: queda en el historial y cada consentimiento conserva la versión que la persona vio.",
@@ -805,7 +819,9 @@
       "field_full_hint": "Tu asociación valida el contenido; la plataforma no ofrece asesoría legal.",
       "confirm": "Entiendo que se publica una versión nueva; la anterior queda en el historial y no se puede editar.",
       "publish": "Publicar nueva versión",
-      "version": "Versión"
+      "version": "Versión",
+      "reason_required": "Completa el título, el resumen y el texto completo.",
+      "reason_confirm": "Marca la confirmación para poder publicar."
     },
     "consents": {
       "intro": "Define el texto de cada consentimiento tal como lo declara tu asociación. El consentimiento general es siempre obligatorio. Los textos ya otorgados conservan la versión con la que se dieron.",
@@ -815,8 +831,10 @@
       "field_description": "Descripción que verá la persona",
       "required": "Obligatorio para abrir el expediente",
       "always_required": "Obligatorio siempre: la plataforma no permite abrir un expediente sin este consentimiento.",
-      "publish": "Publicar nueva versión"
-    }
+      "publish": "Publicar nueva versión",
+      "reason_required": "Completa el título y la descripción."
+    },
+    "reason_unchanged": "Cambia algún texto para poder publicar una versión nueva."
   },
   "tasks": {
     "title": "Tareas",
@@ -999,7 +1017,8 @@
       "toast_renamed": "Nombre actualizado.",
       "toast_archived": "Valor archivado.",
       "caseKind_title": "Tipos de tarea ligada a un caso",
-      "caseKind_hint": "Nombres neutros para tareas que nacen de un caso: acompañamiento, trámite, seguimiento… Sin datos de personas ni de situaciones."
+      "caseKind_hint": "Nombres neutros para tareas que nacen de un caso: acompañamiento, trámite, seguimiento… Sin datos de personas ni de situaciones.",
+      "reason_empty": "Escribe un nombre para poder agregarlo."
     },
     "tab_routines": "Rutinas",
     "tab_notes": "Notas de turno",
@@ -1047,7 +1066,9 @@
       "start_hint": "Elige tu rutina y recibe sus tareas de golpe, ya asignadas a ti. Cada rutina se inicia una vez al día.",
       "start_empty": "Todavía no hay rutinas disponibles. Pide a quien coordina que cree una.",
       "step_count": "{n} pasos",
-      "start": "Iniciar"
+      "start": "Iniciar",
+      "reason_name": "Escribe el nombre de la rutina.",
+      "reason_steps": "Agrega al menos un paso con nombre."
     },
     "notes": {
       "scope_all": "Ves las notas de todo el equipo.",
@@ -1070,7 +1091,8 @@
       "retract_confirm": "Retirar una nota es definitivo: se conserva en el historial pero el equipo deja de verla.",
       "retract_yes": "Sí, retirar",
       "toast_created": "Nota guardada.",
-      "toast_retracted": "Nota retirada."
+      "toast_retracted": "Nota retirada.",
+      "reason_empty": "Escribe la nota para poder dejarla."
     },
     "settings": {
       "intro": "Dos decisiones de este módulo no tienen una respuesta correcta que el sistema pueda elegir por la organización. Cada cambio queda en la auditoría.",
@@ -1137,8 +1159,12 @@
       "unlink_confirm": "Desvincular",
       "toast_created": "Tarea ligada al caso creada.",
       "toast_unlinked": "Tarea desvinculada del caso.",
-      "name_locked": "El nombre de una tarea ligada a un caso sale de un catálogo y no se edita."
-    }
+      "name_locked": "El nombre de una tarea ligada a un caso sale de un catálogo y no se edita.",
+      "reason_kind": "Elige el tipo de tarea."
+    },
+    "reason_name": "Escribe el nombre de la tarea.",
+    "reason_name_long": "El nombre admite hasta 120 caracteres.",
+    "reason_details_long": "Los detalles admiten hasta 1000 caracteres."
   },
   "subfolio": {
     "title": "Abrir subfolio",

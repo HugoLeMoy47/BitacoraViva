@@ -4,6 +4,7 @@ import { t } from '../lib/i18n';
 import { RoutineDraft } from '../lib/tasks';
 import { RoutineTemplate, RoutineTemplateItem, TaskCategory, WorkArea } from '../types/database';
 import { ModalShell } from './ModalShell';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 // Alta y edición de una plantilla de rutina y sus pasos (BV-7.11). Sólo gestión (la base lo exige).
 // Los pasos se pueden reordenar y quitar con botones, no sólo arrastrando: un gesto no puede ser la única forma.
@@ -30,6 +31,7 @@ interface Step {
 const FIELD = 'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa';
 const LABEL = 'block text-xs font-semibold text-gray-700';
 const ICON_BTN = 'flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40';
+const ICON_BTN_SPACE = 'h-11 w-11';
 
 export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, items, categories, workAreas, busy, onClose, onSubmit }) => {
   const uid = useId();
@@ -61,6 +63,7 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, ite
 
   const named = steps.filter((s) => s.name.trim());
   const valid = name.trim().length > 0 && named.length > 0;
+  const saveReason = name.trim().length === 0 ? t('tasks.routines.reason_name') : named.length === 0 ? t('tasks.routines.reason_steps') : null;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,15 +167,27 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, ite
                       </label>
                     </div>
                     <div className="flex shrink-0 flex-col gap-1.5">
-                      <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label={t('tasks.routines.move_up')} className={ICON_BTN}>
-                        <ArrowUp className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                      <button type="button" onClick={() => move(index, 1)} disabled={index === steps.length - 1} aria-label={t('tasks.routines.move_down')} className={ICON_BTN}>
-                        <ArrowDown className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                      <button type="button" onClick={() => setSteps((s) => s.filter((x) => x.uid !== step.uid))} disabled={steps.length === 1} aria-label={t('tasks.routines.remove_step')} className={ICON_BTN}>
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
+                      {index > 0 ? (
+                        <button type="button" onClick={() => move(index, -1)} aria-label={t('tasks.routines.move_up')} className={ICON_BTN}>
+                          <ArrowUp className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span className={ICON_BTN_SPACE} aria-hidden="true" />
+                      )}
+                      {index < steps.length - 1 ? (
+                        <button type="button" onClick={() => move(index, 1)} aria-label={t('tasks.routines.move_down')} className={ICON_BTN}>
+                          <ArrowDown className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span className={ICON_BTN_SPACE} aria-hidden="true" />
+                      )}
+                      {steps.length > 1 ? (
+                        <button type="button" onClick={() => setSteps((s) => s.filter((x) => x.uid !== step.uid))} aria-label={t('tasks.routines.remove_step')} className={ICON_BTN}>
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <span className={ICON_BTN_SPACE} aria-hidden="true" />
+                      )}
                     </div>
                   </div>
                 </li>
@@ -188,13 +203,15 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, ite
             </button>
           </fieldset>
 
-          <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-3">
+            <DisabledReason id="rutina" reason={saveReason} className="w-full text-right" />
             <button type="button" onClick={onClose} className="min-h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={!valid || busy}
+              {...describedBy('rutina', saveReason)}
               className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
             >
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
