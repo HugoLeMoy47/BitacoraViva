@@ -182,7 +182,8 @@
     "markers_subtitle": "Marcadores objetivos conforme al estándar humanitario MAP-OIM v3.",
     "no_markers": "No se han afirmado marcadores de vulnerabilidad para este caso.",
     "affirmed_by": "Afirmado por:",
-    "subfolios_subtitle": "Subfolios vinculados: NNA acompañados con expediente propio."
+    "subfolios_subtitle": "Subfolios vinculados: NNA acompañados con expediente propio.",
+    "btn_new_subfolio": "Abrir subfolio"
   },
   "intake": {
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",
@@ -727,7 +728,8 @@
     "opposition": "Oposición registrada.",
     "config_identity": "Identidad de la organización guardada.",
     "config_notice": "Aviso de privacidad publicado como versión nueva.",
-    "config_consent_text": "Texto de consentimiento publicado como versión nueva."
+    "config_consent_text": "Texto de consentimiento publicado como versión nueva.",
+    "subfolio_created": "Subfolio creado."
   },
   "errors": {
     "network": "No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.",
@@ -1137,5 +1139,32 @@
       "toast_unlinked": "Tarea desvinculada del caso.",
       "name_locked": "El nombre de una tarea ligada a un caso sale de un catálogo y no se edita."
     }
+  },
+  "subfolio": {
+    "title": "Abrir subfolio",
+    "subtitle": "Expediente propio para una persona menor de edad que viaja con el caso {folio}.",
+    "representative": "Quien representa a la persona menor es {name}, titular del caso principal {folio}. Sus datos se toman de ese expediente.",
+    "section_person": "Datos de la persona menor",
+    "section_relationship": "Parentesco",
+    "relationship": "Parentesco con la persona menor",
+    "rel_mother": "Madre",
+    "rel_father": "Padre",
+    "rel_guardian": "Tutor o tutora",
+    "rel_other": "Otro parentesco",
+    "rel_other_label": "Indica el parentesco",
+    "section_consents": "Consentimientos",
+    "consents_hint": "Vienen con la decisión que ya tomó quien representa en el caso principal. Puedes ajustarlas, y la nota de justificación queda registrada en el expediente.",
+    "section_markers": "Marcadores de vulnerabilidad",
+    "markers_hint": "Los afirma la persona profesional; nunca se calculan solos.",
+    "note_label": "Nota de justificación",
+    "note_hint": "Explica por qué se abre este subfolio y, si ajustaste algún consentimiento, por qué. Queda en la bitácora del subfolio.",
+    "create": "Crear subfolio",
+    "reason_birth": "Indica la fecha de nacimiento.",
+    "reason_minor": "El subfolio es para personas menores de 18 años.",
+    "reason_relationship": "Indica el parentesco de quien representa a la persona menor.",
+    "reason_general": "Sin el consentimiento de atención general no se puede abrir el subfolio.",
+    "reason_note": "Escribe la nota de justificación (al menos 10 caracteres).",
+    "open_parent": "Ir al caso principal",
+    "no_subfolios": "Este caso aún no tiene subfolios."
   }
 }

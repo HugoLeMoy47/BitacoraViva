@@ -13,7 +13,7 @@ import {
 import { CaseDetailView } from './CaseDetailView';
 import { NewCaseModal } from './NewCaseModal';
 import { CaseList } from './CaseList';
-import { NewCaseInput } from '../lib/data';
+import { NewCaseInput, SubfolioInput } from '../lib/data';
 
 interface CasesViewProps {
   cases: CaseWithDetails[];
@@ -23,6 +23,7 @@ interface CasesViewProps {
   authorUserId: string;
   authorFullName: string;
   onCaseCreated: (input: NewCaseInput) => void;
+  onSubfolioCreated?: (input: SubfolioInput) => void;
   onTransitionStatus: (
     caseId: string, 
     axisCode: StatusAxisCode, 
@@ -58,6 +59,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
   authorUserId,
   authorFullName,
   onCaseCreated,
+  onSubfolioCreated,
   onTransitionStatus,
   onAddJournalEntry,
   onAddClarification,
@@ -107,6 +109,8 @@ export const CasesView: React.FC<CasesViewProps> = ({
         authorFullName={authorFullName}
         onTransitionStatus={onTransitionStatus}
         onSelectSubfolio={(subfolio) => onSelectCase(subfolio.case_number)}
+        onOpenCase={onSelectCase}
+        onCreateSubfolio={onSubfolioCreated}
         onAddJournalEntry={onAddJournalEntry}
         onAddClarification={onAddClarification}
         onShareJournalEntry={onShareJournalEntry}

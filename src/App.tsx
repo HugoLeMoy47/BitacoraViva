@@ -7,7 +7,7 @@ import {
   ConsentStatus,
   Person
 } from './types/database';
-import { api, configApi, EMPTY_ORG_DATA, loadOrgData, NewCaseInput, OrgData } from './lib/data';
+import { api, configApi, EMPTY_ORG_DATA, loadOrgData, NewCaseInput, OrgData, SubfolioInput } from './lib/data';
 import { SessionProvider, SessionUser, useSession } from './lib/session';
 import { CatalogProvider } from './lib/catalog';
 import { EnvironmentProvider, useEnvironment } from './lib/environment';
@@ -100,6 +100,13 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const handleCaseCreated = async (input: NewCaseInput) => {
     const r = await run(() => api.createCaseWithPerson(input), 'toast.case_created');
     // Lleva a quien capturó directamente al expediente recién abierto
+    const created = r.ok && r.data ? r.data.cases.find((c) => c.id === r.value) : undefined;
+    if (created) navigate('cases', created.case_number);
+  };
+
+  // El subfolio también es atómico en la base; lleva a quien lo abrió a su expediente
+  const handleSubfolioCreated = async (input: SubfolioInput) => {
+    const r = await run(() => api.createSubfolio(input), 'toast.subfolio_created');
     const created = r.ok && r.data ? r.data.cases.find((c) => c.id === r.value) : undefined;
     if (created) navigate('cases', created.case_number);
   };
@@ -246,6 +253,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             authorUserId={currentUser.profile.id}
             authorFullName={currentUser.profile.full_name}
             onCaseCreated={handleCaseCreated}
+            onSubfolioCreated={handleSubfolioCreated}
             onTransitionStatus={handleTransitionStatus}
             onAddJournalEntry={handleAddJournalEntry}
             onAddClarification={handleAddClarification}
