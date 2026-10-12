@@ -21,6 +21,7 @@ import { ADMIN_ROUTES, PRIMARY_ROUTES, ROUTE_LABEL_KEY } from '../lib/navigation
 import { DemoChip } from './DemoBanner';
 import { Menu, MenuItem } from './Menu';
 import { Tabs } from './Tabs';
+import { VersionFooter } from './VersionFooter';
 
 // Armazón de la aplicación. Una sola fuente de navegación (los destinos permitidos por rol)
 // alimenta la barra de pestañas en escritorio y la barra inferior en celular.
@@ -214,10 +215,12 @@ export const AppShell: React.FC<AppShellProps> = ({
         id="contenido"
         ref={mainRef}
         tabIndex={-1}
-        className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 pb-28 outline-none sm:px-6 md:pb-10 lg:px-8"
+        className="mx-auto w-full max-w-7xl flex-1 px-4 py-5 pb-6 outline-none sm:px-6 md:pb-10 lg:px-8"
       >
         {children}
       </main>
+
+      <VersionFooter className="pb-24 md:pb-6" />
 
       {/* Navegación de celular: destinos principales al alcance del pulgar */}
       <nav

@@ -1,7 +1,8 @@
 {
   "app": {
     "title": "Bitácora Viva",
-    "tagline": "Memoria institucional y acompañamiento ético"
+    "tagline": "Memoria institucional y acompañamiento ético",
+    "version_label": "Versión"
   },
   "roles": {
     "director": {

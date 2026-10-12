@@ -4,6 +4,7 @@ import { t } from '../lib/i18n';
 import { useSession } from '../lib/session';
 import { useEnvironment } from '../lib/environment';
 import { RoleName } from '../types/database';
+import { VersionFooter } from './VersionFooter';
 
 // Cuentas semilla de demostración (supabase/seed.sql). Sólo se ofrecen en modo demo.
 const DEMO_PASSWORD = 'albergue2026!';
@@ -119,6 +120,7 @@ export const LoginView: React.FC = () => {
           </div>
         </div>
         )}
+        <VersionFooter className="mt-6" />
       </div>
     </div>
   );
