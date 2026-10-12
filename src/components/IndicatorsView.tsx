@@ -182,6 +182,10 @@ export const IndicatorsView: React.FC = () => {
     data.rows.find((r) => r.metric === metric && r.bucket === bucket);
   const total = row('total_cases', 'all');
   const allSuppressed = data.rows.every((r) => r.suppressed);
+  // Quien trabaja en la organización ve cifras exactas; el observador externo, aproximadas con «≈»
+  // (para que nadie cite como exacta una cifra redondeada).
+  const exactNumbers = data.exact !== false;
+  const approx = (n: number | null): string => (n === null ? '—' : exactNumbers ? String(n) : `≈${n}`);
 
   // Serie mensual: unión de meses de ingresos y egresos, en orden cronológico
   const months = Array.from(
@@ -218,9 +222,11 @@ export const IndicatorsView: React.FC = () => {
             </div>
             <div className="text-right">
               <span className="block text-3xl font-bold text-carbon leading-none">
-                {total && !total.suppressed ? total.count : '—'}
+                {total && !total.suppressed ? approx(total.count) : '—'}
               </span>
-              <span className="text-xs text-gray-500 block">{t('indicators.metric.total_cases')}</span>
+              <span className="text-xs text-gray-500 block">
+                {t(exactNumbers ? 'indicators.metric.total_cases' : 'indicators.metric.total_cases_approx')}
+              </span>
               {showPrev && total && <Delta current={total.count} previous={total.prev_count} />}
             </div>
           </div>
@@ -250,7 +256,7 @@ export const IndicatorsView: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h3 className="text-xs font-bold uppercase tracking-wide text-gray-600 mb-3">{t('indicators.trend.title')}</h3>
-            <TrendChart points={trend} minGroup={min} />
+            <TrendChart points={trend} minGroup={min} roundedTo={data.rounded_to} />
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -269,7 +275,7 @@ export const IndicatorsView: React.FC = () => {
                   ) : (
                     <div className="mt-0.5 flex items-baseline gap-2 flex-wrap">
                       <span className="text-2xl font-bold text-carbon">{r.value}</span>
-                      <span className="text-xs text-gray-500">{t('indicators.days_avg').replace('{n}', String(r.count))}</span>
+                      <span className="text-xs text-gray-500">{t('indicators.days_avg').replace('{n}', approx(r.count))}</span>
                       {showPrev && <Delta current={r.value} previous={r.prev_value} unit={` ${t('indicators.days_short')}`} />}
                     </div>
                   )}
@@ -303,7 +309,7 @@ export const IndicatorsView: React.FC = () => {
                         ) : (
                           <span className="flex items-center gap-2 shrink-0">
                             {showPrev && <Delta current={r.count} previous={r.prev_count} />}
-                            <span className="font-mono font-bold text-carbon">{r.count}</span>
+                            <span className="font-mono font-bold text-carbon">{approx(r.count)}</span>
                           </span>
                         )}
                       </div>

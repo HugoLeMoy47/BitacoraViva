@@ -22,13 +22,23 @@ function monthLabel(m: string): string {
   return formatMonth(m);
 }
 
-function niceMax(v: number): number {
+function niceMax(v: number, roundedTo?: number | null): number {
+  // Con cifras redondeadas (observador externo) los ejes también van en múltiplos del redondeo:
+  // un eje en 0, 8, 15 sugeriría una precisión que las cifras no tienen.
+  if (roundedTo) return Math.max(roundedTo, Math.ceil(v / roundedTo) * roundedTo);
   if (v <= 5) return 5;
   const step = v <= 20 ? 5 : v <= 50 ? 10 : 20;
   return Math.ceil(v / step) * step;
 }
 
-export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = ({ points, minGroup }) => {
+function axisTicks(max: number, roundedTo?: number | null): number[] {
+  if (!roundedTo) return [0, 0.5, 1].map((f) => Math.round(max * f));
+  const n = Math.round(max / roundedTo);
+  if (n <= 4) return Array.from({ length: n + 1 }, (_, i) => i * roundedTo);
+  return [0, Math.round(n / 2) * roundedTo, max];
+}
+
+export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number; roundedTo?: number | null }> = ({ points, minGroup, roundedTo }) => {
   const [hover, setHover] = useState<number | null>(null);
   const [asTable, setAsTable] = useState(false);
 
@@ -49,7 +59,7 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
   const plotH = H - m.top - m.bottom;
 
   const visible = points.flatMap((p) => [p.intake, p.egress]).filter((v): v is number => v !== null);
-  const max = niceMax(Math.max(0, ...visible));
+  const max = niceMax(Math.max(0, ...visible), roundedTo);
   const y = (v: number) => m.top + plotH - (v / max) * plotH;
   const colW = points.length > 0 ? plotW / points.length : plotW;
   const barW = Math.min(18, colW / 2 - 4);
@@ -66,8 +76,10 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
   };
   const labelIdx = { intake: maxOf('intake'), egress: maxOf('egress') };
 
-  const ticks = [0, 0.5, 1].map((f) => Math.round(max * f));
-  const cell = (v: number | null) => (v === null ? t('indicators.suppressed').replace('{n}', String(minGroup)) : String(v));
+  const ticks = axisTicks(max, roundedTo);
+  // «≈» en toda cifra redondeada, para que nadie la cite como exacta
+  const num = (v: number) => (roundedTo ? `≈${v}` : String(v));
+  const cell = (v: number | null) => (v === null ? t('indicators.suppressed').replace('{n}', String(minGroup)) : num(v));
 
   if (points.length === 0) {
     return <p className="text-xs text-gray-500">{t('indicators.trend.empty')}</p>;
@@ -155,7 +167,7 @@ export const TrendChart: React.FC<{ points: TrendPoint[]; minGroup: number }> = 
                           opacity={hover === null || hover === i ? 1 : 0.55}
                         />
                         {labelIdx[s.key] === i && (
-                          <text x={x + barW / 2} y={y(v) - 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="#1f2937">{v}</text>
+                          <text x={x + barW / 2} y={y(v) - 4} textAnchor="middle" fontSize={12} fontWeight={600} fill="#1f2937">{num(v)}</text>
                         )}
                       </g>
                     )

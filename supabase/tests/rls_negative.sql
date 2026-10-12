@@ -1517,6 +1517,16 @@ begin
             format(mk, 'count', 'intake_window_type', 'movil'), '5');
         perform pg_temp.expect('M-2 control positivo: Dirección ve la cifra exacta (7)', DIR, 'authenticated',
             format(mk, 'count', 'intake_window_type', 'movil'), '7');
+        -- Decisión del PO (11 oct 2026, opción B): quien trabaja en la organización ve lo exacto (ya accede
+        -- a los expedientes); solo el observador externo ve cifras redondeadas. Confiabilidad donde se decide.
+        perform pg_temp.expect('M-2 (B): el caseworker ve la cifra exacta (7)', CW, 'authenticated',
+            format(mk, 'count', 'intake_window_type', 'movil'), '7');
+        perform pg_temp.expect('M-2 (B): ingreso ve la cifra exacta (7)', INT, 'authenticated',
+            format(mk, 'count', 'intake_window_type', 'movil'), '7');
+        perform pg_temp.expect('M-2 (B): el resultado dice que es exacto (caseworker)', CW, 'authenticated',
+            $q$select public.fn_aggregate_metrics()->>'exact'$q$, 'true');
+        perform pg_temp.expect('M-2 (B): el resultado dice que es exacto (ingreso)', INT, 'authenticated',
+            $q$select public.fn_aggregate_metrics()->>'exact'$q$, 'true');
         perform pg_temp.expect('M-2: ninguna cifra visible del observador deja de ser múltiplo de 5', VW, 'authenticated',
             $q$select count(*)::text from jsonb_array_elements(public.fn_aggregate_metrics()->'rows') r
                where r->>'count' is not null and (r->>'count')::int % 5 <> 0$q$, '0');
