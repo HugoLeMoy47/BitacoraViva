@@ -129,9 +129,9 @@ export const NewSubfolioModal: React.FC<NewSubfolioModalProps> = ({ parent, onCl
   const markerCodes = (Object.keys(VULNERABILITY_CATALOG) as VulnerabilityMarkerCode[]).filter((c) => c !== 'unaccompanied_child');
 
   return (
-    <ModalShell onClose={onClose} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <form onSubmit={submit} className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-2xl overflow-hidden my-8">
-        <div className="px-6 py-4 bg-carbon text-white flex justify-between items-center border-b border-gray-700">
+    <ModalShell onClose={onClose} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <form onSubmit={submit} className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-2xl overflow-hidden flex max-h-full flex-col">
+        <div className="shrink-0 px-6 py-4 bg-carbon text-white flex justify-between items-center border-b border-gray-700">
           <div>
             <h3 className="text-base font-bold">{t('subfolio.title')}</h3>
             <p className="text-xs text-gray-300">{t('subfolio.subtitle').replace('{folio}', parent.case_number)}</p>
@@ -141,7 +141,7 @@ export const NewSubfolioModal: React.FC<NewSubfolioModalProps> = ({ parent, onCl
           </button>
         </div>
 
-        <div className="p-6 space-y-5 text-xs">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6 space-y-5 text-xs">
           <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-gray-700">
             {t('subfolio.representative').replace('{name}', representative).replace('{folio}', parent.case_number)}
           </p>
@@ -272,8 +272,8 @@ export const NewSubfolioModal: React.FC<NewSubfolioModalProps> = ({ parent, onCl
           </div>
         </div>
 
-        <DisabledReason id={uid} reason={reason} className="border-t border-gray-200 bg-gray-50 px-6 pt-3" />
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-xs">
+        <DisabledReason id={uid} reason={reason} className="shrink-0 border-t border-gray-200 bg-gray-50 px-6 pt-3" />
+        <div className="shrink-0 px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-xs">
           <button type="button" onClick={onClose} className="px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100">
             {t('common.cancel')}
           </button>
