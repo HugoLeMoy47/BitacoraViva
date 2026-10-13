@@ -13,3 +13,10 @@ export function t(path: string): string {
   }
   return typeof current === 'string' ? current : path;
 }
+
+// Algunos textos los escribe el sistema en la base (p. ej. el motivo del estatus inicial). Para que sirvan en
+// cualquier idioma se guardan como clave, «i18n:status.reason_initial», y se traducen al mostrarlos.
+// Un texto escrito por una persona (sin el prefijo) se muestra tal cual.
+export function tStored(stored: string): string {
+  return stored.startsWith('i18n:') ? t(stored.slice('i18n:'.length)) : stored;
+}

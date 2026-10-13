@@ -151,11 +151,18 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
           <p aria-live="polite" className="font-mono text-xs text-gray-600">
             {t('cases.list.showing').replace('{shown}', String(visible.length)).replace('{total}', String(filtered.length))}
           </p>
-          {hasFilters && (
-            <button type="button" onClick={clear} className="text-sm font-semibold text-turquesa-dark underline">
-              {t('cases.list.clear')}
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-4">
+            {filtered.length > visible.length && (
+              <button type="button" onClick={() => setLimit((n) => n + PAGE)} className="inline-flex min-h-11 items-center text-sm font-semibold text-turquesa-dark underline">
+                {t('cases.list.more').replace('{n}', String(Math.min(PAGE, filtered.length - visible.length)))}
+              </button>
+            )}
+            {hasFilters && (
+              <button type="button" onClick={clear} className="inline-flex min-h-11 items-center text-sm font-semibold text-turquesa-dark underline">
+                {t('cases.list.clear')}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -113,6 +113,7 @@ const pageAudit = `(opts) => {
   while ((n2 = w2.nextNode())) {
     const tx = n2.textContent.trim();
     if (/^[a-z]+(_[a-z]+)+$/.test(tx) && n2.parentElement && visible(n2.parentElement)) add('codigo-tecnico-visible', tx);
+    if (/^(INSERT|UPDATE|DELETE|LOGIN|EXPORT|STATUS_CHANGE|CLARIFICATION|SHARE|ACKNOWLEDGE|RECTIFICATION|ANONYMIZATION|OPPOSITION|CONSENT_GRANTED|CONSENT_REVOKED|ARCO_ACCESS_EXTRACT_ISSUED|EVIDENCE_ACCESS)$/.test(tx) && n2.parentElement && visible(n2.parentElement)) add('codigo-tecnico-visible', tx);
   }
 
   // 7. Encabezados: un h1 y sin saltos

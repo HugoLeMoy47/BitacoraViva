@@ -24,7 +24,7 @@ import {
   Scale,
   ListChecks
 } from 'lucide-react';
-import { t } from '../lib/i18n';
+import { t, tStored } from '../lib/i18n';
 import { 
   CaseWithDetails, 
   RoleName, 
@@ -381,7 +381,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         <span className="font-semibold text-gray-500 block mb-0.5">
                           {t('cases.last_reason')}:
                         </span>
-                        <p className="italic">"{currentStatus.reason}"</p>
+                        <p className="italic">"{tStored(currentStatus.reason)}"</p>
                       </div>
                     )}
                   </div>
