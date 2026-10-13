@@ -31,16 +31,13 @@ import {
   StatusAxisCode,
   JournalEntry,
   ConsentType,
-  ConsentStatus,
-  Person
+  ConsentStatus
 } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
 import { ShareEntryModal } from './ShareEntryModal';
-import { ConsentModal } from './ConsentModal';
-import { RectifyPersonModal } from './RectifyPersonModal';
 import { AnonymizePersonModal } from './AnonymizePersonModal';
 import { OpposeSecondaryTreatmentModal } from './OpposeSecondaryTreatmentModal';
 import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
@@ -49,6 +46,7 @@ import { ModalShell } from './ModalShell';
 import { Tabs } from './Tabs';
 import { CaseTasksPanel } from './CaseTasksPanel';
 import { StatusHistory } from './StatusHistory';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -68,9 +66,12 @@ interface CaseDetailViewProps {
   onStartSubfolio?: () => void;
   onStartJournalEntry?: () => void;
   /** Pestaña con la que se abre el expediente (p. ej. al volver de escribir una entrada) */
-  initialTab?: 'axes' | 'journal';
+  initialTab?: 'axes' | 'journal' | 'privacy';
+  onStartRectify?: () => void;
+  onStartConsent?: () => void;
   onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;
   onShareJournalEntry?: (entryId: string, toAreaId: string, toAreaName: string, reason: string) => void;
+  /** (en uso solo para saber si se ofrece registrar consentimientos) */
   onSaveConsent?: (consent: {
     consent_type: ConsentType;
     status: ConsentStatus;
@@ -80,7 +81,6 @@ interface CaseDetailViewProps {
     authority_letter_ref?: string;
     notes?: string;
   }) => void;
-  onRectifyPerson?: (updates: Partial<Person>, reason: string) => void;
   onAnonymizePerson?: (personId: string, reason: string) => void;
   onOpposeSecondary?: (personId: string, reason: string) => void;
 }
@@ -98,10 +98,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onStartSubfolio,
   onStartJournalEntry,
   initialTab,
+  onStartRectify,
+  onStartConsent,
   onAddClarification,
   onShareJournalEntry,
   onSaveConsent,
-  onRectifyPerson,
   onAnonymizePerson,
   onOpposeSecondary,
 }) => {
@@ -119,8 +120,6 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const [expandedSuperseded, setExpandedSuperseded] = useState<Record<string, boolean>>({});
 
   // Estados para Privacidad y Derechos ARCO (Épica E5)
-  const [isConsentModalOpen, setIsConsentModalOpen] = useState<boolean>(false);
-  const [isRectifyModalOpen, setIsRectifyModalOpen] = useState<boolean>(false);
   const [isAnonymizeModalOpen, setIsAnonymizeModalOpen] = useState<boolean>(false);
   const [isOpposeModalOpen, setIsOpposeModalOpen] = useState<boolean>(false);
   const [isAccessExtractModalOpen, setIsAccessExtractModalOpen] = useState<boolean>(false);
@@ -143,6 +142,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     !!onStartSubfolio && (activeRole === 'intake_officer' || activeRole === 'director') && !caseData.parent_case_id && !caseData.closed_at;
   const canManageConsent = activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director';
   const canRectify = activeRole === 'intake_officer' || activeRole === 'director';
+  // Por qué un derecho no está disponible: por rol, o porque la persona ya fue anonimizada (texto visible, no solo un tooltip)
+  const arcoReason = (allowed: boolean, restrictedKey: string): string | null =>
+    !allowed ? t(restrictedKey) : caseData.person.is_anonymized ? t('arco.person_anonymized') : null;
 
   const consents = caseData.consents || [];
   const arcoRequests = caseData.arco_requests || [];
@@ -811,7 +813,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 </span>
                 {canManageConsent && onSaveConsent && (
                   <button
-                    onClick={() => setIsConsentModalOpen(true)}
+                    onClick={onStartConsent}
                     className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-turquesa text-carbon hover:bg-turquesa-light transition flex items-center gap-1.5 shadow-sm"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -871,7 +873,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                             : 'bg-gray-200 text-gray-600'
                         }`}
                       >
-                        {consentItem ? t(`arco.consent_status.${consentItem.status}`) : 'Pendiente'}
+                        {consentItem ? t(`arco.consent_status.${consentItem.status}`) : t('arco.consent_pending')}
                       </span>
                     </div>
 
@@ -936,9 +938,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     {t('arco.access_desc')}
                   </p>
                 </div>
+                <DisabledReason id="arco-acceso" reason={isDirector ? null : t('arco.reserved_director')} />
                 <button
                   onClick={() => setIsAccessExtractModalOpen(true)}
                   disabled={!isDirector}
+                  {...describedBy('arco-acceso', isDirector ? null : 'x')}
                   className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     isDirector
                       ? 'bg-carbon text-white hover:bg-carbon-muted cursor-pointer'
@@ -962,9 +966,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     {t('arco.rectify_desc')}
                   </p>
                 </div>
+                <DisabledReason id="arco-rectificar" reason={arcoReason(canRectify, 'arco.reserved_intake_director')} />
                 <button
-                  onClick={() => setIsRectifyModalOpen(true)}
+                  onClick={onStartRectify}
                   disabled={!canRectify || caseData.person.is_anonymized}
+                  {...describedBy('arco-rectificar', arcoReason(canRectify, 'arco.reserved_intake_director'))}
                   className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     canRectify && !caseData.person.is_anonymized
                       ? 'bg-turquesa text-carbon hover:bg-turquesa-light cursor-pointer'
@@ -988,9 +994,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     {t('arco.oppose_desc')}
                   </p>
                 </div>
+                <DisabledReason id="arco-oposicion" reason={arcoReason(isDirector, 'arco.reserved_director')} />
                 <button
                   onClick={() => setIsOpposeModalOpen(true)}
                   disabled={!isDirector || caseData.person.is_anonymized}
+                  {...describedBy('arco-oposicion', arcoReason(isDirector, 'arco.reserved_director'))}
                   className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     isDirector && !caseData.person.is_anonymized
                       ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300 cursor-pointer'
@@ -1014,9 +1022,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     {t('arco.cancel_desc')}
                   </p>
                 </div>
+                <DisabledReason id="arco-anonimizar" reason={arcoReason(isDirector, 'arco.reserved_director')} />
                 <button
                   onClick={() => setIsAnonymizeModalOpen(true)}
                   disabled={!isDirector || caseData.person.is_anonymized}
+                  {...describedBy('arco-anonimizar', arcoReason(isDirector, 'arco.reserved_director'))}
                   className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition ${
                     isDirector && !caseData.person.is_anonymized
                       ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
@@ -1026,7 +1036,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>
-                    {caseData.person.is_anonymized ? 'Anonimizado' : t('arco.btn_cancel')}
+                    {caseData.person.is_anonymized ? t('arco.anonymized_label') : t('arco.btn_cancel')}
                   </span>
                 </button>
               </div>
@@ -1206,24 +1216,6 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
       )}
 
       {/* Modales de Épica E5: Consentimiento y Derechos ARCO */}
-      {isConsentModalOpen && onSaveConsent && (
-        <ConsentModal
-          isOpen={isConsentModalOpen}
-          onClose={() => setIsConsentModalOpen(false)}
-          caseData={caseData}
-          onSaveConsent={onSaveConsent}
-        />
-      )}
-
-      {isRectifyModalOpen && onRectifyPerson && (
-        <RectifyPersonModal
-          isOpen={isRectifyModalOpen}
-          onClose={() => setIsRectifyModalOpen(false)}
-          person={caseData.person}
-          onRectify={onRectifyPerson}
-        />
-      )}
-
       {isAnonymizeModalOpen && onAnonymizePerson && (
         <AnonymizePersonModal
           isOpen={isAnonymizeModalOpen}

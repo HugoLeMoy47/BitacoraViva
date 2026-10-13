@@ -35,8 +35,8 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
-  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/rectificar', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'expedientes/nuevo', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
   // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
@@ -484,6 +484,15 @@ try {
 
       // Seguidor de tareas: cada estado de la lista de celular y los modales de captura (coordinación de tareas).
       // Sólo lee: abre el formulario y la confirmación de archivo y los cancela con Escape.
+      // Derechos ARCO sin permiso (trabajo social): los botones apagados deben decir por qué con texto visible
+      if (role.key === 'caseworker' && (vp.name === '360' || vp.name === '1024')) {
+        await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; });
+        await page.locator('main [role=tab]').first().waitFor({ state: 'visible', timeout: 15000 });
+        await page.locator('main [role=tab]', { hasText: /ARCO|Privacidad/i }).first().click();
+        await page.waitForTimeout(500);
+        record(role.key, vp.name, 'expediente/privacidad (sin permiso)', await auditNow());
+      }
+
       if (role.key === 'task_manager' && (vp.name === '360' || vp.name === '1024')) {
         await page.evaluate(() => { location.hash = '#/tareas'; });
         await page.waitForTimeout(900);

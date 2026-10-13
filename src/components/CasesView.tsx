@@ -14,6 +14,8 @@ import { CaseDetailView } from './CaseDetailView';
 import { NewCasePage } from './NewCasePage';
 import { NewSubfolioPage } from './NewSubfolioPage';
 import { NewJournalEntryPage } from './NewJournalEntryPage';
+import { RectifyPersonPage } from './RectifyPersonPage';
+import { ConsentPage } from './ConsentPage';
 import { CaseList } from './CaseList';
 import { NewCaseInput, SubfolioInput } from '../lib/data';
 
@@ -144,6 +146,26 @@ export const CasesView: React.FC<CasesViewProps> = ({
     );
   }
 
+  // Derechos y consentimiento (E5): también páginas. Al terminar o cancelar se vuelve a la pestaña Privacidad.
+  if (selectedCase && selectedCaseSub === 'rectificar' && onRectifyPerson && (activeRole === 'intake_officer' || activeRole === 'director') && !selectedCase.person.is_anonymized) {
+    return (
+      <RectifyPersonPage
+        caseData={selectedCase}
+        onCancel={() => onSelectCase(selectedCase.case_number, 'privacidad', true)}
+        onRectify={(updates, reason) => onRectifyPerson(selectedCase.person.id, updates, reason)}
+      />
+    );
+  }
+  if (selectedCase && selectedCaseSub === 'consentimiento' && onSaveConsent && (activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director')) {
+    return (
+      <ConsentPage
+        caseData={selectedCase}
+        onCancel={() => onSelectCase(selectedCase.case_number, 'privacidad', true)}
+        onSaveConsent={(consent) => onSaveConsent(selectedCase.id, consent)}
+      />
+    );
+  }
+
   // Si hay un caso seleccionado, mostrar la vista detallada
   if (selectedCase) {
     return (
@@ -159,11 +181,12 @@ export const CasesView: React.FC<CasesViewProps> = ({
         onOpenCase={onSelectCase}
         onStartSubfolio={onSubfolioCreated ? () => onSelectCase(selectedCase.case_number, 'subfolio') : undefined}
         onStartJournalEntry={onAddJournalEntry ? () => onSelectCase(selectedCase.case_number, 'nueva-entrada') : undefined}
-        initialTab={selectedCaseSub === 'bitacora' ? 'journal' : undefined}
+        initialTab={selectedCaseSub === 'bitacora' ? 'journal' : selectedCaseSub === 'privacidad' ? 'privacy' : undefined}
+        onStartRectify={onRectifyPerson ? () => onSelectCase(selectedCase.case_number, 'rectificar') : undefined}
+        onStartConsent={onSaveConsent ? () => onSelectCase(selectedCase.case_number, 'consentimiento') : undefined}
         onAddClarification={onAddClarification}
         onShareJournalEntry={onShareJournalEntry}
         onSaveConsent={onSaveConsent ? (consent) => onSaveConsent(selectedCase.id, consent) : undefined}
-        onRectifyPerson={onRectifyPerson ? (updates, reason) => onRectifyPerson(selectedCase.person.id, updates, reason) : undefined}
         onAnonymizePerson={onAnonymizePerson}
         onOpposeSecondary={onOpposeSecondary}
       />

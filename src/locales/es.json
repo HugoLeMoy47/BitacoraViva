@@ -569,7 +569,7 @@
       "email": "Correo electrónico:",
       "reason": "Motivo obligatorio de la rectificación:",
       "reason_placeholder": "Especifique el documento o aclaración que justifica el cambio…",
-      "btn_save": "Aplicar rectificación y auditar",
+      "btn_save": "Guardar la rectificación",
       "ph_phone": "+52 55 1234 5678"
     },
     "modal_access": {
@@ -636,7 +636,25 @@
     "cancel_desc": "Procedimiento irreversible: destruye los datos identificables, purga las bitácoras y conserva el esqueleto estadístico.",
     "records_count": "{n} registros",
     "reserved_director": "Reservado a Dirección",
-    "reserved_intake_director": "Reservado a Ingreso y Dirección"
+    "reserved_intake_director": "Reservado a Ingreso y Dirección",
+    "rectify_page": {
+      "back_to_case": "Volver al caso {folio}",
+      "section_data": "Datos de la persona",
+      "no_changes": "No cambiaste ningún dato: modifica al menos uno para poder guardar.",
+      "reason_required": "Indica el motivo de la rectificación.",
+      "context_title": "El caso",
+      "audit_note": "Queda registrado en la auditoría quién rectificó, cuándo, qué campos cambiaron y por qué. No se guardan los valores, para no duplicar datos personales."
+    },
+    "consent_page": {
+      "back_to_case": "Volver al caso {folio}",
+      "section_decision": "La decisión",
+      "section_minor": "Persona menor de edad",
+      "current_title": "Lo que ya decidió",
+      "none": "Sin registro"
+    },
+    "person_anonymized": "Esta persona ya fue anonimizada.",
+    "anonymized_label": "Anonimizado",
+    "consent_pending": "Pendiente"
   },
   "rules_list": {
     "r1": "1. La seguridad vive en la base de datos, no en la pantalla: ocultar un botón no es una regla de acceso.",
@@ -786,7 +804,11 @@
     "no": "No",
     "cancel": "Cancelar",
     "close": "Cerrar",
-    "reason_no_changes": "No hay cambios que guardar."
+    "reason_no_changes": "No hay cambios que guardar.",
+    "discard_title": "¿Descartar lo que escribiste?",
+    "discard_body": "Todavía no se guardó: si sales, se pierde lo que escribiste en esta pantalla.",
+    "discard_confirm": "Descartar y salir",
+    "discard_keep": "Seguir aquí"
   },
   "about": {
     "title": "Acerca de este sistema",

@@ -7,7 +7,8 @@
 //   · texto JSX con palabras (<p>Hola mundo</p>);
 //   · atributos visibles con texto fijo (placeholder, title, aria-label, alt, label);
 //   · cadenas en expresiones JSX ({'Hola mundo'});
-//   · alternativas literales visibles (x || 'Sin dato').
+//   · alternativas literales visibles (x || 'Sin dato');
+//   · ramas literales de un condicional en el contenido ({cond ? 'Texto' : t('clave')}).
 // `check:i18n` comprueba lo contrario: que toda clave usada exista.
 
 import ts from 'typescript';
@@ -56,6 +57,13 @@ for (const f of files) {
     }
     if (ts.isJsxExpression(n) && n.expression && (ts.isStringLiteral(n.expression) || ts.isNoSubstitutionTemplateLiteral(n.expression)) && hasWords(n.expression.text)) {
       add(n, 'cadena en JSX', n.expression.text);
+    }
+    // Texto escrito a mano en la rama de un condicional que es CONTENIDO: {cond ? 'Anonimizado' : t('clave')}
+    // (no se miran los atributos: className={cond ? 'bg-x' : 'bg-y'} no es texto visible)
+    if (ts.isJsxExpression(n) && n.expression && ts.isConditionalExpression(n.expression) && n.parent && (ts.isJsxElement(n.parent) || ts.isJsxFragment(n.parent))) {
+      for (const rama of [n.expression.whenTrue, n.expression.whenFalse]) {
+        if ((ts.isStringLiteral(rama) || ts.isNoSubstitutionTemplateLiteral(rama)) && hasWords(rama.text)) add(rama, 'rama literal en contenido', rama.text);
+      }
     }
     if (
       ts.isBinaryExpression(n) &&
