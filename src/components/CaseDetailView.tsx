@@ -50,8 +50,6 @@ import { ModalShell } from './ModalShell';
 import { Tabs } from './Tabs';
 import { CaseTasksPanel } from './CaseTasksPanel';
 import { StatusHistory } from './StatusHistory';
-import { NewSubfolioModal } from './NewSubfolioModal';
-import { SubfolioInput } from '../lib/data';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -69,7 +67,7 @@ interface CaseDetailViewProps {
   ) => void;
   onSelectSubfolio?: (subfolioCase: CaseWithDetails) => void;
   onOpenCase?: (caseNumber: string) => void;
-  onCreateSubfolio?: (input: SubfolioInput) => void;
+  onStartSubfolio?: () => void;
   onAddJournalEntry?: (entry: JournalEntry) => void;
   onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;
   onShareJournalEntry?: (entryId: string, toAreaId: string, toAreaName: string, reason: string) => void;
@@ -98,7 +96,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onTransitionStatus,
   onSelectSubfolio,
   onOpenCase,
-  onCreateSubfolio,
+  onStartSubfolio,
   onAddJournalEntry,
   onAddClarification,
   onShareJournalEntry,
@@ -143,8 +141,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const canLinkTasks = canWriteJournal;
   // Subfolio (BV-3.2): lo abren ingreso y dirección, sobre un caso principal y abierto
   const canCreateSubfolio =
-    !!onCreateSubfolio && (activeRole === 'intake_officer' || activeRole === 'director') && !caseData.parent_case_id && !caseData.closed_at;
-  const [isSubfolioModalOpen, setIsSubfolioModalOpen] = useState(false);
+    !!onStartSubfolio && (activeRole === 'intake_officer' || activeRole === 'director') && !caseData.parent_case_id && !caseData.closed_at;
   const canManageConsent = activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director';
   const canRectify = activeRole === 'intake_officer' || activeRole === 'director';
 
@@ -286,7 +283,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           {canCreateSubfolio && (
             <button
               type="button"
-              onClick={() => setIsSubfolioModalOpen(true)}
+              onClick={onStartSubfolio}
               className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-carbon hover:bg-gray-50"
             >
               <Users className="h-4 w-4" aria-hidden="true" />
@@ -786,10 +783,6 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             ))}
           </div>
         </div>
-      )}
-
-      {isSubfolioModalOpen && onCreateSubfolio && (
-        <NewSubfolioModal parent={caseData} onClose={() => setIsSubfolioModalOpen(false)} onSubmit={onCreateSubfolio} />
       )}
 
       {/* Tab: Tareas ligadas al caso (Épica E7, BV-7.16) */}

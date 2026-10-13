@@ -263,7 +263,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onAnonymizePerson={handleAnonymizePerson}
             onOpposeSecondary={handleOpposeSecondary}
             selectedCaseNumber={route.id === 'cases' ? route.param : null}
-            onSelectCase={(number) => navigate('cases', number)}
+            selectedCaseSub={route.id === 'cases' ? route.sub : null}
+            onSelectCase={(number, sub) => navigate('cases', number, { sub })}
           />
         )}
 

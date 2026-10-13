@@ -35,7 +35,7 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
   { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
@@ -410,13 +410,24 @@ try {
           }
         }
 
-        // Subfolio (BV-3.2): el formulario se abre y se cancela
-        const subfolioBtn = page.getByRole('button', { name: /Abrir subfolio/i });
-        if (await subfolioBtn.count()) {
-          const subModal = await checkModalOpening(page, subfolioBtn, 'abrir subfolio', auditNow);
-          record(role.key, vp.name, 'expediente/subfolio formulario', subModal.items);
-          record(role.key, vp.name, '(modal subfolio)', subModal.issues);
-        }
+        // Subfolio (BV-3.2): ahora es una PÁGINA (#/expedientes/…/subfolio), así que la recorre el bucle de rutas.
+        // Aquí solo se comprueba que el error de un campo esté junto al campo: con la fecha de una persona adulta,
+        // el campo se marca y su mensaje queda al lado.
+        await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001/subfolio'; });
+        await page.locator('main input[type=date]').waitFor({ state: 'visible', timeout: 15000 });
+        await page.locator('main input[type=date]').fill('2004-12-25');
+        const near = await page.locator('main input[type=date]').evaluate((el) => {
+          const ids = (el.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+          const msg = ids.map((id) => document.getElementById(id)).find((m) => m && m.textContent.trim().length > 3);
+          const gap = msg ? msg.getBoundingClientRect().top - el.getBoundingClientRect().bottom : null;
+          return { invalid: el.getAttribute('aria-invalid') === 'true', hasMsg: !!msg, gap };
+        });
+        const nearIssues = [];
+        if (!near.invalid) nearIssues.push({ rule: 'error-lejos-del-campo', detail: 'subfolio: la fecha de una persona adulta no marca el campo como inválido' });
+        if (!near.hasMsg || near.gap === null || near.gap > 60) nearIssues.push({ rule: 'error-lejos-del-campo', detail: 'subfolio: el motivo de la fecha no aparece junto al campo' });
+        record(role.key, vp.name, '(subfolio: error junto al campo)', nearIssues);
+        await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; });
+        await page.waitForTimeout(600);
 
         // Tareas ligadas al caso (E7, BV-7.16): el formulario se abre y se cancela
         const caseTasksTab = page.getByRole('tablist', { name: 'Secciones del expediente' }).getByRole('tab', { name: 'Tareas', exact: true });

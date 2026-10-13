@@ -12,6 +12,7 @@ import {
 } from '../types/database';
 import { CaseDetailView } from './CaseDetailView';
 import { NewCaseModal } from './NewCaseModal';
+import { NewSubfolioPage } from './NewSubfolioPage';
 import { CaseList } from './CaseList';
 import { NewCaseInput, SubfolioInput } from '../lib/data';
 
@@ -48,7 +49,9 @@ interface CasesViewProps {
   // Expediente que debe abrirse al entrar (desde el tablero de operación)
   /** Folio del expediente abierto (viene de la URL) y cómo cambiarlo */
   selectedCaseNumber?: string | null;
-  onSelectCase: (caseNumber: string | null) => void;
+  /** Subruta del expediente abierto («subfolio» = página para abrir un subfolio) */
+  selectedCaseSub?: string | null;
+  onSelectCase: (caseNumber: string | null, sub?: string | null) => void;
 }
 
 export const CasesView: React.FC<CasesViewProps> = ({
@@ -69,6 +72,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
   onAnonymizePerson,
   onOpposeSecondary,
   selectedCaseNumber,
+  selectedCaseSub,
   onSelectCase,
 }) => {
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
@@ -96,6 +100,18 @@ export const CasesView: React.FC<CasesViewProps> = ({
     );
   }
 
+  // Abrir un subfolio es una página (más de tres campos no caben en un modal): solo ingreso y dirección,
+  // sobre un caso principal y abierto; si no, se muestra el expediente
+  if (selectedCase && selectedCaseSub === 'subfolio' && canOpenCase && onSubfolioCreated && !selectedCase.parent_case_id && !selectedCase.closed_at) {
+    return (
+      <NewSubfolioPage
+        parent={selectedCase}
+        onCancel={() => onSelectCase(selectedCase.case_number)}
+        onSubmit={onSubfolioCreated}
+      />
+    );
+  }
+
   // Si hay un caso seleccionado, mostrar la vista detallada
   if (selectedCase) {
     return (
@@ -110,7 +126,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
         onTransitionStatus={onTransitionStatus}
         onSelectSubfolio={(subfolio) => onSelectCase(subfolio.case_number)}
         onOpenCase={onSelectCase}
-        onCreateSubfolio={onSubfolioCreated}
+        onStartSubfolio={onSubfolioCreated ? () => onSelectCase(selectedCase.case_number, 'subfolio') : undefined}
         onAddJournalEntry={onAddJournalEntry}
         onAddClarification={onAddClarification}
         onShareJournalEntry={onShareJournalEntry}

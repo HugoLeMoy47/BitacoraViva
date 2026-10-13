@@ -20,6 +20,8 @@ export const ROUTE_SLUG: Record<RouteId, string> = {
 export interface Route {
   id: RouteId | null;
   param: string | null;
+  /** Subruta tras el parámetro, p. ej. «subfolio» en #/expedientes/ASF-2026-0001/subfolio */
+  sub: string | null;
   /** Cadena de consulta tras «?» (sin el signo), p. ej. los filtros de un reporte */
   query: string;
 }
@@ -40,11 +42,11 @@ export function parseHash(hash: string): Route {
       }
     });
   const id = (Object.keys(ROUTE_SLUG) as RouteId[]).find((k) => ROUTE_SLUG[k] === parts[0]) ?? null;
-  return { id, param: id && parts[1] ? parts[1] : null, query: id ? query : '' };
+  return { id, param: id && parts[1] ? parts[1] : null, sub: id && parts[1] && parts[2] ? parts[2] : null, query: id ? query : '' };
 }
 
-export function hrefFor(id: RouteId, param?: string | null, query?: string): string {
-  return `#/${ROUTE_SLUG[id]}${param ? `/${encodeURIComponent(param)}` : ''}${query ? `?${query}` : ''}`;
+export function hrefFor(id: RouteId, param?: string | null, query?: string, sub?: string | null): string {
+  return `#/${ROUTE_SLUG[id]}${param ? `/${encodeURIComponent(param)}` : ''}${param && sub ? `/${encodeURIComponent(sub)}` : ''}${query ? `?${query}` : ''}`;
 }
 
 /**
@@ -56,8 +58,8 @@ export function replaceQuery(id: RouteId, param: string | null, query: string): 
   window.history.replaceState(null, '', hrefFor(id, param, query));
 }
 
-export function navigate(id: RouteId, param?: string | null, opts?: { replace?: boolean }): void {
-  const href = hrefFor(id, param);
+export function navigate(id: RouteId, param?: string | null, opts?: { replace?: boolean; sub?: string | null }): void {
+  const href = hrefFor(id, param, undefined, opts?.sub);
   if (opts?.replace) {
     window.location.replace(href);
   } else if (window.location.hash !== href) {

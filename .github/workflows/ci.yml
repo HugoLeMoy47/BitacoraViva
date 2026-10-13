@@ -47,6 +47,8 @@ jobs:
         run: npm run check:i18n
       - name: Cero literales de texto en componentes (Regla Dura 9)
         run: npm run check:literals
+      - name: Un modal es para decisiones cortas (más de 3 campos va en una página)
+        run: npm run check:modales
       - name: Pruebas unitarias
         run: npm run test:unit
 
