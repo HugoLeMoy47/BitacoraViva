@@ -70,11 +70,14 @@ function ageYears(isoDate: string): number {
 
 interface NewSubfolioPageProps {
   parent: CaseWithDetails;
+  /** Enlace «Volver al caso»: el borrador se conserva */
+  onBack: () => void;
+  /** Botón «Cancelar»: el borrador se borra */
   onCancel: () => void;
   onSubmit: (input: SubfolioInput) => void;
 }
 
-export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onCancel, onSubmit }) => {
+export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack, onCancel, onSubmit }) => {
   const uid = useId();
 
   // Decisión vigente de quien representa en el caso principal (la más reciente de cada tipo)
@@ -179,7 +182,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onCanc
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <div>
-        <button type="button" onClick={onCancel} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-turquesa-dark hover:underline">
+        <button type="button" onClick={onBack} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-turquesa-dark hover:underline">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           {t('subfolio.back_to_case').replace('{folio}', parent.case_number)}
         </button>

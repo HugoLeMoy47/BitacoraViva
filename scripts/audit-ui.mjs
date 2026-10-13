@@ -35,8 +35,8 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
-  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
   // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
@@ -298,7 +298,7 @@ async function keyboardJourney(page) {
   await page.waitForTimeout(500);
   if (!(await tabTo(page, /Nueva entrada de bitácora/i))) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega a «Nueva entrada de bitácora» con Tab' }];
   await page.keyboard.press('Enter');
-  await page.waitForSelector('[role=dialog]');
+  await page.locator('main textarea').first().waitFor({ state: 'visible', timeout: 15000 });
   const body = await tabTo(page, /Cuerpo de la intervención/i);
   if (!body) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega al cuerpo de la intervención' }];
   await page.keyboard.type('Entrada de prueba de auditoría de teclado.');
@@ -306,9 +306,6 @@ async function keyboardJourney(page) {
   await page.keyboard.press('Enter');
   await page.waitForTimeout(300);
   if (!(await tabTo(page, /Asentar definitivamente/i))) fail('bitácora: no se llega a «Asentar definitivamente» con Tab');
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(300);
-  if (await page.locator('[role=dialog]').count()) fail('bitácora: el modal no se cierra con Escape');
   return out;
 }
 
@@ -397,18 +394,7 @@ try {
           record(role.key, vp.name, 'expediente/sección ' + (i + 1), await auditNow());
         }
 
-        // Nueva entrada de bitácora: se abre (con el campo vacío, como la ve quien llega por primera vez) y se cancela
-        const journalTab = page.getByRole('tablist', { name: 'Secciones del expediente' }).getByRole('tab', { name: /Bitácora/ });
-        if (await journalTab.count()) {
-          await journalTab.click();
-          await page.waitForTimeout(500);
-          const journalBtn = page.getByRole('button', { name: /Nueva entrada de bitácora/i });
-          if (await journalBtn.count()) {
-            const jm = await checkModalOpening(page, journalBtn, 'nueva entrada de bitácora', auditNow);
-            record(role.key, vp.name, 'expediente/bitácora formulario', jm.items);
-            record(role.key, vp.name, '(modal bitácora)', jm.issues);
-          }
-        }
+        // Nueva entrada de bitácora (BV-4.1): también es una PÁGINA (#/expedientes/…/nueva-entrada) y la recorre el bucle de rutas.
 
         // Subfolio (BV-3.2): ahora es una PÁGINA (#/expedientes/…/subfolio), así que la recorre el bucle de rutas.
         // Aquí solo se comprueba que el error de un campo esté junto al campo: con la fecha de una persona adulta,
