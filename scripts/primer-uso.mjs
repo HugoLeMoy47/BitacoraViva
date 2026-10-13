@@ -160,15 +160,38 @@ async function tarea3(page) {
   } catch (e) { k.note('se detuvo: ' + e.message); return k.finish(false); }
 }
 
+// ---------------- Tarea 4: abrir un subfolio (modal o página: el guion sirve para las dos) ----------------
+async function tarea4(page) {
+  const k = makeTask(page, '4 · Abrir un subfolio');
+  try {
+    await openCases(page, k);
+    await openCase(page, k, 'ASF-2026-0001');
+    await k.click(page.getByRole('button', { name: /Abrir subfolio/i }), 'Abrir subfolio');
+    await page.waitForTimeout(600);
+    // Si el formulario es un modal se trabaja dentro de él; si es una página, dentro del contenido principal
+    const root = (await page.locator('[role=dialog]').count()) ? page.locator('[role=dialog]') : page.locator('main');
+    k.note('el formulario se abrió como ' + ((await page.locator('[role=dialog]').count()) ? 'modal' : 'página'));
+    await k.type(root.getByLabel(/Nombres/), 'Prueba', 'Nombres');
+    await k.type(root.getByLabel(/Primer apellido/i), 'PrimerUso', 'Primer apellido');
+    await k.type(root.locator('input[type=date]'), '2018-05-10', 'Fecha de nacimiento');
+    await k.type(root.getByLabel(/Nota de justificación/i), 'Prueba de primer uso: subfolio abierto en el recorrido automatizado.', 'Nota de justificación');
+    await k.shot(`t4-formulario-${page.viewportSize().width}.png`);
+    await k.click(root.getByRole('button', { name: /Crear subfolio/i }), 'Crear subfolio');
+    await page.waitForFunction(() => /#\/expedientes\/[A-Z]+-\d{4}-\d+-S\d+/.test(location.hash), null, { timeout: 15000 });
+    k.note('quedó en el subfolio: ' + (await page.evaluate(() => location.hash)));
+    return k.finish(true);
+  } catch (e) { k.note('se detuvo: ' + e.message); return k.finish(false); }
+}
+
 const SCENARIOS = [
   { label: 'Escritorio 1280×800', viewport: { width: 1280, height: 800 }, mobile: false },
   { label: 'Celular 390×844', viewport: { width: 390, height: 844 }, mobile: true },
 ];
-const ROLE = { 1: 'Oficial de ingreso', 2: 'Trabajo Social / caso', 3: 'Trabajo Social / caso' };
+const ROLE = { 1: 'Oficial de ingreso', 2: 'Trabajo Social / caso', 3: 'Trabajo Social / caso', 4: 'Oficial de ingreso' };
 const results = [];
 for (const sc of SCENARIOS) {
-  for (const [n, fn] of [[1, tarea1], [2, tarea2], [3, tarea3]]) {
-    if (!(process.env.PRIMER_USO_TAREAS || '1,2,3').split(',').includes(String(n))) continue;
+  for (const [n, fn] of [[1, tarea1], [2, tarea2], [3, tarea3], [4, tarea4]]) {
+    if (!(process.env.PRIMER_USO_TAREAS || '1,2,3,4').split(',').includes(String(n))) continue;
     const ctx = await browser.newContext({ viewport: sc.viewport, hasTouch: sc.mobile, isMobile: sc.mobile });
     const page = await ctx.newPage();
     try {

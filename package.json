@@ -15,7 +15,8 @@
     "audit:ui": "node scripts/audit-ui.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "check:literals": "node scripts/check-literals.mjs",
-    "primer-uso": "node scripts/primer-uso.mjs"
+    "primer-uso": "node scripts/primer-uso.mjs",
+    "check:modales": "node scripts/check-modales.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

@@ -1244,7 +1244,16 @@
     "reason_general": "Sin el consentimiento de atención general no se puede abrir el subfolio.",
     "reason_note": "Escribe la nota de justificación (al menos 10 caracteres).",
     "open_parent": "Ir al caso principal",
-    "no_subfolios": "Este caso aún no tiene subfolios."
+    "no_subfolios": "Este caso aún no tiene subfolios.",
+    "back_to_case": "Volver al caso {folio}",
+    "context_title": "El caso principal",
+    "context_folio": "Folio",
+    "context_representative": "Quien representa",
+    "context_status": "Situación ante la organización",
+    "context_consents": "Consentimientos que otorgó",
+    "context_none": "Sin registro",
+    "context_subfolios": "Subfolios que ya tiene",
+    "context_no_subfolios": "Ninguno"
   },
   "status": {
     "reason_initial": "Estatus inicial, asignado al abrir el expediente."
