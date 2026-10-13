@@ -31,6 +31,14 @@ const MIN_NOTE = 10;
 const INPUT = 'w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa';
 const LABEL = 'block text-xs font-medium text-gray-700 mb-1';
 
+// Fecha más antigua que todavía corresponde a una persona menor de 18 años
+function earliestBirth(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function ageYears(isoDate: string): number {
   const b = new Date(isoDate);
   if (Number.isNaN(b.getTime())) return 99;
@@ -82,6 +90,8 @@ export const NewSubfolioModal: React.FC<NewSubfolioModalProps> = ({ parent, onCl
     .filter(Boolean)
     .join(' ');
 
+  // El error de un campo se dice junto al campo, además de en el pie
+  const birthProblem = birthDate && ageYears(birthDate) >= 18 ? t('subfolio.reason_minor') : null;
   const reason: string | null = !givenName.trim()
     ? t('intake.reason.given_name')
     : !paternalName.trim()
@@ -165,7 +175,22 @@ export const NewSubfolioModal: React.FC<NewSubfolioModalProps> = ({ parent, onCl
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={LABEL} htmlFor={`${uid}-birth`}>{t('intake.field_birth_date')}</label>
-                <input id={`${uid}-birth`} type="date" className={INPUT} value={birthDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setBirthDate(e.target.value)} />
+                <input
+                  id={`${uid}-birth`}
+                  type="date"
+                  className={birthProblem ? `${INPUT} border-alerta-dark bg-alerta-bg/40` : INPUT}
+                  value={birthDate}
+                  min={earliestBirth()}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  aria-invalid={birthProblem ? true : undefined}
+                  aria-describedby={birthProblem ? `${uid}-birth-error` : undefined}
+                />
+                {birthProblem && (
+                  <p id={`${uid}-birth-error`} role="alert" className="mt-1 text-xs font-semibold text-alerta-dark">
+                    {birthProblem}
+                  </p>
+                )}
                 <label className="flex items-center gap-2 mt-1.5 cursor-pointer text-gray-600">
                   <input type="checkbox" checked={birthEstimated} onChange={(e) => setBirthEstimated(e.target.checked)} className="rounded text-turquesa border-gray-300" />
                   <span>{t('intake.field_birth_estimated')}</span>
