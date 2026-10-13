@@ -234,6 +234,8 @@ async function keyboardJourney(page) {
   if (!(await tabTo(page, /Levantar nuevo/i))) return [...out, { rule: 'recorrido-teclado', detail: 'alta: no se llega a «Levantar nuevo expediente» con Tab' }];
   await page.keyboard.press('Enter');
   await page.waitForSelector('main input[type=checkbox]');
+  await page.waitForFunction(() => document.querySelectorAll('main input[type=radio]').length >= 2 && !/Cargando/.test(document.querySelector('main')?.innerText ?? ''), null, { timeout: 20000 });
+  await page.waitForTimeout(300);
   const seen = new Set();
   const answer = async (a) => {
     if (a.type === 'checkbox' && !a.checked && /Entregué/.test(a.text)) await page.keyboard.press('Space');
@@ -248,7 +250,12 @@ async function keyboardJourney(page) {
       }
     }
   };
-  if (!(await tabTo(page, /Siguiente/, { each: answer }))) return [...out, { rule: 'recorrido-teclado', detail: 'alta paso 0: no se llega a «Siguiente» con Tab' }];
+  const trailAlta = [];
+  if (!(await tabTo(page, /Siguiente/, { max: 80, each: async (a) => { trailAlta.push(`${a.tag}:${a.type || a.role}:${a.text.slice(0, 20)}`); await answer(a); } }))) {
+    const motivo = await page.locator('main [role=status]').first().textContent().catch(() => '(sin motivo visible)');
+    const deshabilitado = await page.getByRole('button', { name: /Siguiente/ }).first().isDisabled().catch(() => null);
+    return [...out, { rule: 'recorrido-teclado', detail: `alta paso 0: no se llega a «Siguiente» con Tab (botón deshabilitado: ${deshabilitado}; motivo: «${(motivo || '').trim().slice(0, 80)}»; foco: ${trailAlta.slice(-6).join(' > ')})` }];
+  }
   await page.keyboard.press('Enter');
   await page.waitForTimeout(250);
   if (!(await tabTo(page, /Siguiente/))) fail('alta paso 1: no se llega a «Siguiente»');
