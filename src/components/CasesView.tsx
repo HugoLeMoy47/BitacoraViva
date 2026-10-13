@@ -13,6 +13,7 @@ import {
 import { CaseDetailView } from './CaseDetailView';
 import { NewCaseModal } from './NewCaseModal';
 import { NewSubfolioPage } from './NewSubfolioPage';
+import { NewJournalEntryPage } from './NewJournalEntryPage';
 import { CaseList } from './CaseList';
 import { NewCaseInput, SubfolioInput } from '../lib/data';
 
@@ -51,7 +52,8 @@ interface CasesViewProps {
   selectedCaseNumber?: string | null;
   /** Subruta del expediente abierto («subfolio» = página para abrir un subfolio) */
   selectedCaseSub?: string | null;
-  onSelectCase: (caseNumber: string | null, sub?: string | null) => void;
+  /** `replace`: sustituye la entrada actual del historial (al terminar o cancelar un formulario) */
+  onSelectCase: (caseNumber: string | null, sub?: string | null, replace?: boolean) => void;
 }
 
 export const CasesView: React.FC<CasesViewProps> = ({
@@ -106,8 +108,28 @@ export const CasesView: React.FC<CasesViewProps> = ({
     return (
       <NewSubfolioPage
         parent={selectedCase}
-        onCancel={() => onSelectCase(selectedCase.case_number)}
+        onBack={() => onSelectCase(selectedCase.case_number)}
+        onCancel={() => onSelectCase(selectedCase.case_number, null, true)}
         onSubmit={onSubfolioCreated}
+      />
+    );
+  }
+
+  // Nueva entrada de bitácora: también es una página (BV-4.1). Escribe quien opera expedientes.
+  if (selectedCase && selectedCaseSub === 'nueva-entrada' && onAddJournalEntry && (activeRole === 'caseworker' || activeRole === 'intake_officer' || activeRole === 'director')) {
+    const backToJournal = (replace = false) => onSelectCase(selectedCase.case_number, 'bitacora', replace);
+    return (
+      <NewJournalEntryPage
+        caseData={selectedCase}
+        authorUserId={authorUserId}
+        authorFullName={authorFullName}
+        assignedAreaId={assignedAreaId}
+        onBack={() => backToJournal()}
+        onCancel={() => backToJournal(true)}
+        onSubmit={(entry) => {
+          onAddJournalEntry(entry);
+          backToJournal(true);
+        }}
       />
     );
   }
@@ -120,14 +142,14 @@ export const CasesView: React.FC<CasesViewProps> = ({
         onBack={() => onSelectCase(null)}
         activeRole={activeRole}
         assignedAreaCode={assignedAreaCode}
-        assignedAreaId={assignedAreaId}
         authorUserId={authorUserId}
         authorFullName={authorFullName}
         onTransitionStatus={onTransitionStatus}
         onSelectSubfolio={(subfolio) => onSelectCase(subfolio.case_number)}
         onOpenCase={onSelectCase}
         onStartSubfolio={onSubfolioCreated ? () => onSelectCase(selectedCase.case_number, 'subfolio') : undefined}
-        onAddJournalEntry={onAddJournalEntry}
+        onStartJournalEntry={onAddJournalEntry ? () => onSelectCase(selectedCase.case_number, 'nueva-entrada') : undefined}
+        initialTab={selectedCaseSub === 'bitacora' ? 'journal' : undefined}
         onAddClarification={onAddClarification}
         onShareJournalEntry={onShareJournalEntry}
         onSaveConsent={onSaveConsent ? (consent) => onSaveConsent(selectedCase.id, consent) : undefined}

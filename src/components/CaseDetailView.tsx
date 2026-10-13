@@ -37,7 +37,6 @@ import {
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
-import { NewJournalEntryModal } from './NewJournalEntryModal';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
 import { ShareEntryModal } from './ShareEntryModal';
 import { ConsentModal } from './ConsentModal';
@@ -56,7 +55,6 @@ interface CaseDetailViewProps {
   onBack: () => void;
   activeRole: RoleName;
   assignedAreaCode?: string;
-  assignedAreaId?: string;
   authorUserId: string;
   authorFullName: string;
   onTransitionStatus: (
@@ -68,7 +66,9 @@ interface CaseDetailViewProps {
   onSelectSubfolio?: (subfolioCase: CaseWithDetails) => void;
   onOpenCase?: (caseNumber: string) => void;
   onStartSubfolio?: () => void;
-  onAddJournalEntry?: (entry: JournalEntry) => void;
+  onStartJournalEntry?: () => void;
+  /** Pestaña con la que se abre el expediente (p. ej. al volver de escribir una entrada) */
+  initialTab?: 'axes' | 'journal';
   onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;
   onShareJournalEntry?: (entryId: string, toAreaId: string, toAreaName: string, reason: string) => void;
   onSaveConsent?: (consent: {
@@ -90,14 +90,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onBack,
   activeRole,
   assignedAreaCode,
-  assignedAreaId,
   authorUserId,
   authorFullName,
   onTransitionStatus,
   onSelectSubfolio,
   onOpenCase,
   onStartSubfolio,
-  onAddJournalEntry,
+  onStartJournalEntry,
+  initialTab,
   onAddClarification,
   onShareJournalEntry,
   onSaveConsent,
@@ -106,7 +106,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onOpposeSecondary,
 }) => {
   const { statusAxes, statusValues } = useCatalog();
-  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>('axes');
+  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>(initialTab ?? 'axes');
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   const [targetValueCode, setTargetValueCode] = useState<string>('');
   const [transitionReason, setTransitionReason] = useState<string>('');
@@ -114,7 +114,6 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
   // Estados para Bitácora (Épica E4)
   const [journalFilter, setJournalFilter] = useState<'all' | 'my_area' | 'shared' | 'work_notes'>('all');
-  const [isNewJournalOpen, setIsNewJournalOpen] = useState<boolean>(false);
   const [clarifyingEntry, setClarifyingEntry] = useState<JournalEntry | null>(null);
   const [sharingEntry, setSharingEntry] = useState<JournalEntry | null>(null);
   const [expandedSuperseded, setExpandedSuperseded] = useState<Record<string, boolean>>({});
@@ -454,7 +453,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             {/* Botón de Nueva Entrada */}
             {canWriteJournal && (
               <button
-                onClick={() => setIsNewJournalOpen(true)}
+                onClick={onStartJournalEntry}
                 className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-carbon shadow-sm hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
@@ -1180,20 +1179,6 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             </div>
           </div>
         </ModalShell>
-      )}
-
-      {/* Modal: Nueva Entrada de Bitácora (BV-4.1) */}
-      {isNewJournalOpen && onAddJournalEntry && (
-        <NewJournalEntryModal
-          isOpen={isNewJournalOpen}
-          onClose={() => setIsNewJournalOpen(false)}
-          caseId={caseData.id}
-          caseNumber={caseData.case_number}
-          authorUserId={authorUserId}
-          authorFullName={authorFullName}
-          assignedAreaId={assignedAreaId}
-          onEntryCreated={onAddJournalEntry}
-        />
       )}
 
       {/* Modal: Fe de Erratas / Aclaración (BV-4.2) */}

@@ -128,8 +128,10 @@ async function tarea2(page) {
     await openCase(page, k, 'ASF-2026-0001');
     await k.click(page.getByRole('tab', { name: /Bitácora/ }), 'pestaña Bitácora');
     await k.click(page.getByRole('button', { name: /Nueva entrada de bitácora/i }), 'Nueva entrada de bitácora');
-    const d = page.locator('[role=dialog]');
-    await d.waitFor();
+    await page.waitForTimeout(600);
+    // Si el formulario es un modal se trabaja dentro de él; si es una página, dentro del contenido principal
+    const d = (await page.locator('[role=dialog]').count()) ? page.locator('[role=dialog]') : page.locator('main');
+    k.note('el formulario se abrió como ' + ((await page.locator('[role=dialog]').count()) ? 'modal' : 'página'));
     const texto = 'Primer uso: entrada de prueba escrita en el recorrido automatizado.';
     await k.type(d.getByLabel(/Cuerpo de la intervención/i), texto, 'Cuerpo de la intervención');
     await k.shot(`t2-modal-${page.viewportSize().width}.png`);

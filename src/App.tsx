@@ -108,7 +108,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const handleSubfolioCreated = async (input: SubfolioInput) => {
     const r = await run(() => api.createSubfolio(input), 'toast.subfolio_created');
     const created = r.ok && r.data ? r.data.cases.find((c) => c.id === r.value) : undefined;
-    if (created) navigate('cases', created.case_number);
+    if (created) navigate('cases', created.case_number, { replace: true });
   };
 
   const handleTransitionStatus = (
@@ -264,7 +264,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onOpposeSecondary={handleOpposeSecondary}
             selectedCaseNumber={route.id === 'cases' ? route.param : null}
             selectedCaseSub={route.id === 'cases' ? route.sub : null}
-            onSelectCase={(number, sub) => navigate('cases', number, { sub })}
+            onSelectCase={(number, sub, replace) => navigate('cases', number, { sub, replace })}
           />
         )}
 

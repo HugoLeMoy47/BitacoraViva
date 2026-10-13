@@ -468,7 +468,17 @@
     "captured": "Capturado:",
     "origin_area": "Área de origen:",
     "no_actions_hint": "Solo su autoría, su área y Dirección pueden aclarar o compartir esta entrada.",
-    "work_note_no_share": "Las notas protegidas no se comparten."
+    "work_note_no_share": "Las notas protegidas no se comparten.",
+    "new_page": {
+      "back_to_case": "Volver al caso {folio}",
+      "steps": "Pasos de la entrada",
+      "details": "Datos de la entrada",
+      "context_title": "El caso",
+      "context_person": "Persona atendida",
+      "privacy_reminder": "La entrada nace privada del área desde la que se escribe. Compartirla es una decisión posterior, con motivo.",
+      "recent_title": "Lo último escrito en el caso",
+      "recent_none": "Aún no hay entradas que puedas ver en este caso."
+    }
   },
   "arco": {
     "tab_title": "Privacidad y derechos ARCO",
