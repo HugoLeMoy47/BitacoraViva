@@ -97,9 +97,11 @@ async function tarea1(page) {
   try {
     await openCases(page, k);
     await k.click(page.getByRole('button', { name: /Levantar nuevo expediente/i }), 'Levantar nuevo expediente');
-    const d = page.locator('[role=dialog]');
-    await d.waitFor();
-    await page.waitForFunction(() => document.querySelectorAll('[role=dialog] input[type=radio]').length >= 2, null, { timeout: 15000 });
+    await page.waitForTimeout(600);
+    // Si el formulario es un modal se trabaja dentro de él; si es una página, dentro del contenido principal
+    const d = (await page.locator('[role=dialog]').count()) ? page.locator('[role=dialog]') : page.locator('main');
+    k.note('el formulario se abrió como ' + ((await page.locator('[role=dialog]').count()) ? 'modal' : 'página'));
+    await page.waitForFunction(() => document.querySelectorAll('[role=dialog] input[type=radio], main input[type=radio]').length >= 2, null, { timeout: 15000 });
     await k.click(d.getByRole('checkbox', { name: /Entregué o leí/ }), 'Entregué o leí el aviso');
     // La persona decide cada consentimiento: otorga el general y no otorga los demás (el camino más corto)
     await k.click(d.getByText('Otorga', { exact: true }).nth(0), 'Otorga (atención general)');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { FolderPlus, Lock } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { 
@@ -11,7 +11,7 @@ import {
   Person
 } from '../types/database';
 import { CaseDetailView } from './CaseDetailView';
-import { NewCaseModal } from './NewCaseModal';
+import { NewCasePage } from './NewCasePage';
 import { NewSubfolioPage } from './NewSubfolioPage';
 import { NewJournalEntryPage } from './NewJournalEntryPage';
 import { CaseList } from './CaseList';
@@ -77,12 +77,22 @@ export const CasesView: React.FC<CasesViewProps> = ({
   selectedCaseSub,
   onSelectCase,
 }) => {
-  const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
-
 
   const canOpenCase = activeRole === 'intake_officer' || activeRole === 'director';
 
   const selectedCase = cases.find((c) => c.case_number === selectedCaseNumber);
+
+  // Alta de expediente: una página (#/expedientes/nuevo), solo ingreso y dirección
+  if (selectedCaseNumber === 'nuevo' && canOpenCase) {
+    return (
+      <NewCasePage
+        onCancel={() => onSelectCase(null, null, true)}
+        onCaseCreated={onCaseCreated}
+        authorUserId={authorUserId}
+        authorFullName={authorFullName}
+      />
+    );
+  }
 
 
   // Folio de la URL que no existe o que esta persona no puede ver
@@ -172,7 +182,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
         <div>
           {canOpenCase ? (
             <button
-              onClick={() => setIsNewCaseModalOpen(true)}
+              onClick={() => onSelectCase('nuevo')}
               className="px-4 py-2.5 bg-carbon hover:bg-black text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition-colors"
             >
               <FolderPlus className="w-4 h-4 text-turquesa" />
@@ -188,15 +198,6 @@ export const CasesView: React.FC<CasesViewProps> = ({
       </div>
 
       <CaseList cases={cases} currentUserId={authorUserId} />
-
-      {/* Modal de Nuevo Expediente */}
-      <NewCaseModal
-        isOpen={isNewCaseModalOpen}
-        onClose={() => setIsNewCaseModalOpen(false)}
-        onCaseCreated={onCaseCreated}
-        authorUserId={authorUserId}
-        authorFullName={authorFullName}
-      />
     </div>
   );
 };

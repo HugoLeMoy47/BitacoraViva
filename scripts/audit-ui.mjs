@@ -35,9 +35,9 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
   { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
-  { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'tareas', 'indicadores', 'acerca'] },
+  { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'expedientes/nuevo', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
   // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
   { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'acerca'] },
@@ -233,7 +233,7 @@ async function keyboardJourney(page) {
   await page.waitForTimeout(900);
   if (!(await tabTo(page, /Levantar nuevo/i))) return [...out, { rule: 'recorrido-teclado', detail: 'alta: no se llega a «Levantar nuevo expediente» con Tab' }];
   await page.keyboard.press('Enter');
-  await page.waitForSelector('[role=dialog]');
+  await page.waitForSelector('main input[type=checkbox]');
   const seen = new Set();
   const answer = async (a) => {
     if (a.type === 'checkbox' && !a.checked && /Entregué/.test(a.text)) await page.keyboard.press('Space');
@@ -264,9 +264,6 @@ async function keyboardJourney(page) {
     await page.waitForTimeout(250);
   }
   if (!(await tabTo(page, /Abrir expediente/i))) fail('alta paso 4: no se llega a «Abrir expediente» con Tab');
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(300);
-  if (await page.locator('[role=dialog]').count()) fail('alta: el modal no se cierra con Escape');
 
   // Entrada de bitácora en un expediente
   await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; document.activeElement?.blur?.(); });
@@ -438,14 +435,14 @@ try {
         await page.evaluate(() => { location.hash = '#/expedientes'; });
         await page.waitForTimeout(900);
         await page.getByRole('button', { name: /Levantar Nuevo/i }).click();
-        await page.waitForSelector('[role=dialog]');
+        await page.waitForSelector('main input[type=checkbox]');
         // Los textos de consentimiento cargan de forma asíncrona: sin esta espera, marcar las decisiones antes
         // de que lleguen deja «Siguiente» deshabilitado y el recorrido falla de forma intermitente
-        await page.waitForFunction(() => document.querySelectorAll('[role=dialog] input[type=radio]').length >= 2, null, { timeout: 15000 });
+        await page.waitForFunction(() => document.querySelectorAll('main input[type=radio]').length >= 2, null, { timeout: 15000 });
         await page.waitForTimeout(500);
         record(role.key, vp.name, 'alta/paso 0', await auditNow());
         await page.getByRole('checkbox', { name: /Entregué o leí/ }).check();
-        const yes = page.locator('[role=dialog] input[type=radio][value=yes]');
+        const yes = page.locator('main input[type=radio][value=yes]');
         for (let i = 0; i < (await yes.count()); i++) await yes.nth(i).locator('xpath=ancestor::label').click();
         for (let step = 1; step <= 4; step++) {
           await page.getByRole('button', { name: /Siguiente/ }).click();
@@ -466,8 +463,8 @@ try {
             break;
           }
         }
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(300);
+        await page.evaluate(() => { location.hash = '#/expedientes'; });
+        await page.waitForTimeout(500);
 
         const bell = page.locator('header button[aria-label*="Bandeja"]');
         if (await bell.count()) {
@@ -574,24 +571,23 @@ try {
       }
       record(role.key, vp.name, '(teclado)', focusIssues);
 
-      // Modal accesible (director, escritorio)
+      // Alta como página (director, escritorio): salir con algo capturado pide confirmación, y «seguir» conserva lo escrito
       if (role.key === 'director' && vp.name === '1024') {
         await page.evaluate(() => { location.hash = '#/expedientes'; });
         await page.waitForTimeout(900);
-        const opener = page.getByRole('button', { name: /Levantar Nuevo/i });
-        await opener.focus();
-        await opener.click();
+        await page.getByRole('button', { name: /Levantar Nuevo/i }).click();
+        await page.waitForSelector('main input[type=checkbox]');
         const issues = [];
-        if (!(await page.locator('[role=dialog][aria-modal=true]').count())) issues.push({ rule: 'modal', detail: 'no tiene role=dialog y aria-modal' });
-        else {
-          if (!(await page.locator('[role=dialog][aria-labelledby]').count())) issues.push({ rule: 'modal', detail: 'sin nombre accesible' });
-          if (!(await page.evaluate(() => document.querySelector('[role=dialog]').contains(document.activeElement)))) issues.push({ rule: 'modal', detail: 'el foco no entra al modal' });
-          await page.keyboard.press('Escape');
-          await page.waitForTimeout(300);
-          if (await page.locator('[role=dialog]').count()) issues.push({ rule: 'modal', detail: 'no se cierra con Escape' });
-          if (!(await page.evaluate(() => document.activeElement?.textContent?.includes('Levantar')))) issues.push({ rule: 'modal', detail: 'el foco no regresa al botón que lo abrió' });
-        }
-        record(role.key, vp.name, '(modal)', issues);
+        await page.getByRole('checkbox', { name: /Entregué o leí/ }).check();
+        await page.getByRole('button', { name: /Volver a expedientes/ }).click();
+        if (!(await page.getByRole('alert').filter({ hasText: /Descartar/ }).count())) issues.push({ rule: 'alta-pagina', detail: 'salir con algo capturado no pide confirmación' });
+        await page.getByRole('button', { name: /Seguir capturando/ }).click();
+        if (!(await page.getByRole('checkbox', { name: /Entregué o leí/ }).isChecked())) issues.push({ rule: 'alta-pagina', detail: '«Seguir capturando» no conserva lo escrito' });
+        await page.getByRole('button', { name: /Volver a expedientes/ }).click();
+        await page.getByRole('button', { name: /Descartar y salir/ }).click();
+        await page.waitForTimeout(500);
+        if (!(await page.evaluate(() => /^#\/expedientes\/?$/.test(location.hash)))) issues.push({ rule: 'alta-pagina', detail: 'descartar no regresa a la lista de expedientes' });
+        record(role.key, vp.name, '(alta como página)', issues);
       }
       await ctx.close();
     }
