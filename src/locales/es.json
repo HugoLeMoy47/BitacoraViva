@@ -189,10 +189,10 @@
   },
   "intake": {
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",
-    "step_context": "1. Contexto",
-    "step_person": "2. Ficha",
-    "step_vulnerabilities": "3. Vulnerabilidades",
-    "step_confirm": "4. Confirmar",
+    "step_context": "Contexto",
+    "step_person": "Ficha",
+    "step_vulnerabilities": "Vulnerabilidades",
+    "step_confirm": "Confirmar",
     "restricted_title": "Acceso restringido para apertura de casos",
     "restricted_message": "Solo los roles Oficial de ingreso y Dirección pueden levantar folios y abrir casos nuevos en ventanilla.",
     "field_given_name": "Nombres:",
@@ -213,7 +213,7 @@
     "btn_create_case": "Abrir expediente y asignar folio",
     "created_success": "¡Expediente levantado con éxito! Se asignó el folio:",
     "modal_subtitle": "Estándar humanitario MAP (fases 1 y 2) · Con consentimiento informado",
-    "step_consent": "0. Aviso y consentimiento",
+    "step_consent": "Aviso y consentimiento",
     "travels_family_help": "Si viaja con NNA u otros parientes, se podrán abrir subfolios vinculados.",
     "vulnerabilities_title": "Evaluación objetiva humanitaria",
     "vulnerabilities_intro": "Seleccione las condiciones aplicables. Todo marcador queda firmado con su identidad profesional y no puede ser asignado automáticamente por un algoritmo.",
@@ -292,6 +292,17 @@
       "authority": "Indica la referencia de la autoridad que interviene.",
       "given_name": "Escribe al menos un nombre.",
       "paternal_name": "Escribe el primer apellido."
+    },
+    "page": {
+      "back_to_list": "Volver a expedientes",
+      "step_of": "Paso {n} de {total}",
+      "steps": "Pasos del alta",
+      "discard_title": "¿Descartar lo capturado?",
+      "discard_body": "Todavía no se abrió el expediente: si sales, se pierde lo escrito y las decisiones de consentimiento.",
+      "discard_confirm": "Descartar y salir",
+      "discard_keep": "Seguir capturando",
+      "title": "Levantar nuevo expediente",
+      "subtitle": "Primero el aviso de privacidad y el consentimiento; después, los datos de la persona."
     }
   },
   "audit": {

@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { X, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { ConsentText, PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
 import { ConsentInput, NewCaseInput, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
-import { ModalShell } from './ModalShell';
 import { DisabledReason, describedBy } from './DisabledReason';
 
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -34,20 +33,19 @@ function ageYears(isoDate: string): number {
   return age;
 }
 
-interface NewCaseModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+// Alta de expediente, como PÁGINA (no modal): 18 campos en cinco pasos, con el aviso de privacidad y el
+// consentimiento. Empieza SIEMPRE vacía: ninguna opción de consentimiento viene marcada, y no se guarda
+// borrador (sería arrastrar las decisiones y los datos de una persona a la captura de otra). Salir con algo
+// capturado pide confirmación; el navegador avisa antes de recargar o cerrar.
+interface NewCasePageProps {
+  /** Sale de la captura (se llama tras confirmar si había algo escrito) */
+  onCancel: () => void;
   onCaseCreated: (input: NewCaseInput) => void;
   authorUserId?: string;
   authorFullName: string;
 }
 
-export const NewCaseModal: React.FC<NewCaseModalProps> = ({
-  isOpen,
-  onClose,
-  onCaseCreated,
-  authorFullName,
-}) => {
+export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreated, authorFullName }) => {
   const [step, setStep] = useState<Step>(0);
   const { isDemo } = useEnvironment();
   const { areas } = useCatalog();
@@ -90,7 +88,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   const [selectedVulnerabilities, setSelectedVulnerabilities] = useState<VulnerabilityMarkerCode[]>([]);
 
   useEffect(() => {
-    if (!isOpen) return;
     let cancelled = false;
     getActivePrivacyNotice()
       .then((n) => { if (!cancelled) { setNotice(n); setNoticeLoaded(true); } })
@@ -99,9 +96,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       .then((list) => { if (!cancelled) setTexts(Object.fromEntries(list.map((x) => [x.consent_type, x]))); })
       .catch(() => { /* sin textos publicados: se usan los de la plataforma */ });
     return () => { cancelled = true; };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
+  }, []);
 
   const consentTitle = (key: ConsentKey) => texts[key]?.title ?? t(`arco.consent_types.${key}`);
   const consentDesc = (key: ConsentKey) => texts[key]?.description ?? t(`intake.consent.desc.${key}`);
@@ -175,7 +170,6 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
       consents: buildConsents(),
     };
     onCaseCreated(input);
-    onClose();
   };
 
   const stepLabels: { id: Step; label: string }[] = [
@@ -208,49 +202,64 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
   })();
   const nextDisabled = step < 4 && !!stepReason;
 
+  // ¿Hay algo capturado que se perdería al salir?
+  const dirty =
+    !!(givenName || paternalName || maternalName || preferredName || phone || guardianName || guardianRole || authorityRef) ||
+    noticeDelivered ||
+    CONSENT_KEYS.some(({ key }) => choices[key] !== null);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const leave = () => (dirty ? setConfirmingLeave(true) : onCancel());
+  useEffect(() => {
+    if (!dirty) return;
+    const guard = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', guard);
+    return () => window.removeEventListener('beforeunload', guard);
+  }, [dirty]);
+
   return (
-    <ModalShell onClose={onClose} className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-2xl overflow-hidden my-8">
-        {/* Cabecera del modal */}
-        <div className="px-6 py-4 bg-carbon text-white flex justify-between items-center border-b border-gray-700">
-          <div>
-            <h3 className="text-base font-bold">{t('intake.modal_title')}</h3>
-            <p className="text-xs text-gray-300">{t('intake.modal_subtitle')}</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label={t('session.dismiss')} className="p-1 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-5">
+      <div>
+        <button type="button" onClick={leave} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-turquesa-dark hover:underline">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {t('intake.page.back_to_list')}
+        </button>
+        <h2 className="font-title text-2xl font-bold text-carbon">{t('intake.page.title')}</h2>
+        <p className="mt-1 text-sm text-gray-600">{t('intake.page.subtitle')}</p>
+      </div>
 
-        {isDemo && (
-          <p role="note" className="bg-amber-50 border-b border-amber-300 px-6 py-2 text-xs text-amber-900">
-            {t('demo.modal_notice')}
-          </p>
-        )}
+      {isDemo && (
+        <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          {t('demo.modal_notice')}
+        </p>
+      )}
 
-        {/* Indicador de pasos */}
-        <div className="grid grid-cols-5 bg-gray-100 text-xs font-medium text-center border-b border-gray-200">
-          {stepLabels.map((s) => {
-            const skipped = s.id === 3 && !sensitiveGranted && step > 0;
-            return (
-              <div
-                key={s.id}
-                className={`py-2.5 px-1 border-b-2 ${
-                  step === s.id
-                    ? 'border-turquesa text-carbon font-bold bg-white'
-                    : skipped
-                      ? 'border-transparent text-gray-600 line-through'
-                      : 'border-transparent text-gray-600'
-                }`}
-              >
-                {s.label}
-              </div>
-            );
-          })}
-        </div>
+      {/* Pasos: en celular, «Paso 2 de 5 · …»; desde tableta, los cinco a la vista */}
+      <p className="text-sm font-semibold text-carbon md:hidden" aria-live="polite">
+        {t('intake.page.step_of').replace('{n}', String(step + 1)).replace('{total}', String(stepLabels.length))} · {stepLabels[step].label}
+      </p>
+      <ol className="hidden grid-cols-5 overflow-hidden rounded-xl border border-gray-200 bg-white text-center text-xs font-medium md:grid" aria-label={t('intake.page.steps')}>
+        {stepLabels.map((s) => {
+          const skipped = s.id === 3 && !sensitiveGranted && step > 0;
+          return (
+            <li
+              key={s.id}
+              aria-current={step === s.id ? 'step' : undefined}
+              className={`border-b-2 px-1 py-2.5 ${
+                step === s.id
+                  ? 'border-turquesa bg-white font-bold text-carbon'
+                  : skipped
+                    ? 'border-transparent text-gray-600 line-through'
+                    : 'border-transparent text-gray-600'
+              }`}
+            >
+              {s.id + 1}. {s.label}
+            </li>
+          );
+        })}
+      </ol>
 
-        {/* Cuerpo del paso */}
-        <div className="p-6 max-h-[65vh] overflow-y-auto space-y-4 text-sm">
+      {/* Cuerpo del paso */}
+      <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 text-sm">
           {/* Paso 0: Aviso de privacidad y consentimiento informado */}
           {step === 0 && (
             <div className="space-y-4">
@@ -633,7 +642,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
               <div className="bg-green-50 border border-green-200 p-4 rounded-xl flex items-start space-x-3">
                 <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                 <div className="text-xs">
-                  <h4 className="font-bold text-green-900">{t('intake.confirm_title')}</h4>
+                  <h3 className="font-bold text-green-900">{t('intake.confirm_title')}</h3>
                   <p className="text-green-700 mt-0.5">{t('intake.confirm_body')}</p>
                 </div>
               </div>
@@ -674,16 +683,27 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
           )}
         </div>
 
-        <DisabledReason id="alta" reason={stepReason} className="border-t border-gray-200 bg-gray-50 px-6 pt-3" />
+      {confirmingLeave && (
+        <div role="alert" className="rounded-xl border border-alerta/30 bg-alerta-bg p-4 text-sm">
+          <p className="font-bold text-alerta-dark">{t('intake.page.discard_title')}</p>
+          <p className="mt-1 text-carbon">{t('intake.page.discard_body')}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={onCancel} className="min-h-11 rounded-lg bg-carbon px-4 text-sm font-semibold text-white hover:bg-black">
+              {t('intake.page.discard_confirm')}
+            </button>
+            <button type="button" onClick={() => setConfirmingLeave(false)} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+              {t('intake.page.discard_keep')}
+            </button>
+          </div>
+        </div>
+      )}
 
-        {/* Botones de navegación del modal */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center text-xs">
+      {/* Barra de acciones: siempre a la vista; en celular queda sobre la barra de navegación */}
+      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
+        <DisabledReason id="alta" reason={stepReason} className="mb-2" />
+        <div className="flex items-center justify-between gap-3">
           {step > 0 ? (
-            <button
-              type="button"
-              onClick={goPrev}
-              className="px-4 py-2 font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100"
-            >
+            <button type="button" onClick={goPrev} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
               {t('intake.btn_prev')}
             </button>
           ) : (
@@ -696,7 +716,7 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
               disabled={nextDisabled}
               {...describedBy('alta', stepReason)}
               onClick={goNext}
-              className="px-4 py-2 font-semibold text-carbon bg-turquesa hover:bg-turquesa-hover rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-11 rounded-lg bg-turquesa px-5 text-sm font-semibold text-carbon shadow-sm hover:bg-turquesa-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t('intake.btn_next')}
             </button>
@@ -706,14 +726,14 @@ export const NewCaseModal: React.FC<NewCaseModalProps> = ({
               disabled={!!authorityProblem}
               {...describedBy('alta', stepReason)}
               onClick={handleFinish}
-              className="px-5 py-2 font-bold text-white bg-carbon hover:bg-black rounded-lg shadow-md flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-carbon px-5 text-sm font-bold text-white shadow-md hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <HeartHandshake className="w-4 h-4 text-turquesa" />
+              <HeartHandshake className="h-4 w-4 text-turquesa" aria-hidden="true" />
               {t('intake.btn_create_case')}
             </button>
           )}
         </div>
       </div>
-    </ModalShell>
+    </div>
   );
 };

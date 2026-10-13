@@ -101,7 +101,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     const r = await run(() => api.createCaseWithPerson(input), 'toast.case_created');
     // Lleva a quien capturó directamente al expediente recién abierto
     const created = r.ok && r.data ? r.data.cases.find((c) => c.id === r.value) : undefined;
-    if (created) navigate('cases', created.case_number);
+    if (created) navigate('cases', created.case_number, { replace: true });
   };
 
   // El subfolio también es atómico en la base; lleva a quien lo abrió a su expediente
