@@ -12,7 +12,9 @@ const __dirname = path.dirname(__filename);
 // Sirve para comprobar qué hay publicado en la URL.
 const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'));
 const commit = (() => {
-  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7);
+  // BUILD_COMMIT lo fija el despliegue (el commit que se compila); GITHUB_SHA es el último de main y puede ser otro
+  const explicit = process.env.BUILD_COMMIT || process.env.GITHUB_SHA;
+  if (explicit) return explicit.slice(0, 7);
   try {
     return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
   } catch {

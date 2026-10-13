@@ -1,13 +1,20 @@
 # Despliegue del sitio (Cloudflare Worker) tras un CI en verde sobre `main`.
 #
-# Queda detenido hasta que una persona revisora del entorno «production» lo apruebe
-# (GitHub → Settings → Environments → production → Required reviewers).
-# Solo publica el sitio: las migraciones (`db push`) siguen siendo un paso manual del Product Owner.
-# Secretos del entorno: CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID.
+# Cómo se usa: después de fusionar a `main`, el CI corre solo y, si termina en verde, aparece aquí un
+# despliegue «automático» que ESPERA TU APROBACIÓN (Actions → Despliegue → «Review deployments» →
+# production → «Approve and deploy»). No hace falta lanzar nada a mano.
 #
-# Se puede lanzar a mano desde la pestaña Actions («Run workflow») sobre `main`.
+# Antes de pedir aprobación, un primer paso compara el commit publicado (/version.json) con el que se
+# quiere publicar. Si ya es el mismo, el despliegue se omite solo: así un segundo disparo del mismo commit
+# (por ejemplo, el botón «Run workflow») no pide una aprobación inútil. Para publicar de nuevo a propósito
+# el mismo commit, lanzarlo a mano marcando «forzar».
+#
+# Solo publica el sitio: las migraciones (`db push`) siguen siendo un paso manual del Product Owner.
+# Secretos del entorno «production»: CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID.
 
 name: Despliegue
+
+run-name: Despliegue (${{ github.event_name == 'workflow_dispatch' && 'manual' || 'automático tras el CI' }}) · ${{ github.event.workflow_run.display_title || 'a mano sobre main' }}
 
 on:
   workflow_run:
@@ -15,28 +22,68 @@ on:
     types: [completed]
     branches: [main]
   workflow_dispatch:
+    inputs:
+      forzar:
+        description: 'Publicar aunque ese commit ya esté publicado'
+        type: boolean
+        default: false
 
 concurrency:
   group: despliegue
   cancel-in-progress: false
 
+env:
+  # Dirección pública del sitio: de ahí se lee qué commit está publicado
+  SITIO: https://bitacoraviva.freejolitos.consulting
+  OBJETIVO: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
-  desplegar:
-    name: Publicar el Worker
+  comprobar:
+    name: Ver qué hay publicado
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      publicar: ${{ steps.v.outputs.publicar }}
+    steps:
+      - id: v
+        env:
+          FORZAR: ${{ inputs.forzar }}
+        run: |
+          vivo="$(curl -fsS --max-time 20 "$SITIO/version.json" | jq -r '.commit // empty' || true)"
+          objetivo="${OBJETIVO:0:7}"
+          echo "Publicado: ${vivo:-no se pudo leer} · A publicar: $objetivo"
+          if [ "$FORZAR" = "true" ]; then
+            echo "Se pidió forzar: se publica."
+            echo "publicar=true" >> "$GITHUB_OUTPUT"
+          elif [ -n "$vivo" ] && [ "$vivo" = "$objetivo" ]; then
+            echo "Ese commit ya está publicado: no hay nada que desplegar."
+            echo "publicar=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publicar=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  desplegar:
+    name: Publicar el Worker (espera tu aprobación)
+    needs: comprobar
+    if: needs.comprobar.outputs.publicar == 'true'
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ env.OBJETIVO }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Compilar
+        env:
+          # El pie del sitio muestra este commit: tiene que ser el que se compila, no el último de main
+          BUILD_COMMIT: ${{ env.OBJETIVO }}
+        run: npm run build
       - name: Publicar en Cloudflare
         env:
           TOKEN_CRUDO: ${{ secrets.CLOUDFLARE_API_TOKEN }}
