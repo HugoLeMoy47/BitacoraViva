@@ -14,7 +14,8 @@
     "check:i18n": "node scripts/check-i18n.mjs",
     "audit:ui": "node scripts/audit-ui.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
-    "check:literals": "node scripts/check-literals.mjs"
+    "check:literals": "node scripts/check-literals.mjs",
+    "primer-uso": "node scripts/primer-uso.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

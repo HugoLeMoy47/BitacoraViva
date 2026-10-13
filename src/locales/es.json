@@ -113,13 +113,13 @@
     "tab_vulnerabilities": "Marcadores de vulnerabilidad",
     "tab_subfolios": "Subfolios vinculados (infancias)",
     "axes_section_title": "Evolución multidimensional del caso",
-    "btn_change_status": "Transicionar estatus",
+    "btn_change_status": "Cambiar estatus",
     "change_modal_title": "Cambiar estatus en el eje:",
     "change_modal_notice": "El estatus no se sobrescribe: se cierra el vigente y se crea uno nuevo con fecha y motivo, en una sola operación.",
     "field_target_status": "Nuevo estatus destino:",
-    "field_reason": "Motivo de la transición (obligatorio):",
+    "field_reason": "Motivo del cambio (obligatorio):",
     "field_reason_placeholder": "Documente la circunstancia, valoración o auxilio que motiva el cambio…",
-    "btn_confirm_transition": "Confirmar transición y auditar",
+    "btn_confirm_transition": "Confirmar el cambio",
     "btn_cancel": "Cancelar",
     "err_legal_restricted": "Permiso denegado: solo el personal adscrito al Área Jurídica o Dirección puede modificar la situación jurídico-migratoria.",
     "err_closed_restricted": "Permiso denegado: el cierre administrativo definitivo del expediente es facultad exclusiva de Dirección.",
@@ -184,7 +184,8 @@
     "no_markers": "No se han afirmado marcadores de vulnerabilidad para este caso.",
     "affirmed_by": "Afirmado por:",
     "subfolios_subtitle": "Subfolios vinculados: NNA acompañados con expediente propio.",
-    "btn_new_subfolio": "Abrir subfolio"
+    "btn_new_subfolio": "Abrir subfolio",
+    "status_unassigned": "Sin asignar"
   },
   "intake": {
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",
@@ -312,6 +313,38 @@
       "search": "Buscar",
       "search_ph": "Folio, identificador o texto…",
       "all_f": "Todas"
+    },
+    "tables": {
+      "app_config": "Configuración del entorno",
+      "arco_request": "Solicitud de derechos ARCO",
+      "area": "Área",
+      "attachment": "Adjunto",
+      "audit_event": "Registro de auditoría",
+      "authority_request": "Requerimiento de autoridad",
+      "case": "Expediente",
+      "case_status": "Estatus del expediente",
+      "case_task_kind": "Tipo de tarea ligada",
+      "case_vulnerability_marker": "Marcador de vulnerabilidad",
+      "consent": "Consentimiento",
+      "consent_text": "Texto de consentimiento",
+      "journal_entry": "Entrada de bitácora",
+      "organization": "Organización",
+      "person": "Persona atendida",
+      "privacy_notice": "Aviso de privacidad",
+      "role": "Rol",
+      "routine_template": "Rutina",
+      "routine_template_item": "Paso de rutina",
+      "sharing_event": "Compartición de entrada",
+      "shift_note": "Nota de turno",
+      "status_axis": "Eje de estatus",
+      "status_value": "Valor de estatus",
+      "task": "Tarea",
+      "task_category": "Categoría de tarea",
+      "task_evidence": "Evidencia de tarea",
+      "task_setting": "Ajuste de tareas",
+      "user_profile": "Persona usuaria",
+      "user_role": "Rol asignado",
+      "work_area": "Área de trabajo"
     }
   },
   "authority_requests": {
@@ -378,7 +411,8 @@
       "btn_back_edit": "← Volver a redacción",
       "btn_save_entry": "Asentar definitivamente en bitácora",
       "area_fixed": "Se asienta a nombre de su área:",
-      "area_fixed_coordination": "Su rol no tiene un área asignada: se asienta a nombre de coordinación:"
+      "area_fixed_coordination": "Su rol no tiene un área asignada: se asienta a nombre de coordinación:",
+      "reason_body": "Escribe el texto de la intervención para poder revisarlo."
     },
     "clarification_modal": {
       "title": "Agregar nota aclaratoria o fe de erratas",

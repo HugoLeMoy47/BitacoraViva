@@ -6,6 +6,7 @@ import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
 import { formatDateTime } from '../lib/format';
 import { ModalShell } from './ModalShell';
+import { DisabledReason, describedBy } from './DisabledReason';
 
 interface NewJournalEntryModalProps {
   isOpen: boolean;
@@ -118,7 +119,7 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
           <div className={`flex items-center gap-1.5 ${step === 'compose' ? 'font-bold text-turquesa-dark' : 'text-gray-500'}`}>
             <span>{t('journal.new_modal.step_compose')}</span>
           </div>
-          <span className="mx-3 text-gray-300">/</span>
+          <span className="mx-3 text-gray-300" aria-hidden="true">/</span>
           <div className={`flex items-center gap-1.5 ${step === 'preview' ? 'font-bold text-turquesa-dark' : 'text-gray-500'}`}>
             <Eye className="h-3.5 w-3.5" />
             <span>{t('journal.new_modal.step_preview')}</span>
@@ -129,6 +130,21 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
         <div className="overflow-y-auto px-6 py-5">
           {step === 'compose' ? (
             <form onSubmit={handleProceedToPreview} className="space-y-4">
+              {/* Body */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-4">
+                  {t('journal.new_modal.field_body')}
+                </label>
+                <textarea id="newjou-4" name="newjou-4" autoComplete="off"
+                  rows={5}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder={t('journal.new_modal.field_body_placeholder')}
+                  required
+                  className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa"
+                />
+              </div>
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-1">
@@ -218,25 +234,12 @@ export const NewJournalEntryModal: React.FC<NewJournalEntryModalProps> = ({
                 </label>
               </div>
 
-              {/* Body */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700" htmlFor="newjou-4">
-                  {t('journal.new_modal.field_body')}
-                </label>
-                <textarea id="newjou-4" name="newjou-4" autoComplete="off"
-                  rows={5}
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder={t('journal.new_modal.field_body_placeholder')}
-                  required
-                  className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa"
-                />
-              </div>
-
-              <div className="flex justify-end pt-2">
+              <div className="sticky bottom-0 -mx-6 -mb-5 flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-3">
+                <DisabledReason id="bitacora" reason={body.trim() ? null : t('journal.new_modal.reason_body')} />
                 <button
                   type="submit"
                   disabled={!body.trim()}
+                  {...describedBy('bitacora', body.trim() ? null : 'x')}
                   className="flex items-center gap-2 rounded-lg bg-turquesa px-5 py-2.5 text-sm font-semibold text-carbon shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span>{t('journal.new_modal.btn_to_preview')}</span>
