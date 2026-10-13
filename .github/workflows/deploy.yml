@@ -1,8 +1,12 @@
 # Despliegue del sitio (Cloudflare Worker) tras un CI en verde sobre `main`.
 #
-# Cómo se usa: después de fusionar a `main`, el CI corre solo y, si termina en verde, aparece aquí un
+# Cómo se usa: después de fusionar a `main`, el CI corre solo y, si pasan sus trabajos OBLIGATORIOS
+# («Verificación estática» y «Pruebas de seguridad (base local)»), aparece aquí un
 # despliegue «automático» que ESPERA TU APROBACIÓN (Actions → Despliegue → «Review deployments» →
 # production → «Approve and deploy»). No hace falta lanzar nada a mano.
+#
+# La «Auditoría de interfaz» es informativa: sigue corriendo y se ve en rojo si falla, pero NO frena el
+# despliegue (es la única parte del CI con intermitencias propias de la velocidad de la máquina).
 #
 # Antes de pedir aprobación, un primer paso compara el commit publicado (/version.json) con el que se
 # quiere publicar. Si ya es el mismo, el despliegue se omite solo: así un segundo disparo del mismo commit
@@ -40,20 +44,48 @@ env:
 jobs:
   comprobar:
     name: Ver qué hay publicado
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # También cuando el CI terminó en rojo: puede ser solo la auditoría de interfaz, y eso se decide abajo
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
     outputs:
       publicar: ${{ steps.v.outputs.publicar }}
     steps:
+      - id: ci
+        name: Ver que pasaron los trabajos obligatorios del CI
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN: ${{ github.event.workflow_run.id }}
+        run: |
+          trabajos="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN/jobs" --paginate --jq '.jobs[] | "\(.name)=\(.conclusion)"')"
+          echo "$trabajos"
+          falta=""
+          for obligatorio in "Verificación estática" "Pruebas de seguridad (base local)"; do
+            printf '%s\n' "$trabajos" | grep -qxF "$obligatorio=success" || falta="$falta «$obligatorio»"
+          done
+          if [ -n "$falta" ]; then
+            echo "No pasaron los trabajos obligatorios:$falta. No se despliega."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Los trabajos obligatorios pasaron (la auditoría de interfaz es informativa)."
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
       - id: v
         env:
           FORZAR: ${{ inputs.forzar }}
+          CI_OK: ${{ steps.ci.outputs.ok }}
         run: |
           vivo="$(curl -fsS --max-time 20 "$SITIO/version.json" | jq -r '.commit // empty' || true)"
           objetivo="${OBJETIVO:0:7}"
           echo "Publicado: ${vivo:-no se pudo leer} · A publicar: $objetivo"
-          if [ "$FORZAR" = "true" ]; then
+          if [ "$CI_OK" = "false" ]; then
+            echo "El CI no cumplió lo obligatorio: no se publica."
+            echo "publicar=false" >> "$GITHUB_OUTPUT"
+          elif [ "$FORZAR" = "true" ]; then
             echo "Se pidió forzar: se publica."
             echo "publicar=true" >> "$GITHUB_OUTPUT"
           elif [ -n "$vivo" ] && [ "$vivo" = "$objetivo" ]; then
