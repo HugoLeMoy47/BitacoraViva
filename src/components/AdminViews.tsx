@@ -19,11 +19,10 @@ export const AreasView: React.FC<{ areas: Area[] }> = ({ areas }) => (
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-claro text-xs font-bold text-turquesa-dark"
               aria-hidden="true"
             >
-              {area.code.substring(0, 2).toUpperCase()}
+              {area.name.substring(0, 2).toUpperCase()}
             </span>
             <div className="min-w-0">
               <h3 className="truncate text-sm font-semibold text-carbon">{area.name}</h3>
-              <p className="truncate font-mono text-xs text-gray-500">{area.code}</p>
             </div>
           </div>
           <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
@@ -53,6 +52,11 @@ export const AuditView: React.FC<{ events: AuditEvent[]; userNames: Record<strin
     () => Array.from(new Set(events.map((e) => e.user_id).filter((x): x is string => !!x))),
     [events]
   );
+  // Nombre de tabla en palabras de persona (el nombre técnico solo se muestra si aún no tiene traducción)
+  const tableLabel = (name: string) => {
+    const label = t(`audit.tables.${name}`);
+    return label.startsWith('audit.tables.') ? name : label;
+  };
   const actorName = (id: string | null) => (id ? userNames[id] ?? id.slice(0, 8) : t('audit.system'));
 
   const filtered = useMemo(
@@ -106,7 +110,7 @@ export const AuditView: React.FC<{ events: AuditEvent[]; userNames: Record<strin
           <label htmlFor="au-table" className="mb-1 block text-xs font-medium text-gray-600">{t('audit.filters.table')}</label>
           <select id="au-table" name="au-table" value={table} onChange={(e) => { setTable(e.target.value); reset(); }} className={selectCls}>
             <option value="">{t('audit.filters.all_f')}</option>
-            {tables.map((x) => <option key={x} value={x}>{x}</option>)}
+            {tables.map((x) => <option key={x} value={x}>{tableLabel(x)}</option>)}
           </select>
         </div>
         <div className="col-span-2 lg:col-span-1">
@@ -157,7 +161,7 @@ export const AuditView: React.FC<{ events: AuditEvent[]; userNames: Record<strin
                 <td className="whitespace-nowrap px-5 py-3">
                   <span className="rounded border border-gray-300 bg-gray-100 px-2 py-0.5 font-mono text-xs font-bold text-carbon">{event.action}</span>
                 </td>
-                <td className="px-5 py-3 font-mono font-semibold text-carbon">{event.table_name}</td>
+                <td className="px-5 py-3 font-semibold text-carbon">{tableLabel(event.table_name)}</td>
                 <td className="whitespace-nowrap px-5 py-3 text-gray-700">{actorName(event.user_id)}</td>
                 <td className="max-w-[14rem] truncate px-5 py-3 font-mono text-gray-600" title={event.record_id ?? ''}>{event.record_id}</td>
               </tr>

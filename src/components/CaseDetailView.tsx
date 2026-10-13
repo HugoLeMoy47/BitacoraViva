@@ -368,7 +368,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
                     <div className="my-2">
                       <h4 className="text-base font-bold text-carbon">
-                        {currentStatus?.label || 'Sin Asignar'}
+                        {currentStatus?.label || t('cases.status_unassigned')}
                       </h4>
                       <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
@@ -386,10 +386,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                     )}
                   </div>
 
-                  <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-xs text-gray-500 font-mono">
-                      {axis.code}
-                    </span>
+                  <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-end">
                     <button
                       onClick={() => handleOpenTransition(axis.code)}
                       className="min-h-9 px-3 py-1.5 text-xs font-bold text-carbon bg-turquesa/20 hover:bg-turquesa hover:text-carbon rounded-lg transition"

@@ -107,6 +107,14 @@ const pageAudit = `(opts) => {
     if (/^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$/.test(tx) && n.parentElement && visible(n.parentElement)) add('clave-i18n-sin-resolver', tx);
   }
 
+  // 6b. Identificadores técnicos a la vista (legal_status, engagement_status…): jerga de desarrollo (glosario)
+  const w2 = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n2;
+  while ((n2 = w2.nextNode())) {
+    const tx = n2.textContent.trim();
+    if (/^[a-z]+(_[a-z]+)+$/.test(tx) && n2.parentElement && visible(n2.parentElement)) add('codigo-tecnico-visible', tx);
+  }
+
   // 7. Encabezados: un h1 y sin saltos
   const hs = [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].filter(visible).map((h) => +h.tagName[1]);
   if (hs.filter((x) => x === 1).length !== 1) add('encabezados', 'h1 en pantalla: ' + hs.filter((x) => x === 1).length);
@@ -386,6 +394,19 @@ try {
           await page.locator('main [role=tab]').nth(i).click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'expediente/sección ' + (i + 1), await auditNow());
+        }
+
+        // Nueva entrada de bitácora: se abre (con el campo vacío, como la ve quien llega por primera vez) y se cancela
+        const journalTab = page.getByRole('tablist', { name: 'Secciones del expediente' }).getByRole('tab', { name: /Bitácora/ });
+        if (await journalTab.count()) {
+          await journalTab.click();
+          await page.waitForTimeout(500);
+          const journalBtn = page.getByRole('button', { name: /Nueva entrada de bitácora/i });
+          if (await journalBtn.count()) {
+            const jm = await checkModalOpening(page, journalBtn, 'nueva entrada de bitácora', auditNow);
+            record(role.key, vp.name, 'expediente/bitácora formulario', jm.items);
+            record(role.key, vp.name, '(modal bitácora)', jm.issues);
+          }
         }
 
         // Subfolio (BV-3.2): el formulario se abre y se cancela
