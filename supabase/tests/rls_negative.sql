@@ -1485,6 +1485,11 @@ begin
         perform pg_temp.expect('A-1 control positivo: ingreso abre un expediente por la función', INT, 'authenticated', new_case, '1');
         perform pg_temp.expect('A-1 control positivo: dirección abre un expediente por la función', DIR, 'authenticated', new_case, '1');
         perform pg_temp.expect('A-1: quien no es de ingreso ni dirección no abre expedientes por la función', CW, 'authenticated', new_case, 'ERR');
+        -- Motivo inicial de los estatus: una clave de traducción, no un texto en un idioma (la interfaz lo traduce)
+        perform pg_temp.expect('el estatus inicial de un expediente nuevo guarda la clave de traducción como motivo', null, null,
+            $q$select count(*)::text from public.case_status where valid_from >= transaction_timestamp() and reason = 'i18n:status.reason_initial'$q$, '>0');
+        perform pg_temp.expect('ningún estatus inicial nuevo guarda el texto técnico antiguo como motivo', null, null,
+            $q$select count(*)::text from public.case_status where valid_from >= transaction_timestamp() and reason like 'Apertura de expediente%'$q$, '0');
         perform pg_temp.expect('A-1: el área asignada debe ser de la propia organización', INT, 'authenticated',
             replace(new_case, 'aaaaaaaa-1000-0000-0000-000000000001', 'bbbbbbbb-1000-0000-0000-000000000001'), 'ERR');
         perform pg_temp.expect('A-1: la función interna del alta no es ejecutable por los roles de aplicación', INT, 'authenticated',

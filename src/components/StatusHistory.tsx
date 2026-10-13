@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { History } from 'lucide-react';
-import { t } from '../lib/i18n';
+import { t, tStored } from '../lib/i18n';
 import { api, CaseStatusHistoryRow } from '../lib/data';
 import { useCatalog } from '../lib/catalog';
 import { formatDate } from '../lib/format';
@@ -76,7 +76,7 @@ export const StatusHistory: React.FC<{ caseId: string }> = ({ caseId }) => {
                           {t('cases.history.days').replace('{n}', String(days(r.valid_from, r.valid_to)))}
                           {who ? ` · ${who}` : ''}
                         </p>
-                        {r.reason && <p className="italic text-gray-600">“{r.reason}”</p>}
+                        {r.reason && <p className="italic text-gray-600">“{tStored(r.reason)}”</p>}
                       </li>
                     );
                   })}

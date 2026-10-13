@@ -345,6 +345,24 @@
       "user_profile": "Persona usuaria",
       "user_role": "Rol asignado",
       "work_area": "Área de trabajo"
+    },
+    "actions": {
+      "INSERT": "Alta",
+      "UPDATE": "Cambio",
+      "DELETE": "Baja",
+      "LOGIN": "Inicio de sesión",
+      "EXPORT": "Exportación",
+      "STATUS_CHANGE": "Cambio de estatus",
+      "CLARIFICATION": "Aclaración",
+      "SHARE": "Compartición",
+      "ACKNOWLEDGE": "Acuse de recibo",
+      "RECTIFICATION": "Rectificación",
+      "ANONYMIZATION": "Anonimización",
+      "OPPOSITION": "Oposición",
+      "CONSENT_GRANTED": "Consentimiento otorgado",
+      "CONSENT_REVOKED": "Consentimiento revocado",
+      "ARCO_ACCESS_EXTRACT_ISSUED": "Extracto de acceso ARCO emitido",
+      "EVIDENCE_ACCESS": "Acceso a evidencia"
     }
   },
   "authority_requests": {
@@ -1227,5 +1245,8 @@
     "reason_note": "Escribe la nota de justificación (al menos 10 caracteres).",
     "open_parent": "Ir al caso principal",
     "no_subfolios": "Este caso aún no tiene subfolios."
+  },
+  "status": {
+    "reason_initial": "Estatus inicial, asignado al abrir el expediente."
   }
 }

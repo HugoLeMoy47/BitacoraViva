@@ -57,6 +57,10 @@ export const AuditView: React.FC<{ events: AuditEvent[]; userNames: Record<strin
     const label = t(`audit.tables.${name}`);
     return label.startsWith('audit.tables.') ? name : label;
   };
+  const actionLabel = (name: string) => {
+    const label = t(`audit.actions.${name}`);
+    return label.startsWith('audit.actions.') ? name : label;
+  };
   const actorName = (id: string | null) => (id ? userNames[id] ?? id.slice(0, 8) : t('audit.system'));
 
   const filtered = useMemo(
@@ -103,7 +107,7 @@ export const AuditView: React.FC<{ events: AuditEvent[]; userNames: Record<strin
           <label htmlFor="au-action" className="mb-1 block text-xs font-medium text-gray-600">{t('audit.filters.action')}</label>
           <select id="au-action" name="au-action" value={action} onChange={(e) => { setAction(e.target.value); reset(); }} className={selectCls}>
             <option value="">{t('audit.filters.all_f')}</option>
-            {actions.map((x) => <option key={x} value={x}>{x}</option>)}
+            {actions.map((x) => <option key={x} value={x}>{actionLabel(x)}</option>)}
           </select>
         </div>
         <div>
@@ -159,7 +163,7 @@ export const AuditView: React.FC<{ events: AuditEvent[]; userNames: Record<strin
               <tr key={event.id} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-5 py-3 text-gray-700">{formatDateTime(event.created_at)}</td>
                 <td className="whitespace-nowrap px-5 py-3">
-                  <span className="rounded border border-gray-300 bg-gray-100 px-2 py-0.5 font-mono text-xs font-bold text-carbon">{event.action}</span>
+                  <span className="rounded border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-bold text-carbon">{actionLabel(event.action)}</span>
                 </td>
                 <td className="px-5 py-3 font-semibold text-carbon">{tableLabel(event.table_name)}</td>
                 <td className="whitespace-nowrap px-5 py-3 text-gray-700">{actorName(event.user_id)}</td>
