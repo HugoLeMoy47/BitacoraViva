@@ -1,4 +1,10 @@
 {
+  "catalogs": {
+    "country": {
+      "93": "Honduras",
+      "86": "Guatemala"
+    }
+  },
   "app": {
     "title": "Bitácora Viva",
     "tagline": "Memoria institucional y acompañamiento ético",
