@@ -1729,6 +1729,244 @@ begin
     perform pg_temp.expect('E13: el contenido de una entrada de bitácora no se edita → BV611', null, null,
         $q$with u as (update public.journal_entry set body = 'otro texto' where id = 'aaaaaaaa-6000-0000-0000-000000000001' returning 1) select count(*)::text from u$q$, 'ERR:BV611');
 
+    -- ============================================================================================
+    -- ===== E14 fase 1: documentos de la persona, religión, detalle de marcadores y referencia heredada
+    -- ===== (migración 20261015000001). Datos sensibles: solo con consentimiento sensible vigente (D-14);
+    -- ===== el log guarda nombres de campos, nunca valores; nada se borra: lo corregido se cierra.
+    -- ============================================================================================
+    -- Escenario propio: P1 con consentimiento sensible y marcador; P2 sin él; P3 con él revocado; P4 anonimizada
+    insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date) values
+        (pg_temp.id('4000', 32)::uuid, ORG_A::uuid, 'Kappa', 'Documentada', '1985-03-04'),
+        (pg_temp.id('4000', 33)::uuid, ORG_A::uuid, 'Lambda', 'SinSensible', '1985-03-04'),
+        (pg_temp.id('4000', 34)::uuid, ORG_A::uuid, 'Mu', 'Revocada', '1985-03-04');
+    insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date, is_anonymized) values
+        (pg_temp.id('4000', 35)::uuid, ORG_A::uuid, 'PERSONA ANONIMIZADA', 'SUPRIMIDO', '1985-01-01', true);
+    insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id)
+    select pg_temp.id('5000', 32 + k)::uuid, ORG_A::uuid, 'TST-A-0E' || (1 + k), pg_temp.id('4000', 32 + k)::uuid,
+           'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002'
+    from generate_series(0, 2) k;
+    insert into public.consent (organization_id, person_id, case_id, consent_type, status, granted_by_user_id)
+    select ORG_A::uuid, pg_temp.id('4000', 32 + k)::uuid, pg_temp.id('5000', 32 + k)::uuid, 'general_care', 'granted', 'aaaaaaaa-3000-0000-0000-000000000003'
+    from generate_series(0, 2) k;
+    insert into public.consent (organization_id, person_id, case_id, consent_type, status, granted_by_user_id) values
+        (ORG_A::uuid, pg_temp.id('4000', 32)::uuid, pg_temp.id('5000', 32)::uuid, 'sensitive_data', 'granted', 'aaaaaaaa-3000-0000-0000-000000000003'),
+        (ORG_A::uuid, 'aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'aaaaaaaa-5000-0000-0000-000000000001', 'sensitive_data', 'granted', 'aaaaaaaa-3000-0000-0000-000000000003');
+    -- P3: lo concedió hace dos días y lo retiró hoy; el vigente es el último (el consentimiento es un registro por evento)
+    insert into public.consent (organization_id, person_id, case_id, consent_type, status, granted_by_user_id, granted_at)
+    values (ORG_A::uuid, pg_temp.id('4000', 34)::uuid, pg_temp.id('5000', 34)::uuid, 'sensitive_data', 'granted', 'aaaaaaaa-3000-0000-0000-000000000003',
+            now() - interval '2 days');
+    insert into public.consent (organization_id, person_id, case_id, consent_type, status, granted_by_user_id, revoked_at, revoked_by_user_id, revocation_reason)
+    values (ORG_A::uuid, pg_temp.id('4000', 34)::uuid, pg_temp.id('5000', 34)::uuid, 'sensitive_data', 'revoked', 'aaaaaaaa-3000-0000-0000-000000000003',
+            now(), 'aaaaaaaa-3000-0000-0000-000000000003', 'Retiró el consentimiento');
+    insert into public.case_vulnerability_marker (organization_id, case_id, marker_code, affirmed_by) values
+        (ORG_A::uuid, pg_temp.id('5000', 32)::uuid, 'disability', 'aaaaaaaa-3000-0000-0000-000000000003'),
+        (ORG_A::uuid, pg_temp.id('5000', 34)::uuid, 'disability', 'aaaaaaaa-3000-0000-0000-000000000003'),
+        (ORG_A::uuid, 'aaaaaaaa-5000-0000-0000-000000000001', 'disability', 'aaaaaaaa-3000-0000-0000-000000000003');
+    -- Catálogo de tipos de documento (lo escribe dirección; aquí el escenario lo siembra)
+    begin
+        insert into public.document_type (id, organization_id, key, label_es, is_active, sort_order) values
+            (pg_temp.id('d000', 1)::uuid, ORG_A::uuid, 'curp', 'CURP de prueba', true, 1),
+            (pg_temp.id('d000', 2)::uuid, ORG_A::uuid, 'passport', 'Pasaporte de prueba', true, 2),
+            (pg_temp.id('d000', 3)::uuid, ORG_A::uuid, 'retired', 'Tipo retirado', false, 3),
+            ('bbbbbbbb-d000-0000-0000-000000000001'::uuid, ORG_B::uuid, 'curp', 'CURP B', true, 1);
+    exception when others then
+        raise notice 'E14 escenario: sin tabla document_type todavía (%).', sqlerrm;
+    end;
+
+    -- ----- La estructura nueva existe y está protegida
+    perform pg_temp.expect('E14: document_type y person_document tienen RLS activa', null, null,
+        $q$select count(*)::text from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relname in ('document_type', 'person_document') and c.relrowsecurity$q$, '2');
+
+    -- ----- Documentos de la persona: roles
+    perform pg_temp.expect('E14 control positivo: dirección registra un documento (CURP)', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'CURP-FICTICIA-0001')) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 1)), '1');
+    perform pg_temp.expect('E14 control positivo: quien atiende el caso registra otro tipo de documento', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'PASAPORTE-FICTICIO-77')) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 2)), '1');
+    perform pg_temp.expect('E14: el rol de solo lectura no registra documentos → BV120', VW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'X-1')) x$q$, pg_temp.id('4000', 33), pg_temp.id('d000', 1)), 'ERR:BV120');
+    perform pg_temp.expect('E14: el voluntariado no registra documentos → BV120', VOL, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'X-1')) x$q$, pg_temp.id('4000', 33), pg_temp.id('d000', 1)), 'ERR:BV120');
+    perform pg_temp.expect('E14: sin rol vigente no registra documentos → BV120', NR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'X-1')) x$q$, pg_temp.id('4000', 33), pg_temp.id('d000', 1)), 'ERR:BV120');
+    perform pg_temp.expect('E14: anónimo no registra documentos', null, 'anon',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'X-1')) x$q$, pg_temp.id('4000', 33), pg_temp.id('d000', 1)), 'ERR');
+    perform pg_temp.expect('E14: dirección de otra organización no ve a la persona → BV201', DIRB2, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, 'bbbbbbbb-d000-0000-0000-000000000001'::uuid, 'X-1')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV201');
+    perform pg_temp.expect('E14: no se usa un tipo de documento de otra organización → BV211', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, 'bbbbbbbb-d000-0000-0000-000000000001'::uuid, 'X-1')) x$q$, pg_temp.id('4000', 33)), 'ERR:BV211');
+    perform pg_temp.expect('E14: no se usa un tipo de documento retirado → BV211', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'X-1')) x$q$, pg_temp.id('4000', 33), pg_temp.id('d000', 3)), 'ERR:BV211');
+    perform pg_temp.expect('E14: a una persona anonimizada no se le agregan documentos → BV507', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'X-1')) x$q$, pg_temp.id('4000', 35), pg_temp.id('d000', 1)), 'ERR:BV507');
+    perform pg_temp.expect('E14: el número de documento no puede ir vacío → BV320', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, '   ')) x$q$, pg_temp.id('4000', 33), pg_temp.id('d000', 1)), 'ERR:BV320');
+    perform pg_temp.expect('E14: el número de documento no puede ser larguísimo → BV321', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, repeat('9', 61))) x$q$, pg_temp.id('4000', 33), pg_temp.id('d000', 1)), 'ERR:BV321');
+
+    -- ----- Documentos: lo corregido se cierra, no se sobrescribe
+    perform pg_temp.expect('E14: cambiar el número de un documento exige motivo → BV304', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'CURP-FICTICIA-0002')) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 1)), 'ERR:BV304');
+    perform pg_temp.expect('E14 control positivo: con motivo se reemplaza el número', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'CURP-FICTICIA-0002', 'Error de captura')) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 1)), '1');
+    perform pg_temp.expect('E14: tras reemplazar hay un solo documento vigente de ese tipo', null, null,
+        format($q$select count(*)::text from public.person_document where person_id = %L::uuid and document_type_id = %L::uuid and valid_to is null$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 1)), '1');
+    perform pg_temp.expect('E14: el anterior no se borró: queda cerrado con su motivo', null, null,
+        format($q$select count(*)::text from public.person_document where person_id = %L::uuid and document_type_id = %L::uuid and valid_to is not null and change_reason = 'Error de captura'$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 1)), '1');
+    perform pg_temp.expect('E14: repetir el mismo número no crea otro registro', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document(%L::uuid, %L::uuid, 'CURP-FICTICIA-0002')) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 1)), '1');
+    perform pg_temp.expect('E14: sigue habiendo 2 registros del tipo (uno cerrado y uno vigente)', null, null,
+        format($q$select count(*)::text from public.person_document where person_id = %L::uuid and document_type_id = %L::uuid$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 1)), '2');
+
+    -- ----- Documentos: nada de escritura directa, nadie ve lo ajeno
+    perform pg_temp.expect('E14: no se inserta un documento por la API directa', DIR, 'authenticated',
+        format($q$with i as (insert into public.person_document (organization_id, person_id, document_type_id, document_number, created_by)
+                  values (%L, %L::uuid, %L::uuid, 'DIRECTO-1', %L) returning 1) select count(*)::text from i$q$,
+               ORG_A::uuid, pg_temp.id('4000', 33), pg_temp.id('d000', 1), DIR), 'ERR');
+    perform pg_temp.expect('E14: no se edita un documento por la API directa', DIR, 'authenticated',
+        $q$with u as (update public.person_document set document_number = 'EDITADO' returning 1) select count(*)::text from u$q$, 'ERR');
+    perform pg_temp.expect('E14: no se borra un documento por la API directa (Regla Dura 3)', DIR, 'authenticated',
+        $q$with d as (delete from public.person_document returning 1) select count(*)::text from d$q$, 'ERR');
+    perform pg_temp.expect('E14 control positivo: dirección ve los documentos de su organización', DIR, 'authenticated',
+        'select count(*)::text from public.person_document', '>0');
+    perform pg_temp.expect('E14 control positivo: quien atiende los ve', CW, 'authenticated',
+        'select count(*)::text from public.person_document', '>0');
+    perform pg_temp.expect('E14: el rol de solo lectura no ve documentos', VW, 'authenticated',
+        'select count(*)::text from public.person_document', '0');
+    perform pg_temp.expect('E14: sin rol no se ven documentos', NR, 'authenticated',
+        'select count(*)::text from public.person_document', '0');
+    perform pg_temp.expect('E14: otra organización no ve los documentos de A', DIRB2, 'authenticated',
+        'select count(*)::text from public.person_document', '0');
+    perform pg_temp.expect('E14: el log de auditoría deja eventos del documento', null, null,
+        $q$select count(*)::text from public.audit_event where table_name = 'person_document' and created_at >= transaction_timestamp()$q$, '>0');
+    perform pg_temp.expect('E14: ningún número de documento aparece en el log de auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where created_at >= transaction_timestamp()
+           and (coalesce(new_values::text, '') ilike '%CURP-FICTICIA%' or coalesce(old_values::text, '') ilike '%CURP-FICTICIA%'
+                or coalesce(new_values::text, '') ilike '%PASAPORTE-FICTICIO%')$q$, '0');
+
+    -- ----- Quitar un documento: se cierra con motivo, no se borra
+    perform pg_temp.expect('E14: quitar un documento exige motivo → BV304', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_remove_person_document(d.id, '') from public.person_document d where d.person_id = %L::uuid and d.document_type_id = %L::uuid and d.valid_to is null) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 2)), 'ERR:BV304');
+    perform pg_temp.expect('E14 control positivo: con motivo se quita (se cierra) el documento', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_remove_person_document(d.id, 'Documento equivocado') from public.person_document d where d.person_id = %L::uuid and d.document_type_id = %L::uuid and d.valid_to is null) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 2)), '1');
+    perform pg_temp.expect('E14: quitar un documento ya cerrado → BV509', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_remove_person_document(d.id, 'Otra vez') from public.person_document d where d.person_id = %L::uuid and d.document_type_id = %L::uuid and d.valid_to is not null) x$q$, pg_temp.id('4000', 32), pg_temp.id('d000', 2)), 'ERR:BV509');
+    perform pg_temp.expect('E14: un documento que no existe → BV212', CW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_remove_person_document('aaaaaaaa-d000-0000-0000-0000000000ff'::uuid, 'x')) x$q$, 'ERR:BV212');
+    perform pg_temp.expect('E14: dirección de otra organización no quita documentos de A → BV212', DIRB2, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_remove_person_document(d.id, 'x') from public.person_document d where d.person_id = %L::uuid and d.valid_to is null limit 1) x$q$, pg_temp.id('4000', 32)), '0|ERR:BV212');
+
+    -- ----- Catálogo de tipos de documento
+    perform pg_temp.expect('E14 control positivo: dirección agrega un tipo de documento', DIR, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'nuevo_tipo', 'Nuevo tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+    perform pg_temp.expect('E14 control positivo: Trabajo Social (caseworker del área) administra el catálogo', CW, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'tipo_de_ts', 'Tipo de TS', 9) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+    perform pg_temp.expect('E14: el área jurídica no administra el catálogo', 'aaaaaaaa-3000-0000-0000-00000000000a', 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo', 'Otro tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('E14: ingreso sin área de Trabajo Social no administra el catálogo', INT, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo2', 'Otro tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('E14: el rol de solo lectura no administra el catálogo', VW, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo3', 'Otro tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('E14: Trabajo Social no cambia el catálogo de otra organización', CW, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'ajeno_ts', 'Ajeno', 9) returning 1) select count(*)::text from i$q$, ORG_B), 'ERR');
+    perform pg_temp.expect('E14: Trabajo Social desactiva un tipo (no lo borra)', CW, 'authenticated',
+        format($q$with u as (update public.document_type set is_active = false where id = %L::uuid returning 1) select count(*)::text from u$q$, pg_temp.id('d000', 2)), '1');
+    perform pg_temp.expect('E14: el catálogo de A no admite tipos en la organización B', DIR, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'ajeno', 'Ajeno', 9) returning 1) select count(*)::text from i$q$, ORG_B), 'ERR');
+    perform pg_temp.expect('E14: no se borra un tipo de documento (se desactiva)', DIR, 'authenticated',
+        $q$with d as (delete from public.document_type returning 1) select count(*)::text from d$q$, 'ERR');
+    perform pg_temp.expect('E14: dirección de B no ve los tipos de A', DIRB2, 'authenticated',
+        format('select count(*)::text from public.document_type where organization_id = %L', ORG_A), '0');
+    perform pg_temp.expect('E14: sin rol no se ve el catálogo de tipos', NR, 'authenticated',
+        'select count(*)::text from public.document_type', '0');
+
+    -- ----- Religión: dato sensible, solo con consentimiento sensible vigente
+    perform pg_temp.expect('E14 control positivo: ingreso registra la religión con consentimiento sensible', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión de prueba')) x$q$, pg_temp.id('4000', 32)), '1');
+    perform pg_temp.expect('E14: sin consentimiento sensible no se registra la religión → BV408', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión de prueba')) x$q$, pg_temp.id('4000', 33)), 'ERR:BV408');
+    perform pg_temp.expect('E14: con el consentimiento sensible revocado tampoco → BV408', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión de prueba')) x$q$, pg_temp.id('4000', 34)), 'ERR:BV408');
+    perform pg_temp.expect('E14: quien atiende el caso no registra la religión → BV121', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV121');
+    perform pg_temp.expect('E14: el rol de solo lectura no registra la religión → BV121', VW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV121');
+    perform pg_temp.expect('E14: dirección de otra organización no la registra → BV201', DIRB2, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV201');
+    perform pg_temp.expect('E14: una persona anonimizada no admite religión → BV507', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 35)), 'ERR:BV507');
+    perform pg_temp.expect('E14: cambiar la religión ya registrada exige motivo → BV304', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión distinta')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV304');
+    perform pg_temp.expect('E14 control positivo: con motivo se cambia la religión', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión distinta', 'La persona la corrigió')) x$q$, pg_temp.id('4000', 32)), '1');
+    perform pg_temp.expect('E14: borrar la religión ya registrada también exige motivo → BV304', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, '  ')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV304');
+    perform pg_temp.expect('E14: la religión es un texto acotado → BV321', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, repeat('r', 121), 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV321');
+    perform pg_temp.expect('E14: la religión quedó guardada', null, null,
+        format('select religion from public.person where id = %L::uuid', pg_temp.id('4000', 32)), 'Religión distinta');
+    perform pg_temp.expect('E14: la religión no aparece en el log de auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where created_at >= transaction_timestamp()
+           and (coalesce(new_values::text, '') ilike '%Religión de prueba%' or coalesce(new_values::text, '') ilike '%Religión distinta%'
+                or coalesce(old_values::text, '') ilike '%Religión de prueba%')$q$, '0');
+
+    -- ----- Detalle de los marcadores de vulnerabilidad
+    perform pg_temp.expect('E14 control positivo: quien atiende detalla un marcador existente', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_marker_detail(%L::uuid, 'disability', 'DETALLE-SECRETO-visual')) x$q$, pg_temp.id('5000', 32)), '1');
+    perform pg_temp.expect('E14: el detalle quedó en el marcador', null, null,
+        format($q$select notes from public.case_vulnerability_marker where case_id = %L::uuid and marker_code = 'disability'$q$, pg_temp.id('5000', 32)), 'DETALLE-SECRETO-visual');
+    perform pg_temp.expect('E14: no se detalla un marcador que el expediente no tiene → BV213', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_marker_detail(%L::uuid, 'lgbtiq', 'x')) x$q$, pg_temp.id('5000', 32)), 'ERR:BV213');
+    perform pg_temp.expect('E14: el rol de solo lectura no detalla marcadores → BV120', VW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_marker_detail(%L::uuid, 'disability', 'x')) x$q$, pg_temp.id('5000', 32)), 'ERR:BV120');
+    perform pg_temp.expect('E14: dirección de otra organización no detalla marcadores de A → BV201', DIRB2, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_marker_detail(%L::uuid, 'disability', 'x')) x$q$, pg_temp.id('5000', 32)), 'ERR:BV201');
+    perform pg_temp.expect('E14: el detalle del marcador es un texto acotado → BV321', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_marker_detail(%L::uuid, 'disability', repeat('d', 501))) x$q$, pg_temp.id('5000', 32)), 'ERR:BV321');
+    perform pg_temp.expect('E14: con el consentimiento sensible revocado no se agrega detalle → BV408', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_marker_detail(%L::uuid, 'disability', 'detalle nuevo')) x$q$, pg_temp.id('5000', 34)), 'ERR:BV408');
+    perform pg_temp.expect('E14: sí se puede quitar el detalle aunque el consentimiento esté revocado', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_marker_detail(%L::uuid, 'disability', '')) x$q$, pg_temp.id('5000', 34)), '1');
+    perform pg_temp.expect('E14: el detalle del marcador no aparece en el log de auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where created_at >= transaction_timestamp()
+           and (coalesce(new_values::text, '') ilike '%DETALLE-SECRETO%' or coalesce(old_values::text, '') ilike '%DETALLE-SECRETO%')$q$, '0');
+
+    -- ----- Referencia heredada (el EXPEDIENTE de la hoja anterior)
+    perform pg_temp.expect('E14 control positivo: ingreso registra la referencia heredada', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_case_legacy_reference(%L::uuid, 'HOJA-0001')) x$q$, pg_temp.id('5000', 33)), '1');
+    perform pg_temp.expect('E14: el rol de solo lectura no registra referencias → BV120', VW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_case_legacy_reference(%L::uuid, 'HOJA-9')) x$q$, pg_temp.id('5000', 33)), 'ERR:BV120');
+    perform pg_temp.expect('E14: dirección de otra organización no la registra → BV201', DIRB2, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_case_legacy_reference(%L::uuid, 'HOJA-9')) x$q$, pg_temp.id('5000', 33)), 'ERR:BV201');
+    perform pg_temp.expect('E14: cambiar la referencia ya registrada exige motivo → BV304', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_case_legacy_reference(%L::uuid, 'HOJA-0002')) x$q$, pg_temp.id('5000', 33)), 'ERR:BV304');
+    perform pg_temp.expect('E14 control positivo: con motivo se cambia la referencia', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_case_legacy_reference(%L::uuid, 'HOJA-0002', 'Estaba mal copiada')) x$q$, pg_temp.id('5000', 33)), '1');
+    perform pg_temp.expect('E14: la referencia es un texto acotado → BV321', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_case_legacy_reference(%L::uuid, repeat('h', 121), 'x')) x$q$, pg_temp.id('5000', 33)), 'ERR:BV321');
+    perform pg_temp.expect('E14: el expediente se encuentra por su referencia heredada', DIR, 'authenticated',
+        $q$select case_number from public."case" where legacy_reference = 'HOJA-0002'$q$, 'TST-A-0E2');
+    perform pg_temp.expect('E14: el folio de caso no cambia al poner la referencia heredada', null, null,
+        format('select case_number from public."case" where id = %L::uuid', pg_temp.id('5000', 33)), 'TST-A-0E2');
+    perform pg_temp.expect('E14: la referencia heredada no se escribe por la API directa', INT, 'authenticated',
+        format($q$with u as (update public."case" set legacy_reference = 'DIRECTA' where id = %L::uuid returning 1) select count(*)::text from u$q$, pg_temp.id('5000', 33)), 'ERR');
+
+    -- ----- El extracto de acceso ARCO incluye lo nuevo (derecho de acceso)
+    perform pg_temp.expect('E14: el extracto ARCO incluye los documentos de la persona', DIR, 'authenticated',
+        format($q$select jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'documents')::text$q$, pg_temp.id('4000', 32)), '>0');
+    perform pg_temp.expect('E14: el extracto ARCO incluye la religión', DIR, 'authenticated',
+        format($q$select public.fn_generate_arco_access_extract(%L::uuid)->'person'->>'religion'$q$, pg_temp.id('4000', 32)), 'Religión distinta');
+    perform pg_temp.expect('E14: el extracto ARCO incluye el detalle de los marcadores', DIR, 'authenticated',
+        format($q$select jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'vulnerability_markers')::text$q$, pg_temp.id('4000', 32)), '>0');
+
+    -- ----- Para la prueba de anonimización: PERS_A también tiene documento, religión y detalle de marcador
+    perform pg_temp.expect('E14 prep: documento de la persona que se anonimiza', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_document('aaaaaaaa-4000-0000-0000-000000000001'::uuid, %L::uuid, 'CURP-PARA-BORRAR-1')) x$q$, pg_temp.id('d000', 1)), '1');
+    perform pg_temp.expect('E14 prep: religión de la persona que se anonimiza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_set_person_religion('aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'RELIGION-PARA-BORRAR')) x$q$, '1');
+    perform pg_temp.expect('E14 prep: detalle de marcador de la persona que se anonimiza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_set_marker_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid, 'disability', 'DETALLE-PARA-BORRAR')) x$q$, '1');
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
@@ -1805,6 +2043,19 @@ begin
         $q$select is_valid::text from public.fn_verify_audit_chain()$q$, 'true');
     perform pg_temp.expect('D-05 control positivo: los eventos tienen hashes válidos', null, null,
         $q$select count(*)::text from public.audit_event where prev_hash is null or event_hash is null$q$, '0');
+
+    -- ===== E14 fase 1: tras anonimizar, ni el documento, ni la religión, ni el detalle del marcador sobreviven
+    perform pg_temp.expect('E14: tras anonimizar, ningún número de documento sobrevive', null, null,
+        $q$select count(*)::text from public.person_document where person_id = 'aaaaaaaa-4000-0000-0000-000000000001'
+           and (document_number ilike '%BORRAR%' or valid_to is null)$q$, '0');
+    perform pg_temp.expect('E14 control positivo: el documento sigue como registro cerrado, sin número', null, null,
+        $q$select count(*)::text from public.person_document where person_id = 'aaaaaaaa-4000-0000-0000-000000000001' and valid_to is not null$q$, '>0');
+    perform pg_temp.expect('E14: tras anonimizar, la religión desaparece', null, null,
+        $q$select coalesce(religion, 'NULO') from public.person where id = 'aaaaaaaa-4000-0000-0000-000000000001'$q$, 'NULO');
+    perform pg_temp.expect('E14: tras anonimizar, el detalle del marcador desaparece', null, null,
+        $q$select count(*)::text from public.case_vulnerability_marker where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and notes is not null$q$, '0');
+    perform pg_temp.expect('E14: el esqueleto sigue: el marcador permanece, sin detalle', null, null,
+        $q$select count(*)::text from public.case_vulnerability_marker where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and marker_code = 'disability'$q$, '1');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

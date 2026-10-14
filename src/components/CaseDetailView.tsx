@@ -32,7 +32,8 @@ import {
   JournalEntry,
   ConsentType,
   ConsentStatus,
-  ArcoRequest
+  ArcoRequest,
+  VulnerabilityMarkerCode
 } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
@@ -50,6 +51,10 @@ import { CaseTasksPanel } from './CaseTasksPanel';
 import { StatusHistory } from './StatusHistory';
 import { DisabledReason, describedBy } from './DisabledReason';
 import { dataApi } from '../lib/data';
+import { hasCurrentSensitiveConsent } from '../lib/privacy';
+import { useToast } from '../lib/toast';
+import { PersonDocumentsPanel } from './PersonDocumentsPanel';
+import { SmallFieldModal } from './SmallFieldModal';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -86,6 +91,8 @@ interface CaseDetailViewProps {
   }) => void;
   onAnonymizePerson?: (personId: string, reason: string) => void;
   onOpposeSecondary?: (personId: string, reason: string) => void;
+  /** Vuelve a leer lo que RLS permite ver después de escribir (documentos, religión, detalles, referencia) */
+  onDataChanged?: () => Promise<void>;
 }
 
 export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
@@ -108,9 +115,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onSaveConsent,
   onAnonymizePerson,
   onOpposeSecondary,
+  onDataChanged,
 }) => {
+  const toast = useToast();
   const { statusAxes, statusValues, organizationName, organizationInfo } = useCatalog();
   const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>(initialTab ?? 'axes');
+  // E14 fase 1: datos cortos que se editan en un modal de un solo campo
+  const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   const [targetValueCode, setTargetValueCode] = useState<string>('');
   const [transitionReason, setTransitionReason] = useState<string>('');
@@ -155,6 +166,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     !!onStartSubfolio && (activeRole === 'intake_officer' || activeRole === 'director') && !caseData.parent_case_id && !caseData.closed_at;
   const canManageConsent = activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director';
   const canRectify = activeRole === 'intake_officer' || activeRole === 'director';
+  // E14: los datos sensibles nuevos solo se registran con consentimiento sensible vigente (D-14)
+  const sensitiveOk = hasCurrentSensitiveConsent(caseData.consents);
+  const canEditExtra = canWriteJournal && !!onDataChanged && !caseData.person.is_anonymized;
   // Por qué un derecho no está disponible: por rol, o porque la persona ya fue anonimizada (texto visible, no solo un tooltip)
   const arcoReason = (allowed: boolean, restrictedKey: string): string | null =>
     !allowed ? t(restrictedKey) : caseData.person.is_anonymized ? t('arco.person_anonymized') : null;
@@ -671,8 +685,28 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   {caseData.person.phone_number || t('cases.no_phone')}
                 </span>
               </div>
+              <div>
+                <span className="text-gray-500 block">{t('case_extra.religion_label')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {caseData.person.religion || t('case_extra.religion_none')}
+                </span>
+                {canRectify && canEditExtra && (sensitiveOk ? (
+                  <button type="button" onClick={() => setField({ kind: 'religion' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                    {caseData.person.religion ? t('case_extra.change') : t('case_extra.religion_register')}
+                  </button>
+                ) : (
+                  <p className="mt-1 text-sm text-gray-700">{t('case_extra.needs_sensitive_consent')}</p>
+                ))}
+              </div>
             </div>
           </div>
+
+          <PersonDocumentsPanel
+            personId={caseData.titular_person_id}
+            documents={caseData.documents ?? []}
+            canEdit={canEditExtra}
+            onChanged={onDataChanged ?? (async () => {})}
+          />
 
           <div>
             <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
@@ -692,6 +726,17 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <span className="font-semibold text-carbon text-sm">
                   {caseData.travels_with_family ? t('common.yes') : t('common.no')}
                 </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block">{t('case_extra.legacy_label')}</span>
+                <span className="font-mono font-semibold text-carbon text-sm">
+                  {caseData.legacy_reference || t('case_extra.legacy_none')}
+                </span>
+                {canEditExtra && (
+                  <button type="button" onClick={() => setField({ kind: 'legacy' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                    {caseData.legacy_reference ? t('case_extra.change') : t('case_extra.legacy_register')}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -738,6 +783,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                           "{v.notes}"
                         </div>
                       )}
+                      {canEditExtra && (sensitiveOk ? (
+                        <button type="button" onClick={() => setField({ kind: 'marker', code: v.marker_code })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                          {v.notes ? t('case_extra.marker_detail_edit') : t('case_extra.marker_detail_add')}
+                        </button>
+                      ) : (
+                        <p className="mt-2 text-sm text-gray-700">{t('case_extra.needs_sensitive_consent')}</p>
+                      ))}
                     </div>
                     <div className="mt-3 pt-2 border-t border-gray-200/60 text-xs text-gray-500 flex items-center justify-between">
                       <span>{t('cases.affirmed_by')} {v.affirmed_by_name ?? '—'}</span>
@@ -1226,6 +1278,36 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           </div>
         </ModalShell>
       )}
+
+      {/* E14 fase 1: religión, referencia heredada y detalle de un marcador (un campo cada uno) */}
+      {field && onDataChanged && (() => {
+        const markerNotes = field.kind === 'marker' ? caseData.vulnerabilities.find((v) => v.marker_code === field.code)?.notes ?? '' : '';
+        const cfg = field.kind === 'religion'
+          ? { title: t('case_extra.religion_title'), hint: t('case_extra.religion_hint'), label: t('case_extra.religion_label'), initial: caseData.person.religion ?? '', max: 120, multiline: false }
+          : field.kind === 'legacy'
+            ? { title: t('case_extra.legacy_title'), hint: t('case_extra.legacy_hint'), label: t('case_extra.legacy_label'), initial: caseData.legacy_reference ?? '', max: 120, multiline: false }
+            : { title: t('case_extra.marker_detail_title'), hint: t('case_extra.marker_detail_hint'), label: t('case_extra.marker_detail_label'), initial: markerNotes, max: 500, multiline: true };
+        return (
+          <SmallFieldModal
+            title={cfg.title}
+            hint={cfg.hint}
+            label={cfg.label}
+            initialValue={cfg.initial}
+            maxLength={cfg.max}
+            multiline={cfg.multiline}
+            reasonWhenChanged={field.kind !== 'marker' && cfg.initial !== ''}
+            allowClear
+            onSubmit={async (value, reason) => {
+              if (field.kind === 'religion') await dataApi.setPersonReligion(caseData.titular_person_id, value, reason);
+              else if (field.kind === 'legacy') await dataApi.setCaseLegacyReference(caseData.id, value, reason);
+              else await dataApi.setMarkerDetail(caseData.id, field.code, value);
+              toast.success(t('case_extra.saved'));
+              await onDataChanged();
+            }}
+            onClose={() => setField(null)}
+          />
+        );
+      })()}
 
       {/* Modal: Fe de Erratas / Aclaración (BV-4.2) */}
       {clarifyingEntry && onAddClarification && (

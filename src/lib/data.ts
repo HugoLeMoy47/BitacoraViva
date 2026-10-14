@@ -11,9 +11,11 @@ import {
   CaseVulnerabilityMarker,
   CaseWithDetails,
   Consent,
+  DocumentType,
   JournalEntry,
   Organization,
   Person,
+  PersonDocument,
   PrivacyNotice,
   ConsentText,
   SharingEvent,
@@ -41,6 +43,8 @@ export interface OrgData {
   statusAxes: StatusAxis[];
   statusValues: Record<StatusAxisCode, StatusValue[]>;
   cases: CaseWithDetails[];
+  /** Tipos de documento de la organización (catálogo que administra dirección) */
+  documentTypes: DocumentType[];
   auditEvents: AuditEvent[];
   authorityRequests: AuthorityRequest[];
   sharingEvents: SharingEvent[];
@@ -60,6 +64,7 @@ export const EMPTY_ORG_DATA: OrgData = {
     case_stage: [],
   },
   cases: [],
+  documentTypes: [],
   auditEvents: [],
   authorityRequests: [],
   sharingEvents: [],
@@ -110,6 +115,8 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     profiles,
     audit,
     authority,
+    documentTypes,
+    personDocuments,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -134,6 +141,9 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     // RLS: sólo dirección obtiene filas de auditoría (Ethos C4).
     rows<AuditEvent>(supabase.from('audit_event').select('*').order('created_at', { ascending: false }).limit(500)),
     rows<AuthorityRequest>(supabase.from('authority_request').select('*').order('received_at', { ascending: false })),
+    rows<DocumentType>(supabase.from('document_type').select('*').order('sort_order')),
+    // RLS: solo roles que operan expedientes; el rol de solo lectura recibe vacío
+    rows<PersonDocument>(supabase.from('person_document').select('*').order('created_at')),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -141,6 +151,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
   const valueById = new Map(values.map((v) => [v.id, v]));
   const personById = new Map(persons.map((p) => [p.id, p]));
   const caseById = new Map(cases.map((c) => [c.id, c]));
+  const documentTypeById = new Map(documentTypes.map((d) => [d.id, d]));
   const userName = (id?: string | null) => profiles.find((p) => p.id === id)?.full_name;
 
   const statusValues = { ...EMPTY_ORG_DATA.statusValues };
@@ -212,6 +223,9 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
         consents: consents
           .filter((k) => k.person_id === c.titular_person_id)
           .map((k) => ({ ...k, granted_by_name: userName(k.granted_by_user_id) })),
+        documents: personDocuments
+          .filter((d) => d.person_id === c.titular_person_id)
+          .map((d) => ({ ...d, type_label: documentTypeById.get(d.document_type_id)?.label_es ?? '—' })),
         arco_requests: arcos
           .filter((r) => r.person_id === c.titular_person_id)
           .map((r) => ({
@@ -233,6 +247,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     statusAxes: axes,
     statusValues,
     cases: detailed,
+    documentTypes,
     auditEvents: audit,
     authorityRequests: authority,
     sharingEvents,
@@ -501,6 +516,27 @@ export const api = {
 
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),
+
+  // E14 fase 1: documentos, religión, detalle de marcadores y referencia heredada
+  setPersonDocument: (personId: string, documentTypeId: string, documentNumber: string, reason?: string) =>
+    rpc<string>('fn_set_person_document', {
+      p_person_id: personId,
+      p_document_type_id: documentTypeId,
+      p_document_number: documentNumber,
+      p_reason: reason?.trim() || null,
+    }),
+
+  removePersonDocument: (documentId: string, reason: string) =>
+    rpc('fn_remove_person_document', { p_document_id: documentId, p_reason: reason }),
+
+  setPersonReligion: (personId: string, religion: string, reason?: string) =>
+    rpc('fn_set_person_religion', { p_person_id: personId, p_religion: religion, p_reason: reason?.trim() || null }),
+
+  setMarkerDetail: (caseId: string, markerCode: string, detail: string) =>
+    rpc('fn_set_marker_detail', { p_case_id: caseId, p_marker_code: markerCode, p_detail: detail }),
+
+  setCaseLegacyReference: (caseId: string, reference: string, reason?: string) =>
+    rpc('fn_set_case_legacy_reference', { p_case_id: caseId, p_reference: reference, p_reason: reason?.trim() || null }),
 
   readCaseDetail: (caseId: string) =>
     rpc<boolean>('fn_read_case_detail', { p_case_id: caseId }),

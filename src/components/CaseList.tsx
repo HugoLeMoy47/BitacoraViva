@@ -65,6 +65,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
       if (!term) return true;
       return (
         c.case_number.toLowerCase().includes(term) ||
+        (c.legacy_reference ?? '').toLowerCase().includes(term) ||
         personName(c).toLowerCase().includes(term) ||
         (c.person.preferred_name ?? '').toLowerCase().includes(term) ||
         (c.person.other_nationality ?? '').toLowerCase().includes(term) ||

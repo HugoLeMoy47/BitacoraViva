@@ -49,6 +49,8 @@ interface CasesViewProps {
   onRectifyPerson?: (personId: string, updates: Partial<Person>, reason: string) => void;
   onAnonymizePerson?: (personId: string, reason: string) => void;
   onOpposeSecondary?: (personId: string, reason: string) => void;
+  /** Vuelve a leer los datos después de escribir (documentos, religión, detalles, referencia heredada) */
+  onDataChanged?: () => Promise<void>;
   // Expediente que debe abrirse al entrar (desde el tablero de operación)
   /** Folio del expediente abierto (viene de la URL) y cómo cambiarlo */
   selectedCaseNumber?: string | null;
@@ -75,6 +77,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
   onRectifyPerson,
   onAnonymizePerson,
   onOpposeSecondary,
+  onDataChanged,
   selectedCaseNumber,
   selectedCaseSub,
   onSelectCase,
@@ -189,6 +192,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
         onSaveConsent={onSaveConsent ? (consent) => onSaveConsent(selectedCase.id, consent) : undefined}
         onAnonymizePerson={onAnonymizePerson}
         onOpposeSecondary={onOpposeSecondary}
+        onDataChanged={onDataChanged}
       />
     );
   }

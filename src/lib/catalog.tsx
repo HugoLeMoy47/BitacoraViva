@@ -1,11 +1,13 @@
 import React, { createContext, useContext } from 'react';
-import { Area, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
+import { Area, DocumentType, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
 
 // Catálogos de la organización (áreas, ejes y valores de estatus) cargados desde la base.
 export interface Catalog {
   areas: Area[];
   statusAxes: StatusAxis[];
   statusValues: Record<StatusAxisCode, StatusValue[]>;
+  /** Tipos de documento que dirección administra */
+  documentTypes: DocumentType[];
   organizationName: string;
   /** Datos del responsable declarados por la asociación (aviso de privacidad y extracto ARCO) */
   organizationInfo: { responsibleName: string; responsibleAddress: string; arcoContact: string };
@@ -18,6 +20,7 @@ const EMPTY: Catalog = {
   userNames: {},
   areas: [],
   statusAxes: [],
+  documentTypes: [],
   statusValues: {
     legal_status: [],
     engagement_status: [],

@@ -201,6 +201,20 @@ begin
 end $$;
 
 -- ==============================================================================
+-- 5b. Tipos de documento de la persona (E14 fase 1). PROVISIONALES: dirección los edita y la lista real
+-- de la hoja de casos de CAFEMIN se homologa después.
+-- ==============================================================================
+insert into public.document_type (organization_id, key, label_es, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'curp', 'CURP', 1),
+    ('00000000-0000-0000-0000-000000000001', 'nue', 'NUE', 2),
+    ('00000000-0000-0000-0000-000000000001', 'passport', 'Pasaporte', 3),
+    ('00000000-0000-0000-0000-000000000001', 'birth_certificate', 'Acta de nacimiento', 4),
+    ('00000000-0000-0000-0000-000000000001', 'national_id', 'Identificación oficial de su país', 5),
+    ('00000000-0000-0000-0000-000000000001', 'refugee_claim', 'Constancia de solicitud de refugio', 6),
+    ('00000000-0000-0000-0000-000000000001', 'other', 'Otro documento', 99)
+on conflict (organization_id, key) do nothing;
+
+-- ==============================================================================
 -- 6. Personas y Expedientes de Demostración (Épica E3: MAP-OIM v3)
 -- ==============================================================================
 do $$

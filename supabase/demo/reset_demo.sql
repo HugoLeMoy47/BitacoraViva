@@ -54,6 +54,8 @@ truncate table
     public.case_vulnerability_marker,
     public.case_status,
     public."case",
+    public.person_document,
+    public.document_type,
     public.person,
     public.authority_request,
     public.audit_event,
