@@ -269,6 +269,8 @@ export interface Person {
   address_line?: string | null;
   neighborhood?: string | null;
   postal_code?: string | null;
+  /** Dato sensible (D-14): solo con consentimiento sensible vigente */
+  religion?: string | null;
   is_anonymized: boolean;
   anonymized_at?: string | null;
   anonymized_by?: string | null;
@@ -298,8 +300,34 @@ export interface Case {
   closure_reason?: string | null;
   assigned_area_id?: string | null;
   assigned_user_id?: string | null;
+  /** EXPEDIENTE de la hoja de casos anterior (E14); el folio de caso del sistema no cambia */
+  legacy_reference?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Tipo de documento de la persona (catálogo de la organización, lo administra dirección) */
+export interface DocumentType {
+  id: string;
+  organization_id: string;
+  key: string;
+  label_es: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+/** Documento de la persona; `valid_to` lleno = cerrado (cambiado o quitado, con su motivo) */
+export interface PersonDocument {
+  id: string;
+  organization_id: string;
+  person_id: string;
+  document_type_id: string;
+  /** Etiqueta del tipo, resuelta al cargar (nunca se muestra el identificador) */
+  type_label?: string;
+  document_number: string;
+  created_at: string;
+  valid_to?: string | null;
+  change_reason?: string | null;
 }
 
 export type VulnerabilityMarkerCode =
@@ -403,6 +431,7 @@ export interface CaseWithDetails extends Case {
   journal_entries?: JournalEntry[];
   consents?: Consent[];
   arco_requests?: ArcoRequest[];
+  documents?: PersonDocument[];
 }
 
 // ------------------------------------------------------------------------------
