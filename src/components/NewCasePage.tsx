@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle, BookOpen } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { ConsentText, PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
@@ -7,6 +7,7 @@ import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
 import { ConsentInput, NewCaseInput, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
 import { DisabledReason, describedBy } from './DisabledReason';
+import { NnaAssentModal } from './NnaAssentModal';
 
 type Step = 0 | 1 | 2 | 3 | 4;
 type Choice = 'yes' | 'no' | null;
@@ -63,6 +64,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
     secondary_use_research: null,
   });
   const [isMinor, setIsMinor] = useState(false);
+  const [showNnaModal, setShowNnaModal] = useState(false);
   const [isUnaccompanied, setIsUnaccompanied] = useState(false);
   const [guardianName, setGuardianName] = useState('');
   const [guardianRole, setGuardianRole] = useState('');
@@ -375,7 +377,17 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                 </label>
                 {isMinor && (
                   <div className="space-y-3 pl-6">
-                    <p className="text-xs text-gray-500">{t('intake.consent.minor_assent_note')}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-claro/30 p-2.5 rounded-lg border border-turquesa/20">
+                      <p className="text-xs text-gray-600">{t('intake.consent.minor_assent_note')}</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowNnaModal(true)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-turquesa/40 bg-white px-2.5 py-1 text-xs font-semibold text-turquesa-dark hover:bg-claro shadow-2xs"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>{t('nna_guide.open_btn')}</span>
+                      </button>
+                    </div>
                     <label className="flex items-center gap-2 text-xs text-carbon cursor-pointer">
                       <input
                         type="checkbox"
@@ -536,14 +548,20 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-9">{t('intake.field_sex')}</label>
                   <select id="newcas-9" name="newcas-9" autoComplete="off"
+                    disabled={!sensitiveGranted}
                     value={sexId}
                     onChange={(e) => setSexId(Number(e.target.value))}
-                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     <option value={1}>{t('intake.sex_1')}</option>
                     <option value={2}>{t('intake.sex_2')}</option>
                     <option value={3}>{t('intake.sex_3')}</option>
                   </select>
+                  {!sensitiveGranted && (
+                    <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                      {t('intake.consent.sensitive_disabled_notice')}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -557,9 +575,10 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-10">{t('intake.field_nationality')}</label>
                   <select id="newcas-10" name="newcas-10" autoComplete="off"
+                    disabled={!sensitiveGranted}
                     value={nationalityCountry}
                     onChange={(e) => setNationalityCountry(e.target.value)}
-                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     <option value="Honduras">{t('intake.countries.honduras')}</option>
                     <option value="Guatemala">{t('intake.countries.guatemala')}</option>
@@ -571,29 +590,46 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                     <option value="México">{t('intake.countries.mexico')}</option>
                     <option value="Otro">{t('intake.other_country')}</option>
                   </select>
+                  {!sensitiveGranted && (
+                    <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                      {t('intake.consent.sensitive_disabled_notice')}
+                    </span>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-11">{t('intake.field_primary_language')}</label>
                   <input id="newcas-11" name="newcas-11" autoComplete="off"
+                    disabled={!sensitiveGranted}
                     type="text"
                     value={primaryLanguage}
                     onChange={(e) => setPrimaryLanguage(e.target.value)}
                     placeholder={t('intake.ph_language')}
-                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   />
+                  {!sensitiveGranted && (
+                    <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                      {t('intake.consent.sensitive_disabled_notice')}
+                    </span>
+                  )}
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-12">{t('intake.field_phone')}</label>
                 <input id="newcas-12" name="newcas-12" autoComplete="off"
+                  disabled={!sensitiveGranted}
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t('intake.ph_phone')}
-                  className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                  className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
+                {!sensitiveGranted && (
+                  <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {t('intake.consent.sensitive_disabled_notice')}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -606,6 +642,13 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                 <p className="text-gray-600">{t('intake.vulnerabilities_intro')}</p>
               </div>
 
+              {!sensitiveGranted && (
+                <div role="alert" className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p>{t('intake.consent.vulnerabilities_disabled_notice')}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-2">
                 {(Object.keys(VULNERABILITY_CATALOG) as VulnerabilityMarkerCode[]).map((code) => {
                   const item = VULNERABILITY_CATALOG[code];
@@ -613,17 +656,20 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   return (
                     <label
                       key={code}
-                      className={`flex items-start space-x-3 p-3 rounded-xl border cursor-pointer transition ${
-                        isChecked
-                          ? 'bg-alerta-bg/40 border-alerta/40 text-carbon shadow-xs'
-                          : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700'
+                      className={`flex items-start space-x-3 p-3 rounded-xl border transition ${
+                        !sensitiveGranted
+                          ? 'opacity-60 cursor-not-allowed bg-gray-50 border-gray-200 text-gray-400'
+                          : isChecked
+                          ? 'bg-alerta-bg/40 border-alerta/40 text-carbon shadow-xs cursor-pointer'
+                          : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700 cursor-pointer'
                       }`}
                     >
                       <input
                         type="checkbox"
+                        disabled={!sensitiveGranted}
                         checked={isChecked}
                         onChange={() => toggleVulnerability(code)}
-                        className="mt-0.5 w-4 h-4 text-alerta-dark rounded border-gray-300"
+                        className="mt-0.5 w-4 h-4 text-alerta-dark rounded border-gray-300 disabled:cursor-not-allowed"
                       />
                       <div className="flex-1 text-xs">
                         <span className="font-bold block text-carbon">{item.label}</span>
@@ -734,6 +780,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
           )}
         </div>
       </div>
+
+      <NnaAssentModal isOpen={showNnaModal} onClose={() => setShowNnaModal(false)} />
     </div>
   );
 };

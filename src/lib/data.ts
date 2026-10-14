@@ -4,6 +4,7 @@ import {
   Area,
   ArcoRequest,
   AuditEvent,
+  AuditChainVerification,
   AuthorityRequest,
   Case,
   CaseCurrentStatusDetail,
@@ -500,7 +501,15 @@ export const api = {
 
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),
+
+  readCaseDetail: (caseId: string) =>
+    rpc<boolean>('fn_read_case_detail', { p_case_id: caseId }),
+
+  verifyAuditChain: (orgId?: string) =>
+    rpc<AuditChainVerification[]>('fn_verify_audit_chain', { p_org_id: orgId ?? null }),
 };
+
+export const dataApi = api;
 
 // Aviso de privacidad vigente de la organización (P-13). Hoy es el texto de la semilla;
 // el objetivo es que cada asociación cargue el suyo (p. ej. un PDF) desde su configuración.
@@ -556,4 +565,8 @@ export const configApi = {
     rpc<string>('fn_publish_privacy_notice', { p_title: title, p_summary: summary, p_full_text: fullText }),
   publishConsentText: (type: string, title: string, description: string, required: boolean) =>
     rpc<string>('fn_publish_consent_text', { p_consent_type: type, p_title: title, p_description: description, p_required: required }),
+  updateSecuritySettings: (enforceAbsoluteSessionTimeout: boolean) =>
+    rpc<string>('fn_update_organization_security_settings', {
+      p_enforce_absolute_session_timeout: enforceAbsoluteSessionTimeout,
+    }),
 };

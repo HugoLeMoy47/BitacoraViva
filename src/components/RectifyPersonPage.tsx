@@ -20,6 +20,7 @@ interface RectifyPersonPageProps {
 
 export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, onCancel, onRectify }) => {
   const person = caseData.person;
+  const sensitiveGranted = caseData.consents?.some((c) => c.consent_type === 'sensitive_data' && c.status === 'granted') ?? false;
   const [givenName, setGivenName] = useState(person.given_name);
   const [paternalName, setPaternalName] = useState(person.paternal_family_name);
   const [maternalName, setMaternalName] = useState(person.maternal_family_name || '');
@@ -117,11 +118,38 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
               </div>
               <div>
                 <label className={LABEL} htmlFor="rectif-phone">{t('arco.modal_rectify.phone')}</label>
-                <input id="rectif-phone" autoComplete="off" type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t('arco.modal_rectify.ph_phone')} className={INPUT} />
+                <input
+                  id="rectif-phone"
+                  autoComplete="off"
+                  disabled={!sensitiveGranted}
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder={t('arco.modal_rectify.ph_phone')}
+                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                />
+                {!sensitiveGranted && (
+                  <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {t('intake.consent.sensitive_disabled_notice')}
+                  </span>
+                )}
               </div>
               <div className="md:col-span-2">
                 <label className={LABEL} htmlFor="rectif-email">{t('arco.modal_rectify.email')}</label>
-                <input id="rectif-email" autoComplete="off" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT} />
+                <input
+                  id="rectif-email"
+                  autoComplete="off"
+                  disabled={!sensitiveGranted}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                />
+                {!sensitiveGranted && (
+                  <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {t('intake.consent.sensitive_disabled_notice')}
+                  </span>
+                )}
               </div>
             </div>
           </fieldset>

@@ -25,7 +25,8 @@ export type AuditAction =
   | 'CONSENT_GRANTED'
   | 'CONSENT_REVOKED'
   | 'ARCO_ACCESS_EXTRACT_ISSUED'
-  | 'EVIDENCE_ACCESS';
+  | 'EVIDENCE_ACCESS'
+  | 'READ_CASE';
 
 // ---- Seguidor de tareas (E7) ----
 export type TaskStatus = 'pending' | 'in_progress' | 'done';
@@ -155,6 +156,7 @@ export interface Organization {
   responsible_address?: string | null;
   responsible_contact?: string | null;
   arco_contact?: string | null;
+  enforce_absolute_session_timeout?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -222,7 +224,18 @@ export interface AuditEvent {
   new_values: Record<string, unknown> | null;
   ip_address?: string | null;
   user_agent?: string | null;
+  seq?: number;
+  prev_hash?: string | null;
+  event_hash?: string | null;
   created_at: string;
+}
+
+export interface AuditChainVerification {
+  organization_id: string;
+  total_events: number;
+  is_valid: boolean;
+  broken_at_seq: number | null;
+  reason: string;
 }
 
 // ------------------------------------------------------------------------------
