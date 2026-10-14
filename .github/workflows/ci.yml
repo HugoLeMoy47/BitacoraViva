@@ -49,6 +49,8 @@ jobs:
         run: npm run check:literals
       - name: Un modal es para decisiones cortas (más de 3 campos va en una página)
         run: npm run check:modales
+      - name: Cada error de la base tiene su código y su texto (E13)
+        run: npm run check:errores
       - name: Pruebas unitarias
         run: npm run test:unit
 

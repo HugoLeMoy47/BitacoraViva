@@ -6,6 +6,7 @@ import { useCatalog } from '../lib/catalog';
 import { api } from '../lib/data';
 import { formatDate } from '../lib/format';
 import { ModalShell } from './ModalShell';
+import { friendlyError } from '../lib/errors';
 
 interface ArcoAccessExtractModalProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
     api
       .generateArcoAccessExtract(caseData.person.id)
       .then((r) => { if (!cancelled) setServerExtract(r); })
-      .catch((e) => { if (!cancelled) setExtractError(e instanceof Error ? e.message : String(e)); });
+      .catch((e) => { if (!cancelled) setExtractError(friendlyError(e)); });
     return () => { cancelled = true; };
   }, [isOpen, caseData.person.id]);
 

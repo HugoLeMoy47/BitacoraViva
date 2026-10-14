@@ -16,7 +16,8 @@
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "check:literals": "node scripts/check-literals.mjs",
     "primer-uso": "node scripts/primer-uso.mjs",
-    "check:modales": "node scripts/check-modales.mjs"
+    "check:modales": "node scripts/check-modales.mjs",
+    "check:errores": "node scripts/check-errores.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
