@@ -34,7 +34,7 @@ import {
   ConsentStatus,
   ArcoRequest
 } from '../types/database';
-import { VULNERABILITY_CATALOG } from '../lib/catalogs';
+import { VULNERABILITY_CATALOG, countryLabel, languageLabel, freeTextOrNull } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
@@ -270,7 +270,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </span>
             )}
             <span>·</span>
-            <span>{caseData.person.other_nationality || 'Honduras'}</span>
+            <span>{countryLabel(caseData.person.nationality_country_id, caseData.person.other_nationality) ?? t('cases.not_specified')}</span>
             <span>·</span>
             <span>{t('cases.opened_label')} {formatDate(caseData.opened_at)}</span>
           </div>
@@ -656,13 +656,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div>
                 <span className="text-gray-500 block">{t('cases.field_nationality')}</span>
                 <span className="font-semibold text-carbon text-sm">
-                  {caseData.person.other_nationality || 'Honduras'}
+                  {countryLabel(caseData.person.nationality_country_id, caseData.person.other_nationality) ?? t('cases.not_specified')}
                 </span>
               </div>
               <div>
                 <span className="text-gray-500 block">{t('cases.field_language')}</span>
                 <span className="font-semibold text-carbon text-sm">
-                  {caseData.person.other_language || 'Español'}
+                  {languageLabel(caseData.person.primary_language_id, caseData.person.other_language) ?? t('cases.not_specified')}
                 </span>
               </div>
               <div>
@@ -685,7 +685,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </div>
               <div>
                 <span className="text-gray-500 block">{t('cases.field_entry_date')}</span>
-                <span className="font-semibold text-carbon text-sm">{caseData.entry_date_str || 'Septiembre 2026'}</span>
+                <span className="font-semibold text-carbon text-sm">{freeTextOrNull(caseData.entry_date_str) ?? t('cases.not_specified')}</span>
               </div>
               <div>
                 <span className="text-gray-500 block">{t('cases.field_family_travel')}</span>

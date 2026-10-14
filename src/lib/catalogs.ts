@@ -1,4 +1,5 @@
 import { VulnerabilityMarkerCode } from '../types/database';
+import { t } from './i18n';
 
 // Catálogo cerrado MAP-OIM v3 (13 marcadores). Es parte del estándar, no dato de la organización.
 export const VULNERABILITY_CATALOG: Record<VulnerabilityMarkerCode, { label: string; description: string }> = {
@@ -16,3 +17,23 @@ export const VULNERABILITY_CATALOG: Record<VulnerabilityMarkerCode, { label: str
   older_person_at_risk: { label: 'Persona Adulta Mayor en Riesgo', description: 'Mayor de 60 años en condición de desamparo o fragilidad.' },
   other_vulnerability: { label: 'Otra Situación de Riesgo', description: 'Circunstancia especial identificada por profesional.' },
 };
+
+// Países del estándar con identificador propio; cualquier otro va como «otro» (id 1) más texto libre.
+const COUNTRY_KEY: Record<number, string> = { 93: 'catalogs.country.93', 86: 'catalogs.country.86' };
+
+/** Texto libre recortado; null si falta, para que la pantalla muestre `cases.not_specified`. */
+export function freeTextOrNull(value?: string | null): string | null {
+  const v = value?.trim();
+  return v ? v : null;
+}
+
+/** País de nacionalidad: catálogo por id; si es «otro», el texto escrito; si no hay dato, null. */
+export function countryLabel(id?: number | null, other?: string | null): string | null {
+  const key = id != null ? COUNTRY_KEY[id] : undefined;
+  return key ? t(key) : freeTextOrNull(other);
+}
+
+/** Idioma principal: no hay catálogo de idiomas en la base (id 1 es «otro»); se muestra el texto escrito. */
+export function languageLabel(_id?: number | null, other?: string | null): string | null {
+  return freeTextOrNull(other);
+}
