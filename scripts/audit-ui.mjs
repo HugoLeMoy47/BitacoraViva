@@ -484,13 +484,44 @@ try {
 
       // Seguidor de tareas: cada estado de la lista de celular y los modales de captura (coordinación de tareas).
       // Sólo lee: abre el formulario y la confirmación de archivo y los cancela con Escape.
-      // Derechos ARCO sin permiso (trabajo social): los botones apagados deben decir por qué con texto visible
-      if (role.key === 'caseworker' && (vp.name === '360' || vp.name === '1024')) {
+      // Pestañas del expediente con CADA rol que puede abrirlo, no solo Dirección: los botones apagados, los textos y el
+      // contraste dependen del rol (p. ej. los derechos ARCO sin permiso deben decir por qué con texto visible)
+      if ((role.key === 'caseworker' || role.key === 'intake') && (vp.name === '360' || vp.name === '1024')) {
         await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; });
-        await page.locator('main [role=tab]').first().waitFor({ state: 'visible', timeout: 15000 });
-        await page.locator('main [role=tab]', { hasText: /ARCO|Privacidad/i }).first().click();
-        await page.waitForTimeout(500);
-        record(role.key, vp.name, 'expediente/privacidad (sin permiso)', await auditNow());
+        await page.waitForTimeout(1200);
+        const caseTabs = page.locator('main [role=tab]');
+        const nTabs = await caseTabs.count();
+        // En celular, la pestaña de la bitácora (la de uso diario) debe verse COMPLETA sin desplazar la fila de pestañas
+        if (vp.width < 768) {
+          const bit = await page.evaluate(() => {
+            const tab = [...document.querySelectorAll('main [role=tab]')].find((x) => /Bitácora/.test(x.textContent));
+            if (!tab) return null;
+            const r = tab.getBoundingClientRect();
+            return { izq: Math.round(r.left), der: Math.round(r.right), ancho: innerWidth };
+          });
+          record(role.key, vp.name, '(pestaña Bitácora a la vista)', !bit || (bit.izq >= 0 && bit.der <= bit.ancho) ? [] : [{ rule: 'pestana-fuera-de-pantalla', detail: 'la pestaña Bitácora ocupa de ' + bit.izq + ' a ' + bit.der + ' px en una pantalla de ' + bit.ancho + ' px' }]);
+        }
+        for (let k = 0; k < nTabs; k++) {
+          await caseTabs.nth(k).click();
+          await page.waitForTimeout(500);
+          record(role.key, vp.name, 'expediente/sección ' + (k + 1) + ' (rol sin Dirección)', await auditNow());
+        }
+      }
+
+      // Cambiar de pantalla empieza arriba: abrir un expediente desde una lista desplazada no debe dejarlo a mitad de página
+      if (role.key === 'intake' && (vp.name === '390' || vp.name === '1024')) {
+        await page.evaluate(() => { location.hash = '#/expedientes'; });
+        await page.waitForTimeout(1200);
+        await page.evaluate(() => window.scrollTo(0, 900));
+        await page.waitForTimeout(300);
+        const folioLink = page.locator('main a[href*="#/expedientes/ASF"]').filter({ visible: true }).first();
+        if (await folioLink.count()) {
+          await folioLink.click();
+          await page.waitForFunction(() => /#\/expedientes\/ASF/.test(location.hash));
+          await page.waitForTimeout(800);
+          const y = await page.evaluate(() => Math.round(scrollY));
+          record(role.key, vp.name, '(navegación a un expediente)', y === 0 ? [] : [{ rule: 'navegacion-sin-reinicio', detail: 'al abrir un expediente desde una lista desplazada, la página queda a ' + y + ' px del inicio' }]);
+        }
       }
 
       if (role.key === 'task_manager' && (vp.name === '360' || vp.name === '1024')) {
