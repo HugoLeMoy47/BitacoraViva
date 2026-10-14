@@ -153,10 +153,10 @@ begin
         raise exception 'Acceso denegado: sin organización.' using errcode = 'BV102';
     end if;
 
-    for r in select id, seq, organization_id, user_id, action, table_name, record_id, new_values, created_at, prev_hash, event_hash
-             from public.audit_event
-             where organization_id = v_target_org
-             order by seq asc loop
+    for r in select ae.id, ae.seq, ae.organization_id, ae.user_id, ae.action, ae.table_name, ae.record_id, ae.new_values, ae.created_at, ae.prev_hash, ae.event_hash
+             from public.audit_event ae
+             where ae.organization_id = v_target_org
+             order by ae.seq asc loop
         v_count := v_count + 1;
 
         if r.prev_hash is distinct from v_prev then
