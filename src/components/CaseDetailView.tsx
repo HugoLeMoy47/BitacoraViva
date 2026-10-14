@@ -311,17 +311,17 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         value={activeTab}
         onChange={(id) => setActiveTab(id as typeof activeTab)}
         items={[
-          { id: 'axes', label: t('cases.tab_axes'), icon: <Layers className="h-4 w-4" aria-hidden="true" /> },
-          { id: 'journal', label: `${t('journal.tab_title')} (${journalEntries.length})`, icon: <BookOpen className="h-4 w-4" aria-hidden="true" /> },
-          { id: 'summary', label: t('cases.tab_summary'), icon: <FileText className="h-4 w-4" aria-hidden="true" /> },
-          { id: 'vulnerabilities', label: `${t('cases.tab_vulnerabilities')} (${caseData.vulnerabilities.length})`, icon: <AlertCircle className="h-4 w-4" aria-hidden="true" /> },
+          { id: 'axes', label: t('cases.tabs_short.axes'), icon: <Layers className="h-4 w-4" aria-hidden="true" /> },
+          { id: 'journal', label: `${t('cases.tabs_short.journal')} (${journalEntries.length})`, icon: <BookOpen className="h-4 w-4" aria-hidden="true" /> },
+          { id: 'summary', label: t('cases.tabs_short.summary'), icon: <FileText className="h-4 w-4" aria-hidden="true" /> },
+          { id: 'vulnerabilities', label: `${t('cases.tabs_short.vulnerabilities')} (${caseData.vulnerabilities.length})`, icon: <AlertCircle className="h-4 w-4" aria-hidden="true" /> },
           ...((caseData.subfolios && caseData.subfolios.length > 0) || canCreateSubfolio
-            ? [{ id: 'subfolios', label: `${t('cases.tab_subfolios')} (${caseData.subfolios?.length ?? 0})`, icon: <Users className="h-4 w-4" aria-hidden="true" /> }]
+            ? [{ id: 'subfolios', label: `${t('cases.tabs_short.subfolios')} (${caseData.subfolios?.length ?? 0})`, icon: <Users className="h-4 w-4" aria-hidden="true" /> }]
             : []),
           ...(canLinkTasks ? [{ id: 'tasks', label: t('tasks.case.tab'), icon: <ListChecks className="h-4 w-4" aria-hidden="true" /> }] : []),
           {
             id: 'privacy',
-            label: t('arco.tab_title'),
+            label: t('cases.tabs_short.privacy'),
             icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" />,
             badge: !hasSensitiveDataConsent ? (
               <span className="h-2 w-2 rounded-full bg-amber-500" role="img" aria-label={t('arco.sensitive_alert_missing')} title={t('arco.sensitive_alert_missing')} />

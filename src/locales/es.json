@@ -185,7 +185,15 @@
     "affirmed_by": "Afirmado por:",
     "subfolios_subtitle": "Subfolios vinculados: NNA acompañados con expediente propio.",
     "btn_new_subfolio": "Abrir subfolio",
-    "status_unassigned": "Sin asignar"
+    "status_unassigned": "Sin asignar",
+    "tabs_short": {
+      "axes": "Estatus",
+      "journal": "Bitácora",
+      "summary": "Resumen",
+      "vulnerabilities": "Vulnerabilidades",
+      "subfolios": "Subfolios",
+      "privacy": "Privacidad"
+    }
   },
   "intake": {
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",

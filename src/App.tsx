@@ -38,6 +38,13 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const isDirector = roles.includes('director');
 
   const route = useRoute();
+
+  // Cada cambio de pantalla empieza ARRIBA: sin esto, abrir un expediente desde una lista desplazada lo deja a
+  // mitad de página (el navegador conserva el desplazamiento al cambiar solo el hash). No se mueve el foco aquí:
+  // las páginas de captura lo llevan solas a su primer campo.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [route.id, route.param, route.sub]);
   const { isDemo } = useEnvironment();
   const allowed = allowedRoutes(roles, isDemo);
   const current: RouteId = route.id && allowed.includes(route.id) ? route.id : defaultRoute(roles);
