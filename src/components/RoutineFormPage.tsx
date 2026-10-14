@@ -1,21 +1,23 @@
 import React, { useId, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, CheckCircle2, ListPlus, Plus, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { RoutineDraft } from '../lib/tasks';
 import { RoutineTemplate, RoutineTemplateItem, TaskCategory, WorkArea } from '../types/database';
-import { ModalShell } from './ModalShell';
+import { DiscardConfirm, useBeforeUnloadGuard } from './LeaveGuard';
 import { DisabledReason, describedBy } from './DisabledReason';
 
-// Alta y edición de una plantilla de rutina y sus pasos (BV-7.11). Sólo gestión (la base lo exige).
+// Alta y edición de una plantilla de rutina y sus pasos (BV-7.11), como PÁGINA (no modal): siete campos y una lista de
+// pasos. Sólo gestión (la base lo exige).
 // Los pasos se pueden reordenar y quitar con botones, no sólo arrastrando: un gesto no puede ser la única forma.
 
-interface RoutineFormModalProps {
+interface RoutineFormPageProps {
   routine: RoutineTemplate | null;
   items: RoutineTemplateItem[];
   categories: TaskCategory[];
   workAreas: WorkArea[];
   busy: boolean;
-  onClose: () => void;
+  /** Vuelve a las rutinas (se llama tras confirmar si había cambios sin guardar) */
+  onCancel: () => void;
   onSubmit: (draft: RoutineDraft) => void;
 }
 
@@ -28,12 +30,12 @@ interface Step {
   photo_required: boolean;
 }
 
-const FIELD = 'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa';
-const LABEL = 'block text-xs font-semibold text-gray-700';
+const FIELD = 'mt-1 w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa';
+const LABEL = 'block text-sm font-semibold text-gray-700';
 const ICON_BTN = 'flex h-11 w-11 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40';
 const ICON_BTN_SPACE = 'h-11 w-11';
 
-export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, items, categories, workAreas, busy, onClose, onSubmit }) => {
+export const RoutineFormPage: React.FC<RoutineFormPageProps> = ({ routine, items, categories, workAreas, busy, onCancel, onSubmit }) => {
   const uid = useId();
   const seq = useRef(0);
   const nextUid = () => ++seq.current;
@@ -50,6 +52,19 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, ite
           .map((i) => ({ uid: nextUid(), id: i.id, name: i.name, details: i.details ?? '', photo_required: i.photo_required }))
       : [{ uid: nextUid(), name: '', details: '', photo_required: false }]
   );
+
+  // ¿Hay cambios sin guardar? Al salir se pide confirmación
+  const stepsKey = (list: Step[]) => JSON.stringify(list.map(({ name, details, photo_required }) => ({ name, details, photo_required })));
+  const initialSteps = useRef(stepsKey(steps));
+  const dirty =
+    name !== (routine?.name ?? '') ||
+    description !== (routine?.description ?? '') ||
+    workAreaId !== (routine?.work_area_id ?? '') ||
+    categoryId !== (routine?.task_category_id ?? '') ||
+    stepsKey(steps) !== initialSteps.current;
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  useBeforeUnloadGuard(dirty);
+  const leave = () => (dirty ? setConfirmingLeave(true) : onCancel());
 
   const patch = (key: number, change: Partial<Step>) => setSteps((s) => s.map((x) => (x.uid === key ? { ...x, ...change } : x)));
   const move = (index: number, delta: number) =>
@@ -80,19 +95,17 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, ite
   };
 
   return (
-    <ModalShell onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-carbon/60 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <ListPlus className="h-5 w-5 text-turquesa-dark" aria-hidden="true" />
-            <h3 className="text-base font-bold text-carbon">{t(routine ? 'tasks.routines.form_title_edit' : 'tasks.routines.form_title_new')}</h3>
-          </div>
-          <button type="button" onClick={onClose} aria-label={t('common.close')} className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100">
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-5">
+      <div>
+        <button type="button" onClick={leave} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-turquesa-dark hover:underline">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {t('tasks.page.back_to_routines')}
+        </button>
+        <h2 className="font-title text-2xl font-bold text-carbon">{t(routine ? 'tasks.routines.form_title_edit' : 'tasks.routines.form_title_new')}</h2>
+      </div>
 
-        <form onSubmit={submit} className="space-y-4 overflow-y-auto px-6 py-5">
+      <form onSubmit={submit} className="space-y-5">
+        <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
           <div>
             <label htmlFor={`${uid}-name`} className={LABEL}>
               {t('tasks.routines.f_name')}
@@ -130,8 +143,10 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, ite
             </div>
           </div>
 
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-bold text-carbon">{t('tasks.routines.steps')}</legend>
+        </div>
+
+        <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
+            <legend className="px-1 text-base font-bold text-carbon">{t('tasks.routines.steps')}</legend>
             <p className="text-xs text-amber-900">{t('tasks.routines.steps_warning')}</p>
             <ol className="space-y-3">
               {steps.map((step, index) => (
@@ -203,23 +218,28 @@ export const RoutineFormModal: React.FC<RoutineFormModalProps> = ({ routine, ite
             </button>
           </fieldset>
 
-          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-3">
-            <DisabledReason id="rutina" reason={saveReason} className="w-full text-right" />
-            <button type="button" onClick={onClose} className="min-h-11 rounded-lg border border-gray-300 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
+
+        {confirmingLeave && <DiscardConfirm onDiscard={onCancel} onKeep={() => setConfirmingLeave(false)} />}
+
+        <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
+          <DisabledReason id="rutina" reason={saveReason} className="mb-2" />
+          <div className="flex items-center justify-between gap-3">
+            <button type="button" onClick={leave} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={!valid || busy}
+              aria-busy={busy || undefined}
               {...describedBy('rutina', saveReason)}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-5 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-              {t('tasks.routines.save')}
+              {busy ? t('toast.saving') : t('tasks.routines.save')}
             </button>
           </div>
-        </form>
-      </div>
-    </ModalShell>
+        </div>
+      </form>
+    </div>
   );
 };

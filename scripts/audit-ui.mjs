@@ -35,12 +35,12 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/rectificar', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/rectificar', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/nueva', 'tareas/reportes', 'tareas/rutinas', 'tareas/rutinas/nueva', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
   { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'expedientes/nuevo', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
   // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
-  { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'tareas/reportes', 'tareas/rutinas', 'tareas/notas', 'acerca'] },
+  { key: 'task_manager', button: 'Coordinación de tareas', routes: ['tareas', 'tareas/nueva', 'tareas/reportes', 'tareas/rutinas', 'tareas/rutinas/nueva', 'tareas/notas', 'acerca'] },
   { key: 'volunteer', button: 'Voluntariado', routes: ['tareas', 'tareas/notas', 'acerca'] },
 ];
 
@@ -518,7 +518,6 @@ try {
           if (await page.locator('[role=dialog]').count()) modalIssues.push({ rule: 'modal', detail: label + ': no se cierra con Escape' });
           if (!(await opener.evaluate((el) => el === document.activeElement))) modalIssues.push({ rule: 'modal', detail: label + ': el foco no regresa al botón que lo abrió' });
         };
-        await checkModal(page.getByRole('button', { name: /Nueva tarea/i }), 'formulario');
         const archive = page.getByRole('button', { name: /^Archivar$/ }).first();
         if (await archive.count()) await checkModal(archive, 'archivar');
         record(role.key, vp.name, '(modal tareas)', modalIssues);
@@ -536,12 +535,7 @@ try {
           record(role.key, vp.name, 'tareas/reporte vista ' + (i + 1), await auditNow());
         }
 
-        // Rutinas: el formulario de alta se abre y se cancela
-        await page.evaluate(() => { location.hash = '#/tareas/rutinas'; });
-        await page.waitForTimeout(900);
-        const routineModal = await checkModalOpening(page, page.getByRole('button', { name: /Nueva rutina/i }), 'rutina/formulario', auditNow);
-        record(role.key, vp.name, 'tareas/rutina formulario', routineModal.items);
-        record(role.key, vp.name, '(modal rutina)', routineModal.issues);
+        // Rutinas y tareas: sus formularios son PÁGINAS (#/tareas/nueva, #/tareas/rutinas/nueva…) y los recorre el bucle de rutas.
       }
 
       // Voluntariado: pool de tareas abiertas e inicio de turno (sólo lee: abre y cancela)
