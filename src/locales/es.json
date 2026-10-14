@@ -184,7 +184,7 @@
     },
     "rule7_body": "Esta acción cerrará el registro anterior con marca de tiempo actual y abrirá el nuevo estado de manera transaccional. No es posible sobrescribir ni revertir sin dejar un nuevo rastro auditable.",
     "opened_label": "Apertura:",
-    "not_specified": "No especificado",
+    "not_specified": "No registrado",
     "no_phone": "Sin teléfono",
     "markers_subtitle": "Marcadores objetivos conforme al estándar humanitario MAP-OIM v3.",
     "no_markers": "No se han afirmado marcadores de vulnerabilidad para este caso.",
@@ -199,7 +199,11 @@
       "vulnerabilities": "Vulnerabilidades",
       "subfolios": "Subfolios",
       "privacy": "Privacidad"
-    }
+    },
+    "field_state": "Estado",
+    "field_municipality": "Municipio",
+    "field_channel": "Canal de procedencia",
+    "field_route": "Vía de ingreso a México"
   },
   "intake": {
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",
@@ -307,7 +311,9 @@
       "guardian": "Indica el nombre y el parentesco de quien responde por la persona menor.",
       "authority": "Indica la referencia de la autoridad que interviene.",
       "given_name": "Escribe al menos un nombre.",
-      "paternal_name": "Escribe el primer apellido."
+      "paternal_name": "Escribe el primer apellido.",
+      "window_type": "Para continuar, elige el tipo de ventanilla.",
+      "birth_date": "Para continuar, escribe la fecha de nacimiento (aproximada si no se conoce)."
     },
     "page": {
       "back_to_list": "Volver a expedientes",
@@ -319,6 +325,18 @@
       "discard_keep": "Seguir capturando",
       "title": "Levantar nuevo expediente",
       "subtitle": "Primero el aviso de privacidad y el consentimiento; después, los datos de la persona."
+    },
+    "required": "obligatorio",
+    "travels_yes": "Sí",
+    "travels_no": "No",
+    "travels_unknown": "Sin responder",
+    "ctx": {
+      "hint": "Si no se sabe, déjalo en «No registrado»: el sistema no pone ningún valor por ti.",
+      "state": "Estado donde se atiende",
+      "municipality": "Municipio",
+      "municipality_needs_state": "Elige primero el estado.",
+      "channel": "Canal de procedencia",
+      "route": "Vía de ingreso a México"
     }
   },
   "audit": {
@@ -355,6 +373,10 @@
       "consent": "Consentimiento",
       "consent_text": "Texto de consentimiento",
       "document_type": "Tipo de documento",
+      "entry_route": "Vía de ingreso",
+      "geo_municipality": "Municipio oficial",
+      "geo_state": "Estado oficial",
+      "intake_channel": "Canal de procedencia",
       "journal_entry": "Entrada de bitácora",
       "organization": "Organización",
       "person": "Persona atendida",
@@ -847,7 +869,8 @@
     "discard_title": "¿Descartar lo que escribiste?",
     "discard_body": "Todavía no se guardó: si sales, se pierde lo que escribiste en esta pantalla.",
     "discard_confirm": "Descartar y salir",
-    "discard_keep": "Seguir aquí"
+    "discard_keep": "Seguir aquí",
+    "not_recorded": "No registrado"
   },
   "about": {
     "title": "Acerca de este sistema",
@@ -951,6 +974,10 @@
       "bv211": "Ese tipo de documento no está disponible. Elige otro de la lista o pide a dirección que lo agregue.",
       "bv212": "No encontramos ese documento. Actualiza la pantalla e inténtalo de nuevo.",
       "bv213": "Este expediente no tiene ese marcador de vulnerabilidad, así que no se puede detallar.",
+      "bv214": "Ese estado no está en el catálogo oficial. Elige uno de la lista.",
+      "bv215": "Ese municipio no está en el catálogo oficial o no corresponde al estado elegido. Elige uno de la lista.",
+      "bv216": "Ese canal de procedencia no está disponible. Elige otro o pide a dirección que lo agregue.",
+      "bv217": "Esa vía de ingreso no está disponible. Elige otra o pide a dirección que la agregue.",
       "bv301": "El periodo no es válido: la fecha inicial es posterior a la final.",
       "bv302": "Indica el motivo de la anonimización: es obligatorio.",
       "bv303": "Indica el motivo de la oposición: es obligatorio.",
@@ -972,6 +999,9 @@
       "bv319": "El cierre de una vigencia no puede ser anterior a su inicio.",
       "bv320": "Falta el número o la clave del documento. Escríbelo e inténtalo de nuevo.",
       "bv321": "El texto es demasiado largo. Acórtalo e inténtalo de nuevo.",
+      "bv322": "Falta indicar si la persona concedió o no cada consentimiento. Revisa las decisiones e inténtalo de nuevo.",
+      "bv323": "Elige el tipo de ventanilla para abrir el expediente.",
+      "bv324": "Escribe la fecha de nacimiento (aproximada si no se conoce) para abrir el expediente.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
       "bv403": "Para una persona menor de 18 años, el consentimiento exige su asentimiento y la identidad de quien la representa.",
@@ -1445,7 +1475,9 @@
     "context_none": "Sin registro",
     "context_subfolios": "Subfolios que ya tiene",
     "context_no_subfolios": "Ninguno",
-    "child_assent_check": "La persona menor otorgó su asentimiento informado tras escuchar la explicación adaptada."
+    "child_assent_check": "La persona menor otorgó su asentimiento informado tras escuchar la explicación adaptada.",
+    "reason_assent": "Para abrir el subfolio, la niña o el niño debe dar su asentimiento: márcalo cuando lo haya dado.",
+    "rel_choose": "Elige el vínculo"
   },
   "nna_guide": {
     "open_btn": "Guía de asentimiento NNA",

@@ -41,10 +41,10 @@ interface Draft {
   maternalName: string;
   birthDate: string;
   birthEstimated: boolean;
-  sexId: number;
+  sexId: number | '';
   nationality: string;
   language: string;
-  relationship: Relationship;
+  relationship: Relationship | '';
   otherRelationship: string;
   markers: VulnerabilityMarkerCode[];
   note: string;
@@ -95,17 +95,18 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
 
   const saved = drafts.get(parent.id);
   const [choices, setChoices] = useState<Record<ConsentKey, Choice>>(saved?.choices ?? inherited);
-  const [childAssent, setChildAssent] = useState(saved?.childAssent ?? true);
+  // Sin valores supuestos: el asentimiento, el vínculo, el sexo, la nacionalidad y la lengua los decide quien captura
+  const [childAssent, setChildAssent] = useState(saved?.childAssent ?? false);
   const [showNnaModal, setShowNnaModal] = useState(false);
   const [givenName, setGivenName] = useState(saved?.givenName ?? '');
   const [paternalName, setPaternalName] = useState(saved?.paternalName ?? '');
   const [maternalName, setMaternalName] = useState(saved?.maternalName ?? '');
   const [birthDate, setBirthDate] = useState(saved?.birthDate ?? '');
   const [birthEstimated, setBirthEstimated] = useState(saved?.birthEstimated ?? false);
-  const [sexId, setSexId] = useState(saved?.sexId ?? 1);
-  const [nationality, setNationality] = useState(saved?.nationality ?? (parent.person.other_nationality || 'Honduras'));
-  const [language, setLanguage] = useState(saved?.language ?? (parent.person.other_language || 'Español'));
-  const [relationship, setRelationship] = useState<Relationship>(saved?.relationship ?? 'mother');
+  const [sexId, setSexId] = useState<number | ''>(saved?.sexId ?? '');
+  const [nationality, setNationality] = useState(saved?.nationality ?? '');
+  const [language, setLanguage] = useState(saved?.language ?? '');
+  const [relationship, setRelationship] = useState<Relationship | ''>(saved?.relationship ?? '');
   const [otherRelationship, setOtherRelationship] = useState(saved?.otherRelationship ?? '');
   const [markers, setMarkers] = useState<VulnerabilityMarkerCode[]>(saved?.markers ?? []);
   const [note, setNote] = useState(saved?.note ?? '');
@@ -123,7 +124,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
   }, [dirty]);
 
   const sensitiveGranted = choices.sensitive_data === 'yes';
-  const guardianRole = relationship === 'other' ? otherRelationship.trim() : t(`subfolio.rel_${relationship}`);
+  const guardianRole = relationship === '' ? '' : relationship === 'other' ? otherRelationship.trim() : t(`subfolio.rel_${relationship}`);
   const representative = [parent.person.given_name, parent.person.paternal_family_name, parent.person.maternal_family_name].filter(Boolean).join(' ');
 
   // El error de un campo se dice junto al campo, además de en la barra de acciones
@@ -140,6 +141,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
             ? t('subfolio.reason_relationship')
             : choices.general_care !== 'yes'
               ? t('subfolio.reason_general')
+              : !childAssent
+                ? t('subfolio.reason_assent')
               : note.trim().length < MIN_NOTE
                 ? t('subfolio.reason_note')
                 : null;
@@ -160,11 +163,12 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
       preferred_name: null,
       birth_date: birthDate,
       birth_date_is_estimated: birthEstimated,
-      sex_id: sexId,
-      nationality_country_id: COUNTRY_ID[nationality] ?? 1,
-      other_nationality: nationality,
-      primary_language_id: 1,
-      other_language: language.trim() || null,
+      sex_id: sensitiveGranted && sexId !== '' ? sexId : null,
+      nationality_country_id: sensitiveGranted && nationality ? (COUNTRY_ID[nationality] ?? 1) : null,
+      other_nationality: sensitiveGranted && nationality ? nationality : null,
+      // Aún no hay catálogo de lenguas: se guarda lo que se escribió y el identificador queda vacío
+      primary_language_id: null,
+      other_language: sensitiveGranted && language.trim() ? language.trim() : null,
       guardian_role: guardianRole,
       justification: note.trim(),
       vulnerability_codes: sensitiveGranted ? markers : [],
@@ -243,8 +247,9 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
                   disabled={!sensitiveGranted}
                   className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
                   value={sexId}
-                  onChange={(e) => setSexId(Number(e.target.value))}
+                  onChange={(e) => setSexId(e.target.value === '' ? '' : Number(e.target.value))}
                 >
+                  <option value="">{t('common.not_recorded')}</option>
                   <option value={1}>{t('intake.sex_1')}</option>
                   <option value={2}>{t('intake.sex_2')}</option>
                   <option value={3}>{t('intake.sex_3')}</option>
@@ -266,7 +271,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
                   value={nationality}
                   onChange={(e) => setNationality(e.target.value)}
                 >
-                  {!COUNTRIES.some((c) => c.value === nationality) && <option value={nationality}>{nationality}</option>}
+                  <option value="">{t('common.not_recorded')}</option>
+                  {nationality !== '' && !COUNTRIES.some((c) => c.value === nationality) && <option value={nationality}>{nationality}</option>}
                   {COUNTRIES.map((c) => (
                     <option key={c.value} value={c.value}>{t(c.key)}</option>
                   ))}
@@ -301,7 +307,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={LABEL} htmlFor={`${uid}-rel`}>{t('subfolio.relationship')}</label>
-                <select id={`${uid}-rel`} className={INPUT} value={relationship} onChange={(e) => setRelationship(e.target.value as Relationship)}>
+                <select id={`${uid}-rel`} className={INPUT} value={relationship} onChange={(e) => setRelationship(e.target.value as Relationship | '')}>
+                  <option value="">{t('subfolio.rel_choose')}</option>
                   <option value="mother">{t('subfolio.rel_mother')}</option>
                   <option value="father">{t('subfolio.rel_father')}</option>
                   <option value="guardian">{t('subfolio.rel_guardian')}</option>

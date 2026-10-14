@@ -258,6 +258,9 @@ async function keyboardJourney(page) {
   }
   await page.keyboard.press('Enter');
   await page.waitForTimeout(250);
+  // El tipo de ventanilla es obligatorio y no viene elegido
+  if (!(await tabTo(page, /Ventanilla fija/))) fail('alta paso 1: no se llega al tipo de ventanilla');
+  await page.keyboard.press('Enter');
   if (!(await tabTo(page, /Siguiente/))) fail('alta paso 1: no se llega a «Siguiente»');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(250);
@@ -265,6 +268,8 @@ async function keyboardJourney(page) {
   await page.keyboard.type('Prueba');
   if (!(await tabTo(page, /Primer apellido/i))) fail('alta paso 2: no se llega a Primer apellido');
   await page.keyboard.type('Auditoria');
+  if (!(await tabTo(page, /Fecha de nacimiento/))) fail('alta paso 2: no se llega a la fecha de nacimiento');
+  await page.getByLabel(/Fecha de nacimiento/).fill('1990-05-17');
   for (let k = 0; k < 2; k++) {
     if (!(await tabTo(page, /Siguiente/))) fail('alta paso ' + (k + 2) + ': no se llega a «Siguiente»');
     await page.keyboard.press('Enter');
@@ -456,11 +461,27 @@ try {
           await page.waitForTimeout(250);
           if (step === 2) { /* la ficha pide nombre y apellido para avanzar */ }
           if (step === 1) {
-            record(role.key, vp.name, 'alta/paso 1', await auditNow());
+            // Sin valores supuestos: nada viene elegido, y el paso no avanza sin el tipo de ventanilla
+            const supuestos1 = [];
+            if (await page.evaluate(() => document.querySelectorAll('main button[aria-pressed="true"]').length)) {
+              supuestos1.push({ rule: 'valor-supuesto', detail: 'alta paso 1: hay un tipo de ventanilla elegido de antemano' });
+            }
+            if (await page.getByRole('button', { name: /Siguiente/ }).isEnabled()) {
+              supuestos1.push({ rule: 'valor-supuesto', detail: 'alta paso 1: «Siguiente» está habilitado sin haber elegido el tipo de ventanilla' });
+            }
+            if (await page.evaluate(() => [...document.querySelectorAll('main select')].some((s) => s.value !== ''))) {
+              supuestos1.push({ rule: 'valor-supuesto', detail: 'alta paso 1: estado, municipio, canal o vía vienen con un valor de antemano' });
+            }
+            record(role.key, vp.name, 'alta/paso 1', [...(await auditNow()), ...supuestos1]);
+            await page.getByRole('button', { name: /Ventanilla fija/ }).click();
             await page.getByRole('button', { name: /Siguiente/ }).click();
             await page.getByLabel(/Nombres/).fill('Prueba');
             await page.getByLabel(/Primer apellido/i).fill('Auditoria');
-            record(role.key, vp.name, 'alta/paso 2', await auditNow());
+            const supuestos2 = [];
+            if (await page.getByLabel(/Fecha de nacimiento/).inputValue() !== '') supuestos2.push({ rule: 'valor-supuesto', detail: 'alta paso 2: la fecha de nacimiento viene escrita de antemano' });
+            if (await page.evaluate(() => [...document.querySelectorAll('main select')].some((s) => s.value !== ''))) supuestos2.push({ rule: 'valor-supuesto', detail: 'alta paso 2: sexo o nacionalidad vienen elegidos de antemano' });
+            await page.getByLabel(/Fecha de nacimiento/).fill('1990-05-17');
+            record(role.key, vp.name, 'alta/paso 2', [...(await auditNow()), ...supuestos2]);
             await page.getByRole('button', { name: /Siguiente/ }).click();
             await page.waitForTimeout(250);
             record(role.key, vp.name, 'alta/paso 3', await auditNow());

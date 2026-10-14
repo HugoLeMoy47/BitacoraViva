@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle, BookOpen } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { ConsentText, PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
+import { ConsentText, GeoMunicipality, PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
+import { friendlyError } from '../lib/errors';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
-import { ConsentInput, NewCaseInput, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
+import { ConsentInput, NewCaseInput, dataApi, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
 import { DisabledReason, describedBy } from './DisabledReason';
 import { NnaAssentModal } from './NnaAssentModal';
 
@@ -49,7 +50,7 @@ interface NewCasePageProps {
 export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreated, authorFullName }) => {
   const [step, setStep] = useState<Step>(0);
   const { isDemo } = useEnvironment();
-  const { areas } = useCatalog();
+  const { areas, geoStates, intakeChannels, entryRoutes } = useCatalog();
 
   // Paso 0: aviso de privacidad y consentimiento. Ninguna opción viene marcada.
   const [notice, setNotice] = useState<PrivacyNotice | null>(null);
@@ -71,19 +72,26 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const [authorityRef, setAuthorityRef] = useState('');
 
   // Paso 1: Contexto
-  const [windowType, setWindowType] = useState<'fija' | 'movil' | 'transaccional'>('fija');
-  const [travelsWithFamily, setTravelsWithFamily] = useState(false);
+  // Sin valores supuestos: lo obligatorio (ventanilla) lo elige quien captura; lo opcional queda «No registrado»
+  const [windowType, setWindowType] = useState<'' | 'fija' | 'movil' | 'transaccional'>('');
+  const [travelsWithFamily, setTravelsWithFamily] = useState<'' | 'yes' | 'no'>('');
+  const [stateKey, setStateKey] = useState('');
+  const [municipalityKey, setMunicipalityKey] = useState('');
+  const [channelCode, setChannelCode] = useState('');
+  const [routeCode, setRouteCode] = useState('');
+  const [municipalities, setMunicipalities] = useState<GeoMunicipality[]>([]);
+  const [municipalitiesError, setMunicipalitiesError] = useState<string | null>(null);
 
   // Paso 2: Persona (MAP-OIM v3)
   const [givenName, setGivenName] = useState('');
   const [paternalName, setPaternalName] = useState('');
   const [maternalName, setMaternalName] = useState('');
   const [preferredName, setPreferredName] = useState('');
-  const [birthDate, setBirthDate] = useState('2000-01-01');
+  const [birthDate, setBirthDate] = useState('');
   const [birthDateEstimated, setBirthDateEstimated] = useState(false);
-  const [sexId, setSexId] = useState<number>(1);
-  const [nationalityCountry, setNationalityCountry] = useState('Honduras');
-  const [primaryLanguage, setPrimaryLanguage] = useState('Español');
+  const [sexId, setSexId] = useState<number | ''>('');
+  const [nationalityCountry, setNationalityCountry] = useState('');
+  const [primaryLanguage, setPrimaryLanguage] = useState('');
   const [phone, setPhone] = useState('');
 
   // Paso 3: Vulnerabilidades (13 marcadores) — sólo con consentimiento expreso para datos sensibles
@@ -99,6 +107,19 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       .catch(() => { /* sin textos publicados: se usan los de la plataforma */ });
     return () => { cancelled = true; };
   }, []);
+
+  // Municipios del estado elegido (catálogo oficial); al cambiar de estado se limpia el municipio
+  useEffect(() => {
+    setMunicipalityKey('');
+    setMunicipalities([]);
+    setMunicipalitiesError(null);
+    if (!stateKey) return;
+    let cancelled = false;
+    dataApi.listMunicipalities(stateKey)
+      .then((list) => { if (!cancelled) setMunicipalities(list); })
+      .catch((e) => { if (!cancelled) setMunicipalitiesError(friendlyError(e)); });
+    return () => { cancelled = true; };
+  }, [stateKey]);
 
   const consentTitle = (key: ConsentKey) => texts[key]?.title ?? t(`arco.consent_types.${key}`);
   const consentDesc = (key: ConsentKey) => texts[key]?.description ?? t(`intake.consent.desc.${key}`);
@@ -147,25 +168,28 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
     }));
 
   const handleFinish = () => {
+    // Ningún dato se inventa: lo sensible solo viaja con consentimiento sensible; lo no resuelto va vacío
+    const nationality = sensitiveGranted && nationalityCountry ? nationalityCountry : null;
     const input: NewCaseInput = {
-      given_name: givenName.trim() || 'Persona',
-      paternal_family_name: paternalName.trim() || 'Registrada',
+      given_name: givenName.trim(),
+      paternal_family_name: paternalName.trim(),
       maternal_family_name: maternalName.trim() || null,
       preferred_name: preferredName.trim() || null,
       birth_date: birthDate,
       birth_date_is_estimated: birthDateEstimated,
-      sex_id: sexId,
-      nationality_country_id: COUNTRY_ID[nationalityCountry] ?? 1,
-      other_nationality: nationalityCountry,
-      primary_language_id: 1,
-      other_language: primaryLanguage || null,
-      phone_number: phone.trim() || null,
-      intake_window_type: windowType,
-      travels_with_family: travelsWithFamily,
-      intake_state_id: 9,
-      intake_municipality_id: 15,
-      intake_channel_id: 1,
-      entry_route_id: 3,
+      sex_id: sensitiveGranted && sexId !== '' ? sexId : null,
+      nationality_country_id: nationality ? (COUNTRY_ID[nationality] ?? 1) : null,
+      other_nationality: nationality,
+      // Aún no hay catálogo de lenguas: se guarda lo que se escribió y el identificador queda vacío
+      primary_language_id: null,
+      other_language: sensitiveGranted && primaryLanguage.trim() ? primaryLanguage.trim() : null,
+      phone_number: sensitiveGranted && phone.trim() ? phone.trim() : null,
+      intake_window_type: windowType as 'fija' | 'movil' | 'transaccional',
+      travels_with_family: travelsWithFamily === '' ? null : travelsWithFamily === 'yes',
+      intake_state_id: stateKey ? Number(stateKey) : null,
+      intake_municipality_key: municipalityKey || null,
+      intake_channel_id: channelCode ? Number(channelCode) : null,
+      entry_route_id: routeCode ? Number(routeCode) : null,
       entry_date_str: null,
       assigned_area_id: areas.find((a) => a.code === 'trabajo_social')?.id ?? null,
       vulnerability_codes: sensitiveGranted ? selectedVulnerabilities : [],
@@ -194,9 +218,13 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       if (isMinor && (guardianName.trim() === '' || guardianRole.trim() === '')) return t('intake.reason.guardian');
       if (isUnaccompanied && authorityRef.trim() === '') return t('intake.reason.authority');
     }
+    if (step === 1) {
+      if (!windowType) return t('intake.reason.window_type');
+    }
     if (step === 2) {
       if (!givenName.trim()) return t('intake.reason.given_name');
       if (!paternalName.trim()) return t('intake.reason.paternal_name');
+      if (!birthDate) return t('intake.reason.birth_date');
       if (ageProblem) return t(ageProblem);
     }
     if (step === 4 && authorityProblem) return t(authorityProblem);
@@ -206,7 +234,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
 
   // ¿Hay algo capturado que se perdería al salir?
   const dirty =
-    !!(givenName || paternalName || maternalName || preferredName || phone || guardianName || guardianRole || authorityRef) ||
+    !!(givenName || paternalName || maternalName || preferredName || phone || birthDate || windowType || travelsWithFamily || stateKey || channelCode || routeCode || guardianName || guardianRole || authorityRef) ||
     noticeDelivered ||
     CONSENT_KEYS.some(({ key }) => choices[key] !== null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
@@ -438,12 +466,13 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <p id="window-label" className="block text-xs font-semibold text-carbon mb-1">{t('intake.field_intake_window')}</p>
+                <p id="window-label" className="block text-xs font-semibold text-carbon mb-1">{t('intake.field_intake_window')} <span className="font-normal text-gray-600">({t('intake.required')})</span></p>
                 <div role="group" aria-labelledby="window-label" className="grid grid-cols-3 gap-2">
                   {(['fija', 'movil', 'transaccional'] as const).map((wt) => (
                     <button
                       key={wt}
                       type="button"
+                      aria-pressed={windowType === wt}
                       onClick={() => setWindowType(wt)}
                       className={`p-2.5 text-xs font-medium rounded-lg border text-center transition ${
                         windowType === wt ? 'bg-claro border-turquesa text-carbon font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-50'
@@ -455,19 +484,51 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                 </div>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={travelsWithFamily}
-                    onChange={(e) => setTravelsWithFamily(e.target.checked)}
-                    className="w-4 h-4 text-turquesa rounded border-gray-300 focus:ring-turquesa"
-                  />
-                  <div>
-                    <span className="text-xs font-semibold text-carbon">{t('intake.field_travels_family')}</span>
-                    <p className="text-xs text-gray-500">{t('intake.travels_family_help')}</p>
-                  </div>
-                </label>
+              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200" role="radiogroup" aria-labelledby="travels-label">
+                <p id="travels-label" className="text-xs font-semibold text-carbon">{t('intake.field_travels_family')}</p>
+                <p className="text-xs text-gray-600">{t('intake.travels_family_help')}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {([['yes', 'intake.travels_yes'], ['no', 'intake.travels_no'], ['', 'intake.travels_unknown']] as const).map(([v, key]) => (
+                    <label key={v || 'unknown'} className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-xs ${travelsWithFamily === v ? 'border-turquesa bg-claro font-semibold text-carbon' : 'border-gray-300 text-gray-700'}`}>
+                      <input type="radio" name="travels-family" checked={travelsWithFamily === v} onChange={() => setTravelsWithFamily(v)} className="text-turquesa" />
+                      {t(key)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-700">{t('intake.ctx.hint')}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-state">{t('intake.ctx.state')}</label>
+                  <select id="newcas-state" autoComplete="off" value={stateKey} onChange={(e) => setStateKey(e.target.value)} className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    <option value="">{t('common.not_recorded')}</option>
+                    {geoStates.map((s) => <option key={s.cve_ent} value={s.cve_ent}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-muni">{t('intake.ctx.municipality')}</label>
+                  <select id="newcas-muni" autoComplete="off" value={municipalityKey} onChange={(e) => setMunicipalityKey(e.target.value)} disabled={!stateKey} className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    <option value="">{t('common.not_recorded')}</option>
+                    {municipalities.map((m) => <option key={m.cvegeo} value={m.cvegeo}>{m.name}</option>)}
+                  </select>
+                  {!stateKey && <p className="mt-1 text-xs text-gray-700">{t('intake.ctx.municipality_needs_state')}</p>}
+                  {municipalitiesError && <p role="alert" className="mt-1 text-xs font-semibold text-alerta-dark">{municipalitiesError}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-channel">{t('intake.ctx.channel')}</label>
+                  <select id="newcas-channel" autoComplete="off" value={channelCode} onChange={(e) => setChannelCode(e.target.value)} className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    <option value="">{t('common.not_recorded')}</option>
+                    {intakeChannels.filter((c) => c.is_active).map((c) => <option key={c.id} value={c.code}>{c.label_es}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-route">{t('intake.ctx.route')}</label>
+                  <select id="newcas-route" autoComplete="off" value={routeCode} onChange={(e) => setRouteCode(e.target.value)} className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
+                    <option value="">{t('common.not_recorded')}</option>
+                    {entryRoutes.filter((r) => r.is_active).map((r) => <option key={r.id} value={r.code}>{r.label_es}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
           )}
@@ -530,6 +591,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-8">{t('intake.field_birth_date')}</label>
                   <input id="newcas-8" name="newcas-8" autoComplete="off"
                     type="date"
+                    required
+                    max={new Date().toISOString().slice(0, 10)}
                     value={birthDate}
                     onChange={(e) => setBirthDate(e.target.value)}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
@@ -550,9 +613,10 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   <select id="newcas-9" name="newcas-9" autoComplete="off"
                     disabled={!sensitiveGranted}
                     value={sexId}
-                    onChange={(e) => setSexId(Number(e.target.value))}
+                    onChange={(e) => setSexId(e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
+                    <option value="">{t('common.not_recorded')}</option>
                     <option value={1}>{t('intake.sex_1')}</option>
                     <option value={2}>{t('intake.sex_2')}</option>
                     <option value={3}>{t('intake.sex_3')}</option>
@@ -580,6 +644,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                     onChange={(e) => setNationalityCountry(e.target.value)}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
+                    <option value="">{t('common.not_recorded')}</option>
                     <option value="Honduras">{t('intake.countries.honduras')}</option>
                     <option value="Guatemala">{t('intake.countries.guatemala')}</option>
                     <option value="El Salvador">{t('intake.countries.el_salvador')}</option>
@@ -700,11 +765,11 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">{t('intake.summary.preferred')}</span>
-                  <span className="font-semibold text-turquesa-dark">{preferredName || givenName}</span>
+                  <span className="font-semibold text-turquesa-dark">{preferredName || t('common.not_recorded')}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">{t('intake.summary.nationality')}</span>
-                  <span className="font-semibold text-carbon">{nationalityCountry}</span>
+                  <span className="font-semibold text-carbon">{sensitiveGranted && nationalityCountry ? nationalityCountry : t('common.not_recorded')}</span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">{t('intake.summary.vulnerabilities')}</span>

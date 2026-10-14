@@ -214,6 +214,22 @@ insert into public.document_type (organization_id, key, label_es, sort_order) va
     ('00000000-0000-0000-0000-000000000001', 'other', 'Otro documento', 99)
 on conflict (organization_id, key) do nothing;
 
+-- 5c. Catálogos de ingreso (E14 fase 1b): canal de procedencia y vía de ingreso, valores de MAP-OIM v3.
+-- Dirección y Trabajo Social los editan.
+insert into public.intake_channel (organization_id, code, label_es, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 1, 'Empresa', 1),
+    ('00000000-0000-0000-0000-000000000001', 2, 'Gobierno', 2),
+    ('00000000-0000-0000-0000-000000000001', 3, 'Organización de la sociedad civil', 3),
+    ('00000000-0000-0000-0000-000000000001', 4, 'Organismo internacional', 4),
+    ('00000000-0000-0000-0000-000000000001', 5, 'Ventanilla', 5),
+    ('00000000-0000-0000-0000-000000000001', 6, 'Ninguna', 6)
+on conflict (organization_id, code) do nothing;
+insert into public.entry_route (organization_id, code, label_es, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 1, 'Aérea', 1),
+    ('00000000-0000-0000-0000-000000000001', 2, 'Marítima', 2),
+    ('00000000-0000-0000-0000-000000000001', 3, 'Terrestre', 3)
+on conflict (organization_id, code) do nothing;
+
 -- ==============================================================================
 -- 6. Personas y Expedientes de Demostración (Épica E3: MAP-OIM v3)
 -- ==============================================================================
@@ -262,28 +278,28 @@ begin
     -- 4. Expediente principal: Wendy (ASF-2026-0001)
     insert into public.case (
         id, organization_id, case_number, titular_person_id, travels_with_family,
-        opened_by, assigned_user_id
+        intake_window_type, opened_by, assigned_user_id
     ) values (
         v_c_wendy, v_org, 'ASF-2026-0001', v_p_wendy, true,
-        v_user_intk, v_user_case
+        'fija', v_user_intk, v_user_case
     ) on conflict (id) do nothing;
 
     -- 5. Subfolio: Dylan (ASF-2026-0001-S1, colgado del caso de la madre)
     insert into public.case (
         id, organization_id, case_number, parent_case_id, titular_person_id, travels_with_family,
-        opened_by, assigned_user_id
+        intake_window_type, opened_by, assigned_user_id
     ) values (
         v_c_dylan, v_org, 'ASF-2026-0001-S1', v_c_wendy, v_p_dylan, true,
-        v_user_intk, v_user_case
+        'fija', v_user_intk, v_user_case
     ) on conflict (id) do nothing;
 
     -- 6. Expediente principal: Mateo (ASF-2026-0002, NNA No Acompañado con caso propio)
     insert into public.case (
         id, organization_id, case_number, titular_person_id, travels_with_family,
-        opened_by, assigned_user_id
+        intake_window_type, opened_by, assigned_user_id
     ) values (
         v_c_mateo, v_org, 'ASF-2026-0002', v_p_mateo, false,
-        v_user_intk, v_user_case
+        'fija', v_user_intk, v_user_case
     ) on conflict (id) do nothing;
 
     -- Marcadores de vulnerabilidad afirmados profesionalmente
