@@ -259,7 +259,9 @@
       "unaccompanied_marker_needs_authority": "Marcó niñez no acompañada: regrese al paso 0 y capture la autoridad o tutor y la referencia de su oficio.",
       "summary_consents": "Consentimientos otorgados:",
       "summary_none_sensitive": "Sin datos sensibles",
-      "recorded_note": "Registrado en el paso de consentimiento del alta."
+      "recorded_note": "Registrado en el paso de consentimiento del alta.",
+      "sensitive_disabled_notice": "Campo sensible reservado: requiere consentimiento para datos sensibles.",
+      "vulnerabilities_disabled_notice": "Marcadores de vulnerabilidad bloqueados: se requiere consentimiento explícito para tratamiento de datos sensibles (LFPDPPP)."
     },
     "ph_given": "Ej. María Elena",
     "ph_paternal": "Ej. González",
@@ -381,7 +383,8 @@
       "CONSENT_GRANTED": "Consentimiento otorgado",
       "CONSENT_REVOKED": "Consentimiento revocado",
       "ARCO_ACCESS_EXTRACT_ISSUED": "Extracto de acceso ARCO emitido",
-      "EVIDENCE_ACCESS": "Acceso a evidencia"
+      "EVIDENCE_ACCESS": "Acceso a evidencia",
+      "READ_CASE": "Lectura de expediente"
     }
   },
   "authority_requests": {
@@ -516,10 +519,29 @@
     "history_title": "Historial de solicitudes y ejercicio ARCO",
     "history_empty": "No hay solicitudes ARCO asentadas para este expediente.",
     "table_type": "Tipo",
+    "table_docket": "Folio ARCO",
     "table_status": "Estatus",
     "table_requested_by": "Solicitante",
     "table_reason": "Motivo asentado",
     "table_date": "Fecha",
+    "table_deadline": "Plazo límite (20 d.h.)",
+    "table_actions": "Acuse",
+    "receipt_btn": "Ver acuse formal",
+    "receipt_title": "Acuse de recibo de solicitud de derechos ARCO",
+    "receipt_subtitle": "Constancia formal de recepción conforme a la LFPDPPP y marco institucional",
+    "receipt_docket": "Folio de trámite ARCO",
+    "receipt_legal_deadline": "Plazo legal de respuesta",
+    "receipt_deadline_desc": "20 días hábiles conforme al Art. 32 de la LFPDPPP (fecha límite: {date})",
+    "receipt_petitioner": "Persona solicitante",
+    "receipt_case": "Expediente relacionado",
+    "receipt_titular": "Persona titular de los datos",
+    "receipt_right": "Derecho ejercido",
+    "receipt_reason": "Motivo / Petición",
+    "receipt_received_at": "Fecha y hora de recepción",
+    "receipt_contact_label": "Unidad de atención ARCO del albergue",
+    "receipt_legal_note": "Este acuse certifica la recepción de su solicitud. Su trámite será analizado conforme al marco de protección de datos y el principio de confidencialidad humanitaria.",
+    "receipt_print_btn": "Imprimir acuse oficial",
+    "receipt_close_btn": "Cerrar acuse",
     "types": {
       "access": "Acceso",
       "rectification": "Rectificación",
@@ -685,6 +707,7 @@
     "error_credentials": "Correo o contraseña incorrectos.",
     "error_no_role": "Tu cuenta no tiene un rol vigente asignado. Pide a Dirección que lo asigne.",
     "notice_expired": "Tu sesión se cerró por inactividad (30 min). Vuelve a iniciar sesión.",
+    "notice_absolute_expired": "Tu sesión alcanzó el límite máximo continuo (12 h). Vuelve a iniciar sesión para continuar.",
     "demo_title": "Acceso rápido de demostración",
     "demo_hint": "Entra con una cuenta semilla para ver cada rol con sus permisos reales."
   },
@@ -846,6 +869,7 @@
     "config_identity": "Identidad de la organización guardada.",
     "config_notice": "Aviso de privacidad publicado como versión nueva.",
     "config_consent_text": "Texto de consentimiento publicado como versión nueva.",
+    "config_security": "Ajustes de seguridad actualizados.",
     "subfolio_created": "Subfolio creado."
   },
   "errors": {
@@ -972,6 +996,7 @@
     "tab_identity": "Identidad",
     "tab_notice": "Aviso",
     "tab_consents": "Consentimientos",
+    "tab_security": "Seguridad",
     "history": "Historial de versiones",
     "identity": {
       "display_name": "Nombre comercial",
@@ -1018,7 +1043,21 @@
       "publish": "Publicar nueva versión",
       "reason_required": "Completa el título y la descripción."
     },
-    "reason_unchanged": "Cambia algún texto para poder publicar una versión nueva."
+    "reason_unchanged": "Cambia algún texto para poder publicar una versión nueva.",
+    "security": {
+      "title": "Seguridad y control de sesiones",
+      "desc": "Ajustes de endurecimiento de acceso para el personal del albergue. Solo Dirección puede modificar estos parámetros.",
+      "enforce_absolute_label": "Límite absoluto de sesión (12 horas continuas)",
+      "enforce_absolute_desc": "Cierra la sesión del personal tras 12 horas continuas de uso aunque haya actividad reciente (RNF-04). Recomendado para prevenir sesiones olvidadas en equipos compartidos. Si tu albergue opera guardias nocturnas extendidas ininterrumpidas, puedes desactivarlo bajo supervisión de Dirección.",
+      "save": "Guardar ajustes de seguridad",
+      "audit_integrity_title": "Integridad criptográfica del registro de auditoría",
+      "audit_integrity_desc": "La base de datos encadena cada evento de auditoría con SHA-256. Puedes verificar que la secuencia no haya sufrido alteraciones ni manipulaciones directas.",
+      "verify_chain_btn": "Verificar integridad de la auditoría",
+      "verifying": "Verificando integridad…",
+      "chain_valid": "Cadena íntegra: {total} eventos verificados sin alteraciones.",
+      "chain_invalid": "Alerta de integridad: secuencia rota en evento #{seq}. Detalle: {reason}",
+      "reason_unchanged": "No hay cambios pendientes por guardar en seguridad."
+    }
   },
   "tasks": {
     "title": "Tareas",
@@ -1388,7 +1427,26 @@
     "context_consents": "Consentimientos que otorgó",
     "context_none": "Sin registro",
     "context_subfolios": "Subfolios que ya tiene",
-    "context_no_subfolios": "Ninguno"
+    "context_no_subfolios": "Ninguno",
+    "child_assent_check": "La persona menor otorgó su asentimiento informado tras escuchar la explicación adaptada."
+  },
+  "nna_guide": {
+    "open_btn": "Guía de asentimiento NNA",
+    "title": "Guía de asentimiento informado para niñas, niños y adolescentes (NNA)",
+    "subtitle": "Pautas operativas para trabajo social y recepción (CDN Art. 12, LGDNNA, CPHA)",
+    "p1_title": "1. Principio rector y distinción legal",
+    "p1_desc": "El consentimiento legal lo otorga quien ejerce la patria potestad o tutoría. El asentimiento es el derecho del NNA a ser escuchado y participar voluntariamente. El consentimiento del adulto no debe imponerse forzadamente si la persona menor expresa rechazo o angustia grave.",
+    "step1_title": "Paso 1: Entorno de calma y confianza",
+    "step1_desc": "Espacio privado y libre de ruidos. Sitúate al mismo nivel visual de la persona menor (agáchate o siéntate, nunca hables de pie). Emplea un tono cálido, pausado y vocabulario adaptado a su edad y lengua.",
+    "step2_title": "Paso 2: Explicar qué es la Bitácora (Guion verbal sugerido)",
+    "step2_script": "«Hola [Nombre]. Te damos la bienvenida a este albergue. Este es un lugar seguro donde queremos apoyarte a ti y a tu familia. Para darles una cama donde descansar, comida rica, ropa y atención médica, necesitamos anotar algunas cosas sobre ti en esta computadora. Esta información es solo para el equipo que te va a cuidar aquí. No se la compartimos a ninguna policía, autoridad de migración ni a nadie que pueda hacerte daño o regresarte.»",
+    "step3_title": "Paso 3: Derecho a pausar o no responder",
+    "step3_script": "«Si alguna pregunta te hace sentir triste o simplemente no quieres responderla ahora, puedes decírmelo con confianza y pasamos a otra cosa. Nadie se enojará contigo ni vas a perder tu comida, cama o atención médica.»",
+    "step4_title": "Paso 4: Validación del asentimiento",
+    "step4_script": "«¿Estás de acuerdo en que anotemos tus datos para cuidarte mientras estés en el albergue?»",
+    "refusal_title": "Si la persona menor manifiesta rechazo o incomodidad",
+    "refusal_desc": "No forzar ni insistir. No captures marcadores de vulnerabilidad ni datos sensibles. Asienta una nota protegida de trabajo social para dar seguimiento empático.",
+    "close_btn": "Entendido / Cerrar guía"
   },
   "status": {
     "reason_initial": "Estatus inicial, asignado al abrir el expediente."

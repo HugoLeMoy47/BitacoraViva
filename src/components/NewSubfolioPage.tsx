@@ -1,10 +1,11 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { ArrowLeft, HeartHandshake } from 'lucide-react';
+import { ArrowLeft, HeartHandshake, BookOpen } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails, VulnerabilityMarkerCode } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { ConsentInput, SubfolioInput } from '../lib/data';
 import { DisabledReason, describedBy } from './DisabledReason';
+import { NnaAssentModal } from './NnaAssentModal';
 
 // BV-3.2 · Subfolio, como PÁGINA (no modal): son 12 campos y conviene ver el caso principal al lado.
 // Quien representa a la persona menor es la persona titular del caso principal (la base toma su nombre de ahí;
@@ -34,6 +35,7 @@ const LABEL = 'block text-sm font-medium text-gray-700 mb-1';
 
 interface Draft {
   choices: Record<ConsentKey, Choice>;
+  childAssent?: boolean;
   givenName: string;
   paternalName: string;
   maternalName: string;
@@ -93,6 +95,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
 
   const saved = drafts.get(parent.id);
   const [choices, setChoices] = useState<Record<ConsentKey, Choice>>(saved?.choices ?? inherited);
+  const [childAssent, setChildAssent] = useState(saved?.childAssent ?? true);
+  const [showNnaModal, setShowNnaModal] = useState(false);
   const [givenName, setGivenName] = useState(saved?.givenName ?? '');
   const [paternalName, setPaternalName] = useState(saved?.paternalName ?? '');
   const [maternalName, setMaternalName] = useState(saved?.maternalName ?? '');
@@ -109,8 +113,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
   // Lo capturado se conserva en memoria; si hay algo escrito, el navegador pregunta antes de recargar o cerrar
   const dirty = !!(givenName || paternalName || maternalName || birthDate || otherRelationship || note || markers.length);
   useEffect(() => {
-    drafts.set(parent.id, { choices, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, relationship, otherRelationship, markers, note });
-  }, [parent.id, choices, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, relationship, otherRelationship, markers, note]);
+    drafts.set(parent.id, { choices, childAssent, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, relationship, otherRelationship, markers, note });
+  }, [parent.id, choices, childAssent, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, relationship, otherRelationship, markers, note]);
   useEffect(() => {
     if (!dirty) return;
     const guard = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -167,7 +171,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
       consents: CONSENT_KEYS.filter((k) => choices[k] === 'yes').map((k) => ({
         consent_type: k,
         status: 'granted' as const,
-        is_minor_assent: true,
+        is_minor_assent: childAssent,
       })),
     });
   };
@@ -234,26 +238,60 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
               </div>
               <div>
                 <label className={LABEL} htmlFor={`${uid}-sex`}>{t('intake.field_sex')}</label>
-                <select id={`${uid}-sex`} className={INPUT} value={sexId} onChange={(e) => setSexId(Number(e.target.value))}>
+                <select
+                  id={`${uid}-sex`}
+                  disabled={!sensitiveGranted}
+                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                  value={sexId}
+                  onChange={(e) => setSexId(Number(e.target.value))}
+                >
                   <option value={1}>{t('intake.sex_1')}</option>
                   <option value={2}>{t('intake.sex_2')}</option>
                   <option value={3}>{t('intake.sex_3')}</option>
                 </select>
+                {!sensitiveGranted && (
+                  <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {t('intake.consent.sensitive_disabled_notice')}
+                  </span>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className={LABEL} htmlFor={`${uid}-nat`}>{t('intake.field_nationality')}</label>
-                <select id={`${uid}-nat`} className={INPUT} value={nationality} onChange={(e) => setNationality(e.target.value)}>
+                <select
+                  id={`${uid}-nat`}
+                  disabled={!sensitiveGranted}
+                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                  value={nationality}
+                  onChange={(e) => setNationality(e.target.value)}
+                >
                   {!COUNTRIES.some((c) => c.value === nationality) && <option value={nationality}>{nationality}</option>}
                   {COUNTRIES.map((c) => (
                     <option key={c.value} value={c.value}>{t(c.key)}</option>
                   ))}
                 </select>
+                {!sensitiveGranted && (
+                  <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {t('intake.consent.sensitive_disabled_notice')}
+                  </span>
+                )}
               </div>
               <div>
                 <label className={LABEL} htmlFor={`${uid}-lang`}>{t('intake.field_primary_language')}</label>
-                <input id={`${uid}-lang`} className={INPUT} value={language} onChange={(e) => setLanguage(e.target.value)} autoComplete="off" />
+                <input
+                  id={`${uid}-lang`}
+                  disabled={!sensitiveGranted}
+                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  autoComplete="off"
+                />
+                {!sensitiveGranted && (
+                  <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {t('intake.consent.sensitive_disabled_notice')}
+                  </span>
+                )}
               </div>
             </div>
           </fieldset>
@@ -282,6 +320,26 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
           <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
             <legend className="px-1 text-base font-bold text-carbon">{t('subfolio.section_consents')}</legend>
             <p className="text-sm text-gray-600">{t('subfolio.consents_hint')}</p>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-turquesa/30 bg-claro/30 p-3">
+              <label className="flex items-center gap-2 text-xs font-semibold text-carbon cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={childAssent}
+                  onChange={(e) => setChildAssent(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-turquesa focus:ring-turquesa"
+                />
+                <span>{t('subfolio.child_assent_check')}</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowNnaModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-turquesa/40 bg-white px-2.5 py-1 text-xs font-semibold text-turquesa-dark hover:bg-claro shadow-2xs"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>{t('nna_guide.open_btn')}</span>
+              </button>
+            </div>
             {CONSENT_KEYS.map((key) => (
               <div key={key} className="rounded-xl border border-gray-200 p-3" role="radiogroup" aria-labelledby={`${uid}-c-${key}`}>
                 <p id={`${uid}-c-${key}`} className="text-sm font-semibold text-carbon">{t(`arco.consent_types.${key}`)}</p>
@@ -397,6 +455,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
           <p className="px-1 text-sm text-gray-600">{t('subfolio.representative').replace('{name}', representative).replace('{folio}', parent.case_number)}</p>
         </aside>
       </div>
+
+      <NnaAssentModal isOpen={showNnaModal} onClose={() => setShowNnaModal(false)} />
     </div>
   );
 };

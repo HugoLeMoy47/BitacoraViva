@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ArrowLeft, 
   ShieldAlert, 
@@ -31,7 +31,8 @@ import {
   StatusAxisCode,
   JournalEntry,
   ConsentType,
-  ConsentStatus
+  ConsentStatus,
+  ArcoRequest
 } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
@@ -41,12 +42,14 @@ import { ShareEntryModal } from './ShareEntryModal';
 import { AnonymizePersonModal } from './AnonymizePersonModal';
 import { OpposeSecondaryTreatmentModal } from './OpposeSecondaryTreatmentModal';
 import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
+import { ArcoReceiptModal, computeArcoDocket, computeBusinessDaysDeadline } from './ArcoReceiptModal';
 import { formatDate, formatDateTime, formatTime } from '../lib/format';
 import { ModalShell } from './ModalShell';
 import { Tabs } from './Tabs';
 import { CaseTasksPanel } from './CaseTasksPanel';
 import { StatusHistory } from './StatusHistory';
 import { DisabledReason, describedBy } from './DisabledReason';
+import { dataApi } from '../lib/data';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -106,7 +109,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onAnonymizePerson,
   onOpposeSecondary,
 }) => {
-  const { statusAxes, statusValues } = useCatalog();
+  const { statusAxes, statusValues, organizationName, organizationInfo } = useCatalog();
   const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>(initialTab ?? 'axes');
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   const [targetValueCode, setTargetValueCode] = useState<string>('');
@@ -123,10 +126,20 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const [isAnonymizeModalOpen, setIsAnonymizeModalOpen] = useState<boolean>(false);
   const [isOpposeModalOpen, setIsOpposeModalOpen] = useState<boolean>(false);
   const [isAccessExtractModalOpen, setIsAccessExtractModalOpen] = useState<boolean>(false);
+  const [receiptRequest, setReceiptRequest] = useState<ArcoRequest | null>(null);
 
   const hasUnaccompaniedChild = caseData.vulnerabilities.some(
     (v) => v.marker_code === 'unaccompanied_child'
   );
+
+  // D-12 / P-04: Auditoría de lectura de expediente registrada por la base
+  useEffect(() => {
+    if (caseData?.id) {
+      void dataApi.readCaseDetail(caseData.id).catch(() => {
+        // La lectura continúa si falla la auditoría silenciosa
+      });
+    }
+  }, [caseData?.id]);
 
   const isDirector = activeRole === 'director';
   const isLegalCaseworker = activeRole === 'caseworker' && assignedAreaCode === 'legal';
@@ -1063,35 +1076,58 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <table className="min-w-full divide-y divide-gray-200 text-xs">
                   <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-xs">
                     <tr>
+                      <th className="px-4 py-2.5 text-left">{t('arco.table_docket')}</th>
                       <th className="px-4 py-2.5 text-left">{t('arco.table_type')}</th>
                       <th className="px-4 py-2.5 text-left">{t('arco.table_status')}</th>
                       <th className="px-4 py-2.5 text-left">{t('arco.table_requested_by')}</th>
                       <th className="px-4 py-2.5 text-left">{t('arco.table_reason')}</th>
                       <th className="px-4 py-2.5 text-left">{t('arco.table_date')}</th>
+                      <th className="px-4 py-2.5 text-left">{t('arco.table_deadline')}</th>
+                      <th className="px-4 py-2.5 text-right">{t('arco.table_actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
-                    {arcoRequests.map((req) => (
-                      <tr key={req.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 font-semibold text-carbon">
-                          <span className="px-2 py-0.5 rounded bg-gray-100 border text-xs">
-                            {t(`arco.types.${req.request_type}`)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium text-xs">
-                            {t(`arco.statuses.${req.status}`)}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">{req.requested_by_name}</td>
-                        <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={req.reason}>
-                          {req.reason}
-                        </td>
-                        <td className="px-4 py-3 text-gray-500 font-mono text-xs">
-                          {formatDate(req.received_at)}
-                        </td>
-                      </tr>
-                    ))}
+                    {arcoRequests.map((req) => {
+                      const docket = computeArcoDocket(req, caseData.organization_id?.slice(0, 3) || 'BV');
+                      const deadline = computeBusinessDaysDeadline(req.received_at, 20);
+                      return (
+                        <tr key={req.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 font-mono font-bold text-carbon text-xs">
+                            {docket}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-carbon">
+                            <span className="px-2 py-0.5 rounded bg-gray-100 border text-xs">
+                              {t(`arco.types.${req.request_type}`)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium text-xs">
+                              {t(`arco.statuses.${req.status}`)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-700">{req.requested_by_name}</td>
+                          <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={req.reason}>
+                            {req.reason}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                            {formatDate(req.received_at)}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 font-mono text-xs">
+                            {formatDate(deadline)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setReceiptRequest(req)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-gray-300 text-xs font-semibold text-carbon shadow-2xs hover:bg-gray-50"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-turquesa-dark" />
+                              <span>{t('arco.receipt_btn')}</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1239,6 +1275,18 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           isOpen={isAccessExtractModalOpen}
           onClose={() => setIsAccessExtractModalOpen(false)}
           caseData={caseData}
+        />
+      )}
+
+      {receiptRequest && (
+        <ArcoReceiptModal
+          isOpen={!!receiptRequest}
+          onClose={() => setReceiptRequest(null)}
+          arcoRequest={receiptRequest}
+          caseData={caseData}
+          organizationName={organizationName}
+          organizationPrefix={caseData.organization_id?.slice(0, 3) || 'BV'}
+          organizationInfo={organizationInfo}
         />
       )}
     </div>

@@ -1769,6 +1769,43 @@ begin
         $q$select count(*)::text from public.audit_event where created_at >= transaction_timestamp()
            and (coalesce(old_values::text, '') ilike '%secret%' or coalesce(new_values::text, '') ilike '%secret%')$q$, '0');
 
+    -- ===== Endurecimiento Cybersec (Opción B, 14 oct 2026): D-05, D-12, RNF-04
+    -- D-12: Auditoría de lectura de expediente individual
+    perform pg_temp.expect('D-12: lectura de expediente anónimo → BV101', null, null,
+        $q$select count(*)::text from (select public.fn_read_case_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid)) x$q$, 'ERR:BV101');
+    perform pg_temp.expect('D-12: lectura de expediente con voluntariado → BV101', VOL, 'authenticated',
+        $q$select count(*)::text from (select public.fn_read_case_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid)) x$q$, 'ERR:BV101');
+    perform pg_temp.expect('D-12: lectura de expediente con coordinación de tareas → BV101', TM, 'authenticated',
+        $q$select count(*)::text from (select public.fn_read_case_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid)) x$q$, 'ERR:BV101');
+    perform pg_temp.expect('D-12: lectura de expediente de otra organización → BV203', DIRB2, 'authenticated',
+        $q$select count(*)::text from (select public.fn_read_case_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid)) x$q$, 'ERR:BV203');
+    perform pg_temp.expect('D-12 control positivo: trabajo social lee expediente de su organización', CW, 'authenticated',
+        $q$select public.fn_read_case_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid)::text$q$, 'true');
+    perform pg_temp.expect('D-12: la lectura de expediente dejó evento READ_CASE en auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where action = 'READ_CASE' and record_id = 'aaaaaaaa-5000-0000-0000-000000000001'$q$, '1');
+
+    -- RNF-04: Configuración de seguridad de la organización (sesión absoluta configurable)
+    perform pg_temp.expect('RNF-04: configurar seguridad de organización anónimo → BV109', null, null,
+        $q$select count(*)::text from (select public.fn_update_organization_security_settings(false)) x$q$, 'ERR:BV109');
+    perform pg_temp.expect('RNF-04: configurar seguridad de organización con caseworker → BV109', CW, 'authenticated',
+        $q$select count(*)::text from (select public.fn_update_organization_security_settings(false)) x$q$, 'ERR:BV109');
+    perform pg_temp.expect('RNF-04 control positivo: dirección actualiza timeout absoluto a false', DIR, 'authenticated',
+        $q$select (public.fn_update_organization_security_settings(false) is not null)::text$q$, 'true');
+    perform pg_temp.expect('RNF-04: la bandera quedó en false tras la actualización', null, null,
+        $q$select enforce_absolute_session_timeout::text from public.organization where id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, 'false');
+    perform pg_temp.expect('RNF-04 control positivo: dirección restaura timeout absoluto a true', DIR, 'authenticated',
+        $q$select (public.fn_update_organization_security_settings(true) is not null)::text$q$, 'true');
+
+    -- D-05: Encadenamiento criptográfico e integridad del log
+    perform pg_temp.expect('D-05: verificar cadena de auditoría anónimo → BV109', null, null,
+        $q$select count(*)::text from (select * from public.fn_verify_audit_chain()) x$q$, 'ERR:BV109');
+    perform pg_temp.expect('D-05: verificar cadena de auditoría con caseworker → BV109', CW, 'authenticated',
+        $q$select count(*)::text from (select * from public.fn_verify_audit_chain()) x$q$, 'ERR:BV109');
+    perform pg_temp.expect('D-05 control positivo: dirección verifica cadena íntegra de su organización', DIR, 'authenticated',
+        $q$select is_valid::text from public.fn_verify_audit_chain()$q$, 'true');
+    perform pg_temp.expect('D-05 control positivo: los eventos tienen hashes válidos', null, null,
+        $q$select count(*)::text from public.audit_event where prev_hash is null or event_hash is null$q$, '0');
+
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;
     raise exception E'RLS_RESULTS\n%', report;

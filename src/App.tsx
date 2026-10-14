@@ -287,6 +287,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onSaveIdentity={(i) => run(() => configApi.updateIdentity(i), 'toast.config_identity')}
             onPublishNotice={(ti, su, fu) => run(() => configApi.publishPrivacyNotice(ti, su, fu), 'toast.config_notice')}
             onPublishConsentText={(ty, ti, de, re) => run(() => configApi.publishConsentText(ty, ti, de, re), 'toast.config_consent_text')}
+            onUpdateSecuritySettings={(enforce) => run(() => configApi.updateSecuritySettings(enforce), 'toast.config_security')}
           />
         )}
         {current === 'about' && <AboutView organization={organization} areasCount={data.areas.length} />}

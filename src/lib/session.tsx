@@ -4,6 +4,9 @@ import { RoleName, UserProfile, UserRole } from '../types/database';
 
 // RNF-04: la sesión caduca por inactividad a los 30 minutos.
 export const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
+// RNF-04 / P-10: límite absoluto continuo de sesión de 12 horas (configurable por dirección).
+export const ABSOLUTE_TIMEOUT_MS = 12 * 60 * 60 * 1000;
+export const SESSION_STARTED_KEY = 'bv_session_started_at';
 
 // Rol «principal» (para la etiqueta y las pantallas de casos): los de casos van antes que los de tareas.
 const ROLE_PRIORITY: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer', 'task_manager', 'volunteer'];
@@ -20,12 +23,18 @@ export interface SessionUser {
   assignedAreaId?: string;
   assignedAreaCode?: string;
   assignedAreaName?: string;
+  enforceAbsoluteSessionTimeout?: boolean;
 }
 
 export type SessionStatus = 'loading' | 'anonymous' | 'authenticated';
 
 // Claves de traducción (src/locales/es.json → login.*) para no llevar texto en lógica.
-export type SessionNotice = 'login.error_credentials' | 'login.error_no_role' | 'login.notice_expired' | null;
+export type SessionNotice =
+  | 'login.error_credentials'
+  | 'login.error_no_role'
+  | 'login.notice_expired'
+  | 'login.notice_absolute_expired'
+  | null;
 
 interface SessionContextValue {
   status: SessionStatus;
@@ -50,15 +59,19 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
   const userRole =
     ROLE_PRIORITY.map((r) => roles.find((x) => x.role_name === r)).find(Boolean) || roles[0];
 
-  let area: { id: string; code: string; name: string } | null = null;
-  if (userRole.area_id) {
-    const { data } = await supabase
-      .from('area')
-      .select('id, code, name')
-      .eq('id', userRole.area_id)
-      .maybeSingle();
-    area = data;
-  }
+  const [areaRes, orgRes] = await Promise.all([
+    userRole.area_id
+      ? supabase.from('area').select('id, code, name').eq('id', userRole.area_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from('organization')
+      .select('enforce_absolute_session_timeout')
+      .eq('id', profile.organization_id)
+      .maybeSingle(),
+  ]);
+
+  const area = areaRes.data;
+  const enforceAbsolute = orgRes.data?.enforce_absolute_session_timeout ?? true;
 
   return {
     profile,
@@ -69,6 +82,7 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
     assignedAreaId: area?.id,
     assignedAreaCode: area?.code,
     assignedAreaName: area?.name,
+    enforceAbsoluteSessionTimeout: enforceAbsolute,
   };
 }
 
@@ -106,7 +120,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => sub.subscription.unsubscribe();
   }, [applySession]);
 
-  // Cierre por inactividad
+  // Cierre por inactividad (30 min) y verificación de límite absoluto continuo
   useEffect(() => {
     if (status !== 'authenticated') return;
 
@@ -115,6 +129,15 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await supabase.auth.signOut();
     };
     const reset = () => {
+      if (user?.enforceAbsoluteSessionTimeout !== false) {
+        const started = Number(sessionStorage.getItem(SESSION_STARTED_KEY) || Date.now());
+        if (Date.now() - started >= ABSOLUTE_TIMEOUT_MS) {
+          sessionStorage.removeItem(SESSION_STARTED_KEY);
+          setNotice('login.notice_absolute_expired');
+          void supabase.auth.signOut();
+          return;
+        }
+      }
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(expire, INACTIVITY_TIMEOUT_MS);
     };
@@ -127,10 +150,39 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       events.forEach((e) => window.removeEventListener(e, reset));
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [status]);
+  }, [status, user?.enforceAbsoluteSessionTimeout]);
+
+  // Límite absoluto continuo (12h) configurable por Dirección (RNF-04 / P-10)
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+
+    if (!sessionStorage.getItem(SESSION_STARTED_KEY)) {
+      sessionStorage.setItem(SESSION_STARTED_KEY, String(Date.now()));
+    }
+
+    if (user?.enforceAbsoluteSessionTimeout === false) return;
+
+    const started = Number(sessionStorage.getItem(SESSION_STARTED_KEY) || Date.now());
+    const remaining = ABSOLUTE_TIMEOUT_MS - (Date.now() - started);
+
+    const expireAbsolute = async () => {
+      sessionStorage.removeItem(SESSION_STARTED_KEY);
+      setNotice('login.notice_absolute_expired');
+      await supabase.auth.signOut();
+    };
+
+    if (remaining <= 0) {
+      void expireAbsolute();
+      return;
+    }
+
+    const absTimer = setTimeout(expireAbsolute, remaining);
+    return () => clearTimeout(absTimer);
+  }, [status, user?.enforceAbsoluteSessionTimeout]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setNotice(null);
+    sessionStorage.removeItem(SESSION_STARTED_KEY);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) {
       setNotice('login.error_credentials');
@@ -139,6 +191,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const signOut = useCallback(async () => {
     setNotice(null);
+    sessionStorage.removeItem(SESSION_STARTED_KEY);
     await supabase.auth.signOut();
   }, []);
 

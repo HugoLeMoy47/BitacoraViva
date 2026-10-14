@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { t } from '../lib/i18n';
 import { formatDate } from '../lib/format';
-import { listConsentTexts, listPrivacyNotices, OrganizationIdentityInput } from '../lib/data';
-import { ConsentText, ConsentType, Organization, PrivacyNotice } from '../types/database';
+import { listConsentTexts, listPrivacyNotices, OrganizationIdentityInput, dataApi } from '../lib/data';
+import { ConsentText, ConsentType, Organization, PrivacyNotice, AuditChainVerification } from '../types/database';
 import { Tabs } from './Tabs';
 import { DisabledReason, describedBy } from './DisabledReason';
 import { friendlyError } from '../lib/errors';
@@ -18,6 +18,7 @@ interface Props {
   onSaveIdentity: (input: OrganizationIdentityInput) => Result;
   onPublishNotice: (title: string, summary: string, fullText: string) => Result;
   onPublishConsentText: (type: ConsentType, title: string, description: string, required: boolean) => Result;
+  onUpdateSecuritySettings?: (enforce: boolean) => Result;
 }
 
 // Consentimientos que se configuran. «internal_sharing» no se pide por separado (lo cubre el aviso general).
@@ -30,9 +31,16 @@ const HINT = 'mt-1 text-xs text-gray-500';
 const BTN =
   'rounded-lg bg-turquesa px-5 py-2 text-sm font-semibold text-carbon shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
 
-type TabId = 'identity' | 'notice' | 'consents';
+type TabId = 'identity' | 'notice' | 'consents' | 'security';
 
-export const ConfigurationView: React.FC<Props> = ({ organization, busy, onSaveIdentity, onPublishNotice, onPublishConsentText }) => {
+export const ConfigurationView: React.FC<Props> = ({
+  organization,
+  busy,
+  onSaveIdentity,
+  onPublishNotice,
+  onPublishConsentText,
+  onUpdateSecuritySettings,
+}) => {
   const [tab, setTab] = useState<TabId>('identity');
   const [notices, setNotices] = useState<PrivacyNotice[] | null>(null);
   const [texts, setTexts] = useState<ConsentText[] | null>(null);
@@ -77,6 +85,7 @@ export const ConfigurationView: React.FC<Props> = ({ organization, busy, onSaveI
             { id: 'identity', label: t('config.tab_identity') },
             { id: 'notice', label: t('config.tab_notice') },
             { id: 'consents', label: t('config.tab_consents') },
+            { id: 'security', label: t('config.tab_security') },
           ]}
           className="border-b border-gray-200 px-2"
         />
@@ -105,6 +114,9 @@ export const ConfigurationView: React.FC<Props> = ({ organization, busy, onSaveI
                 />
               ))}
             </div>
+          )}
+          {tab === 'security' && (
+            <SecurityForm organization={organization} busy={busy} onSave={onUpdateSecuritySettings} />
           )}
         </div>
       </div>
@@ -398,3 +410,132 @@ const ConsentCard: React.FC<{
     </form>
   );
 };
+
+// ---------------------------------------------------------------- Seguridad
+const SecurityForm: React.FC<{
+  organization: Organization | null;
+  busy: boolean;
+  onSave?: (enforce: boolean) => Result;
+}> = ({ organization, busy, onSave }) => {
+  const initialEnforce = organization?.enforce_absolute_session_timeout ?? true;
+  const [enforce, setEnforce] = useState<boolean>(initialEnforce);
+
+  useEffect(() => {
+    setEnforce(organization?.enforce_absolute_session_timeout ?? true);
+  }, [organization?.enforce_absolute_session_timeout]);
+
+  const dirty = enforce !== initialEnforce;
+  const saveReason = !dirty ? t('config.security.reason_unchanged') : null;
+
+  // Verificación de integridad criptográfica de auditoría
+  const [verifying, setVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<AuditChainVerification | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      const res = await dataApi.verifyAuditChain(organization?.id);
+      if (res && res.length > 0) {
+        setVerificationResult(res[0]);
+      }
+    } catch (e) {
+      setVerifyError(friendlyError(e));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-bold text-carbon">{t('config.security.title')}</h3>
+        <p className="text-xs text-gray-500">{t('config.security.desc')}</p>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (dirty && !busy && onSave) void onSave(enforce);
+        }}
+        className="space-y-4 rounded-lg border border-gray-200 bg-gray-50/50 p-4"
+      >
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 rounded border-gray-300 text-turquesa focus:ring-turquesa"
+            checked={enforce}
+            onChange={(e) => setEnforce(e.target.checked)}
+          />
+          <div>
+            <span className="text-sm font-semibold text-carbon block">
+              {t('config.security.enforce_absolute_label')}
+            </span>
+            <span className="text-xs text-gray-600 block mt-0.5">
+              {t('config.security.enforce_absolute_desc')}
+            </span>
+          </div>
+        </label>
+
+        <div className="flex justify-end pt-2">
+          <button
+            type="submit"
+            disabled={!dirty || busy}
+            {...describedBy('security-save', saveReason)}
+            className={BTN}
+          >
+            {t('config.security.save')}
+          </button>
+          <DisabledReason id="security-save" reason={saveReason} />
+        </div>
+      </form>
+
+      <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+        <div>
+          <h4 className="text-sm font-bold text-carbon">
+            {t('config.security.audit_integrity_title')}
+          </h4>
+          <p className="text-xs text-gray-600 mt-0.5">
+            {t('config.security.audit_integrity_desc')}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={verifying || busy}
+            onClick={() => void handleVerify()}
+            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-carbon shadow-sm hover:bg-gray-50 disabled:opacity-50"
+          >
+            {verifying ? t('config.security.verifying') : t('config.security.verify_chain_btn')}
+          </button>
+        </div>
+
+        {verifyError && (
+          <p role="alert" className="text-xs text-alerta-dark">
+            {verifyError}
+          </p>
+        )}
+
+        {verificationResult && (
+          <div
+            role="status"
+            className={`rounded-lg p-3 text-xs font-medium ${
+              verificationResult.is_valid
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-red-50 text-alerta-dark border border-red-200'
+            }`}
+          >
+            {verificationResult.is_valid
+              ? t('config.security.chain_valid').replace('{total}', String(verificationResult.total_events))
+              : t('config.security.chain_invalid')
+                  .replace('{seq}', String(verificationResult.broken_at_seq ?? ''))
+                  .replace('{reason}', verificationResult.reason)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
