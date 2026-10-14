@@ -4,6 +4,7 @@ import { t, tStored } from '../lib/i18n';
 import { api, CaseStatusHistoryRow } from '../lib/data';
 import { useCatalog } from '../lib/catalog';
 import { formatDate } from '../lib/format';
+import { friendlyError } from '../lib/errors';
 
 // Historial completo de estatus de un expediente (BV-2.3): qué valor, desde cuándo, hasta cuándo,
 // quién y por qué. El estatus no se sobrescribe: cada cambio cierra el vigente y abre uno nuevo.
@@ -23,7 +24,7 @@ export const StatusHistory: React.FC<{ caseId: string }> = ({ caseId }) => {
     api
       .loadCaseStatusHistory(caseId)
       .then((r) => { if (!cancelled) setRows(r); })
-      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); });
+      .catch((e) => { if (!cancelled) setError(friendlyError(e)); });
     return () => { cancelled = true; };
   }, [caseId]);
 

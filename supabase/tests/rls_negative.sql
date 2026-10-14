@@ -1643,27 +1643,27 @@ begin
         perform pg_temp.expect('BV-3.2 control positivo: dirección también crea subfolios', DIR, 'authenticated', sub, '1');
         perform pg_temp.expect('BV-3.2: el segundo subfolio es -S2 (nunca repite el folio)', null, null,
             $q$select string_agg(case_number, ',' order by case_number) from public."case" where parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1'$q$, 'TST-A-0099-S1,TST-A-0099-S2');
-        perform pg_temp.expect('BV-3.2: trabajo social no crea subfolios', CW, 'authenticated', sub, 'ERR');
-        perform pg_temp.expect('BV-3.2: el observador no crea subfolios', VW, 'authenticated', sub, 'ERR');
-        perform pg_temp.expect('BV-3.2: el voluntariado no crea subfolios', VOL, 'authenticated', sub, 'ERR');
+        perform pg_temp.expect('BV-3.2: trabajo social no crea subfolios', CW, 'authenticated', sub, 'ERR:BV114');
+        perform pg_temp.expect('BV-3.2: el observador no crea subfolios', VW, 'authenticated', sub, 'ERR:BV114');
+        perform pg_temp.expect('BV-3.2: el voluntariado no crea subfolios', VOL, 'authenticated', sub, 'ERR:BV114');
         perform pg_temp.expect('BV-3.2: sin sesión no se crean subfolios', null, 'anon', sub, 'ERR');
-        perform pg_temp.expect('BV-3.2: dirección de otra organización no cuelga subfolios de un caso ajeno', DIRB, 'authenticated', sub, 'ERR');
+        perform pg_temp.expect('BV-3.2: dirección de otra organización no cuelga subfolios de un caso ajeno', DIRB2, 'authenticated', sub, 'ERR:BV201');
         perform pg_temp.expect('BV-3.2: un subfolio no admite subfolios (profundidad 1)', INT, 'authenticated',
-            replace(sub, 'aaaaaaaa-5000-0000-0000-0000000000d1', (select id::text from public."case" where case_number = 'TST-A-0099-S1' limit 1)), 'ERR');
+            replace(sub, 'aaaaaaaa-5000-0000-0000-0000000000d1', (select id::text from public."case" where case_number = 'TST-A-0099-S1' limit 1)), 'ERR:BV505');
         perform pg_temp.expect('BV-3.2: la persona del subfolio debe ser menor de 18 años', INT, 'authenticated',
-            replace(sub, '(current_date - interval ''8 years'')::date', 'date ''2000-01-01'''), 'ERR');
+            replace(sub, '(current_date - interval ''8 years'')::date', 'date ''2000-01-01'''), 'ERR:BV406');
         perform pg_temp.expect('BV-3.2: la nota de justificación es obligatoria', INT, 'authenticated',
-            replace(sub, 'Viaja con su madre; se abre su expediente propio.', '   '), 'ERR');
+            replace(sub, 'Viaja con su madre; se abre su expediente propio.', '   '), 'ERR:BV312');
         perform pg_temp.expect('BV-3.2: la nota de justificación no puede ser una palabra suelta', INT, 'authenticated',
-            replace(sub, 'Viaja con su madre; se abre su expediente propio.', 'ok'), 'ERR');
+            replace(sub, 'Viaja con su madre; se abre su expediente propio.', 'ok'), 'ERR:BV312');
         perform pg_temp.expect('BV-3.2: el parentesco de quien representa es obligatorio', INT, 'authenticated',
-            replace(sub, '''madre''', ''''''), 'ERR');
+            replace(sub, '''madre''', ''''''), 'ERR:BV311');
         perform pg_temp.expect('BV-3.2: sin consentimiento general no se abre el subfolio', INT, 'authenticated',
-            replace(sub, '"consent_type":"general_care","status":"granted"', '"consent_type":"general_care","status":"denied"'), 'ERR');
+            replace(sub, '"consent_type":"general_care","status":"granted"', '"consent_type":"general_care","status":"denied"'), 'ERR:BV401');
         perform pg_temp.expect('BV-3.2 (P-06): sin consentimiento de datos sensibles no se afirman marcadores', INT, 'authenticated',
-            replace(sub, 'array[]::text[]', 'array[''disability'']::text[]'), 'ERR');
+            replace(sub, 'array[]::text[]', 'array[''disability'']::text[]'), 'ERR:BV402');
         perform pg_temp.expect('BV-3.2: el subfolio es de niñez acompañada; el marcador de no acompañada se rechaza', INT, 'authenticated',
-            replace(replace(sub, 'array[]::text[]', 'array[''unaccompanied_child'']::text[]'), '"status":"granted"}]', '"status":"granted"},{"consent_type":"sensitive_data","status":"granted"}]'), 'ERR');
+            replace(replace(sub, 'array[]::text[]', 'array[''unaccompanied_child'']::text[]'), '"status":"granted"}]', '"status":"granted"},{"consent_type":"sensitive_data","status":"granted"}]'), 'ERR:BV407');
         perform pg_temp.expect('BV-3.2: el caso padre no cambia por crear subfolios', null, null,
             $q$select count(*)::text from public."case" where id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and parent_case_id is null and closed_at is null$q$, '1');
         perform pg_temp.expect('BV-3.2: quien representa se toma del caso padre, no de lo que envía el cliente', null, null,
@@ -1693,8 +1693,41 @@ begin
                                     values ('aaaaaaaa-5000-0000-0000-0000000000c1', {ORGA}, 'TST-A-CERRADO', 'aaaaaaaa-4000-0000-0000-000000000001', now()) returning 1)
                          select count(*)::text from c$q$), '1');
         perform pg_temp.expect('BV-3.2: a un caso padre cerrado no se le cuelgan subfolios', INT, 'authenticated',
-            replace(sub, 'aaaaaaaa-5000-0000-0000-0000000000d1', 'aaaaaaaa-5000-0000-0000-0000000000c1'), 'ERR');
+            replace(sub, 'aaaaaaaa-5000-0000-0000-0000000000d1', 'aaaaaaaa-5000-0000-0000-0000000000c1'), 'ERR:BV506');
     end;
+
+    -- ============================================================================================
+    -- ===== E13 fase 1: errores de dominio con código estable (migración 20261014000001)
+    -- Candado BV-13.2: ninguna función vigente de public levanta un error de dominio sin código (BVnnn de la
+    -- plataforma o TKnnn de tareas). Cuenta las sentencias `raise exception` sin `errcode`.
+    perform pg_temp.expect('E13: ninguna función vigente levanta un error con mensaje sin código estable', null, null,
+        $q$select count(*)::text from (
+             select p.proname
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             cross join lateral regexp_matches(p.prosrc, 'raise\s+exception\s+(E?''(?:[^'']|'''')*'')([^;]*);', 'gi') m
+             where n.nspname = 'public' and p.prokind = 'f' and m[2] !~* 'errcode\s*=\s*''(BV|TK)[0-9]{3}'''
+           ) x$q$, '0');
+    perform pg_temp.expect('E13: tampoco levanta un error armado solo con USING sin código estable', null, null,
+        $q$select count(*)::text from (
+             select p.proname
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+             cross join lateral regexp_matches(p.prosrc, 'raise\s+exception\s+using([^;]*);', 'gi') m
+             where n.nspname = 'public' and p.prokind = 'f' and m[1] !~* 'errcode\s*=\s*''(BV|TK)[0-9]{3}'''
+           ) x$q$, '0');
+    -- Códigos concretos: el mismo error llega con el mismo código, venga del rol, del dato o de la protección
+    perform pg_temp.expect('E13: abrir un expediente sin ser de ingreso ni dirección → BV113', CW, 'authenticated', new_case, 'ERR:BV113');
+    perform pg_temp.expect('E13: sin consentimiento general no se abre el expediente → BV401', DIR, 'authenticated',
+        replace(new_case, '[{"consent_type":"general_care"}]', '[]'), 'ERR:BV401');
+    perform pg_temp.expect('E13: marcadores sin consentimiento de datos sensibles → BV402', DIR, 'authenticated',
+        replace(new_case, 'array[]::text[]', 'array[''disability'']::text[]'), 'ERR:BV402');
+    perform pg_temp.expect('E13: anonimizar sin ser dirección → BV104', INT, 'authenticated',
+        $q$select count(*)::text from (select public.fn_anonymize_person('aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'Prueba')) x$q$, 'ERR:BV104');
+    perform pg_temp.expect('E13: un registro de otra organización no se distingue de uno inexistente → BV201', DIRB2, 'authenticated',
+        $q$select public.fn_assert_same_org('case', 'aaaaaaaa-5000-0000-0000-000000000001'::uuid)::text$q$, 'ERR:BV201');
+    perform pg_temp.expect('E13: la auditoría no se edita (ni siquiera con el propietario) → BV605', null, null,
+        $q$with u as (update public.audit_event set action = action where id = (select id from public.audit_event limit 1) returning 1) select count(*)::text from u$q$, 'ERR:BV605');
+    perform pg_temp.expect('E13: el contenido de una entrada de bitácora no se edita → BV611', null, null,
+        $q$with u as (update public.journal_entry set body = 'otro texto' where id = 'aaaaaaaa-6000-0000-0000-000000000001' returning 1) select count(*)::text from u$q$, 'ERR:BV611');
 
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',

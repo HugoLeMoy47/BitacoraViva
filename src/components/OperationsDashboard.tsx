@@ -4,6 +4,7 @@ import { t } from '../lib/i18n';
 import { CaseWithDetails, SharingEvent } from '../types/database';
 import { useCatalog } from '../lib/catalog';
 import { api, StageHistoryRow } from '../lib/data';
+import { friendlyError } from '../lib/errors';
 
 // Tablero de operación para Dirección (BV-2.4): qué requiere atención hoy.
 // A diferencia de los indicadores agregados, aquí sí hay expedientes identificables:
@@ -63,7 +64,7 @@ export const OperationsDashboard: React.FC<Props> = ({ cases, sharingEvents, onO
     api
       .loadStageHistory(stageAxis.id)
       .then((r) => { if (!cancelled) setHistory(r); })
-      .catch((e) => { if (!cancelled) setHistoryError(e instanceof Error ? e.message : String(e)); });
+      .catch((e) => { if (!cancelled) setHistoryError(friendlyError(e)); });
     return () => { cancelled = true; };
   }, [stageAxis?.id]);
 

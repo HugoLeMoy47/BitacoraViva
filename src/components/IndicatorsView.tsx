@@ -5,6 +5,7 @@ import { api, AggregateMetrics, AggregateMetricRow } from '../lib/data';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { VulnerabilityMarkerCode } from '../types/database';
 import { TrendChart, TrendPoint } from './TrendChart';
+import { friendlyError } from '../lib/errors';
 
 // Orden de lectura: embudo de gestión, perfil y riesgo. Ingresos/egresos van en la tendencia.
 const METRIC_ORDER = [
@@ -96,7 +97,7 @@ export const IndicatorsView: React.FC = () => {
     api
       .aggregateMetrics(range.from, range.to)
       .then((r) => { if (!cancelled) { setData(r); setError(null); } })
-      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)); })
+      .catch((e) => { if (!cancelled) setError(friendlyError(e)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [range.from, range.to]);

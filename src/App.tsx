@@ -25,7 +25,7 @@ import { TasksView } from './components/TasksView';
 import { AboutView } from './components/AboutView';
 import { DemoBanner } from './components/DemoBanner';
 import { ToastProvider, useToast } from './lib/toast';
-import { friendlyError } from './lib/errors';
+import { DbError, friendlyError } from './lib/errors';
 
 const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -68,7 +68,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     } catch (e) {
       setLoadError(errorMessage(e));
       setLoadState((prev) => (prev === 'ready' ? 'ready' : 'error'));
-      toast.error(friendlyError(errorMessage(e)));
+      toast.error(friendlyError(e));
       return null;
     }
   }, [toast, caseAccess]);
@@ -94,7 +94,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
       ok = true;
       if (successKey) toast.success(t(successKey));
     } catch (e) {
-      toast.error(friendlyError(errorMessage(e)));
+      toast.error(friendlyError(e));
     }
     const fresh = await reload();
     setPending((n) => n - 1);
@@ -174,14 +174,14 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   ) =>
     run(async () => {
       const personId = personIdOfCase(caseId);
-      if (!personId) throw new Error('Expediente no encontrado.');
+      if (!personId) throw new DbError('Expediente no encontrado.', 'BV203');
       await api.registerConsent({ person_id: personId, case_id: caseId, ...consentData });
     }, 'toast.consent_saved');
 
   const handleRectifyPerson = (personId: string, updates: Partial<Person>, reason: string) =>
     run(async () => {
       const current = casesList.find((c) => c.titular_person_id === personId)?.person;
-      if (!current) throw new Error('Persona no encontrada.');
+      if (!current) throw new DbError('Persona no encontrada.', 'BV202');
       await api.rectifyPerson({ ...current, ...updates }, reason);
     }, 'toast.rectified');
 

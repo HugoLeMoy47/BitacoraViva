@@ -5,6 +5,7 @@ import { listConsentTexts, listPrivacyNotices, OrganizationIdentityInput } from 
 import { ConsentText, ConsentType, Organization, PrivacyNotice } from '../types/database';
 import { Tabs } from './Tabs';
 import { DisabledReason, describedBy } from './DisabledReason';
+import { friendlyError } from '../lib/errors';
 
 // Configuración de la organización (E9). La plataforma ofrece el mecanismo (versionado, bloqueo,
 // auditoría); cada asociación declara su contenido y responde por él. Solo Dirección entra aquí
@@ -44,7 +45,7 @@ export const ConfigurationView: React.FC<Props> = ({ organization, busy, onSaveI
       setTexts(c);
       setLoadError(null);
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : String(e));
+      setLoadError(friendlyError(e));
     }
   }, []);
 

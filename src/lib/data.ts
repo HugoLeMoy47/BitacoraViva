@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { DbError } from './errors';
 import {
   Area,
   ArcoRequest,
@@ -64,9 +65,9 @@ export const EMPTY_ORG_DATA: OrgData = {
   userNames: {},
 };
 
-async function rows<T>(query: PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {
+async function rows<T>(query: PromiseLike<{ data: T[] | null; error: { message: string; code?: string } | null }>): Promise<T[]> {
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new DbError(error.message, error.code);
   return data || [];
 }
 
@@ -244,7 +245,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
 
 async function rpc<T = unknown>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.rpc(fn, args);
-  if (error) throw new Error(error.message);
+  if (error) throw new DbError(error.message, error.code);
   return data as T;
 }
 
@@ -511,7 +512,7 @@ export async function getActivePrivacyNotice(): Promise<PrivacyNotice | null> {
     .order('effective_date', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw new DbError(error.message, error.code);
   return (data as PrivacyNotice) || null;
 }
 

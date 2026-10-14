@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { t } from './i18n';
-import { friendlyError } from './errors';
+import { DbError, friendlyError } from './errors';
 import { EVIDENCE_SIGNED_URL_SECONDS, evidencePath, evidenceProblem, prepareEvidence } from './evidence';
 import {
   CaseTaskKind,
@@ -55,18 +55,14 @@ export const EMPTY_TASK_DATA: TaskData = {
 };
 
 /** Error de la base con su código (SQLSTATE: TK001…, 42501…) para explicarlo con el siguiente paso. */
-export class TaskError extends Error {
-  constructor(message: string, readonly code?: string) {
-    super(message);
-  }
-}
+export class TaskError extends DbError {}
 
-interface DbError {
+interface PgError {
   message: string;
   code?: string;
 }
 
-async function rows<T>(query: PromiseLike<{ data: T[] | null; error: DbError | null }>): Promise<T[]> {
+async function rows<T>(query: PromiseLike<{ data: T[] | null; error: PgError | null }>): Promise<T[]> {
   const { data, error } = await query;
   if (error) throw new TaskError(error.message, error.code);
   return data || [];
@@ -110,7 +106,7 @@ export interface TaskInput {
 }
 
 /** Confirma que la escritura alcanzó una fila: si RLS no la deja ver o cambiar, no devuelve ninguna. */
-async function wrote(query: PromiseLike<{ data: unknown[] | null; error: DbError | null }>): Promise<void> {
+async function wrote(query: PromiseLike<{ data: unknown[] | null; error: PgError | null }>): Promise<void> {
   const { data, error } = await query;
   if (error) throw new TaskError(error.message, error.code);
   if (!data || data.length === 0) throw new TaskError('row-level security', '42501');
@@ -333,6 +329,5 @@ export function taskErrorMessage(e: unknown): string {
     const text = t(key);
     if (text !== key) return text;
   }
-  const raw = e instanceof Error ? e.message : String(e);
-  return friendlyError(raw);
+  return friendlyError(e);
 }

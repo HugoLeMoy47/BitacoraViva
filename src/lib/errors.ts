@@ -1,8 +1,24 @@
 import { t } from './i18n';
 
-// Traduce el mensaje técnico de la base o de la red a un texto con el siguiente paso.
-// Los mensajes de dominio de la base ya vienen en español y se conservan como detalle.
-export function friendlyError(raw: string): string {
+// Error de la base con su código (SQLSTATE): BVnnn de la plataforma, TKnnn de tareas, o los estándar de Postgres.
+// La interfaz traduce por CÓDIGO (errors.db.bvnnn en es.json), no buscando palabras en el mensaje: el mensaje de la
+// base queda como respaldo y para el registro técnico, y así el mismo error servirá en cualquier idioma (E13).
+export class DbError extends Error {
+  constructor(message: string, readonly code?: string) {
+    super(message);
+    this.name = 'DbError';
+  }
+}
+
+// Traduce un error (de la base, de la red o un texto suelto) a un mensaje con el siguiente paso.
+export function friendlyError(input: unknown): string {
+  const code = input instanceof DbError ? input.code : undefined;
+  if (code && /^BV\d{3}$/.test(code)) {
+    const key = `errors.db.${code.toLowerCase()}`;
+    const text = t(key);
+    if (text !== key) return text;
+  }
+  const raw = input instanceof Error ? input.message : String(input);
   const m = raw.toLowerCase();
   if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed')) return t('errors.network');
   if (m.includes('jwt') || m.includes('not authenticated')) return t('errors.session');
