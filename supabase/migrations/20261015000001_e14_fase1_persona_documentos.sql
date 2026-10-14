@@ -2,8 +2,8 @@
 -- E14 fase 1 · Persona y documentos (empalme con la hoja de casos de CAFEMIN)
 --
 -- Qué agrega (decisiones del Product Owner del 14 oct 2026, 30_entrega/equivalencias-hoja-de-casos-cafemin.md):
---  * Documentos de la persona: catálogo de tipos por organización (`document_type`, lo administra
---    dirección) y los documentos mismos (`person_document`: tipo + número abierto). Incluye CURP y NUE.
+--  * Documentos de la persona: catálogo de tipos por organización (`document_type`, lo administran
+--    dirección y el área de Trabajo Social, decisión del PO del 15 oct 2026 para todo catálogo) y los documentos mismos (`person_document`: tipo + número abierto). Incluye CURP y NUE.
 --    Lo corregido o quitado se CIERRA con motivo (`valid_to`); nada se borra ni se sobrescribe.
 --  * Religión de la persona (`person.religion`): dato sensible, solo con consentimiento sensible vigente (D-14).
 --  * Detalle de los marcadores de vulnerabilidad: usa la columna `notes` que el marcador ya tenía y que ninguna
@@ -47,7 +47,25 @@ create trigger trg_audit_case_vulnerability_marker
 after insert or update on public.case_vulnerability_marker
 for each row execute function public.fn_audit_trigger_fields();
 
--- ---------------------------------------------------------------- 2. Catálogo de tipos de documento
+-- ---------------------------------------------------------------- 2. Quién administra los catálogos
+-- Decisión del Product Owner (15 oct 2026): los catálogos los editan dirección y el área de Trabajo Social.
+-- Trabajo Social es un ÁREA, no un rol: edita quien es director, o quien opera expedientes y tiene un rol
+-- vigente en el área de código `trabajo_social`. Este es el ÚNICO lugar donde se define; todo catálogo nuevo
+-- usa esta función en su política.
+create or replace function public.can_manage_catalogs()
+returns boolean
+stable
+security definer
+set search_path = public
+language sql as $$
+    select public.has_role('director')
+        or (public.has_operational_role() and public.has_role_in_area('caseworker', 'trabajo_social'))
+        or (public.has_operational_role() and public.has_role_in_area('intake_officer', 'trabajo_social'));
+$$;
+revoke execute on function public.can_manage_catalogs() from public, anon;
+grant execute on function public.can_manage_catalogs() to authenticated;
+
+-- ---------------------------------------------------------------- 2b. Catálogo de tipos de documento
 create table if not exists public.document_type (
     id uuid primary key default gen_random_uuid(),
     organization_id uuid not null references public.organization(id),
@@ -69,10 +87,11 @@ create policy "Roles vigentes ven los tipos de documento de su organización"
     using (organization_id = public.current_organization_id() and public.has_any_role());
 
 drop policy if exists "Dirección administra los tipos de documento de su organización" on public.document_type;
-create policy "Dirección administra los tipos de documento de su organización"
+drop policy if exists "Dirección y Trabajo Social administran los tipos de documento" on public.document_type;
+create policy "Dirección y Trabajo Social administran los tipos de documento"
     on public.document_type for all to authenticated
-    using (organization_id = public.current_organization_id() and public.has_role('director'))
-    with check (organization_id = public.current_organization_id() and public.has_role('director'));
+    using (organization_id = public.current_organization_id() and public.can_manage_catalogs())
+    with check (organization_id = public.current_organization_id() and public.can_manage_catalogs());
 
 drop trigger if exists trg_audit_document_type on public.document_type;
 create trigger trg_audit_document_type

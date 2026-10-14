@@ -1859,8 +1859,18 @@ begin
     -- ----- Catálogo de tipos de documento
     perform pg_temp.expect('E14 control positivo: dirección agrega un tipo de documento', DIR, 'authenticated',
         format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'nuevo_tipo', 'Nuevo tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), '1');
-    perform pg_temp.expect('E14: quien atiende no administra el catálogo de tipos de documento', CW, 'authenticated',
+    perform pg_temp.expect('E14 control positivo: Trabajo Social (caseworker del área) administra el catálogo', CW, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'tipo_de_ts', 'Tipo de TS', 9) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+    perform pg_temp.expect('E14: el área jurídica no administra el catálogo', 'aaaaaaaa-3000-0000-0000-00000000000a', 'authenticated',
         format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo', 'Otro tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('E14: ingreso sin área de Trabajo Social no administra el catálogo', INT, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo2', 'Otro tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('E14: el rol de solo lectura no administra el catálogo', VW, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo3', 'Otro tipo', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('E14: Trabajo Social no cambia el catálogo de otra organización', CW, 'authenticated',
+        format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'ajeno_ts', 'Ajeno', 9) returning 1) select count(*)::text from i$q$, ORG_B), 'ERR');
+    perform pg_temp.expect('E14: Trabajo Social desactiva un tipo (no lo borra)', CW, 'authenticated',
+        format($q$with u as (update public.document_type set is_active = false where id = %L::uuid returning 1) select count(*)::text from u$q$, pg_temp.id('d000', 2)), '1');
     perform pg_temp.expect('E14: el catálogo de A no admite tipos en la organización B', DIR, 'authenticated',
         format($q$with i as (insert into public.document_type (organization_id, key, label_es, sort_order) values (%L, 'ajeno', 'Ajeno', 9) returning 1) select count(*)::text from i$q$, ORG_B), 'ERR');
     perform pg_temp.expect('E14: no se borra un tipo de documento (se desactiva)', DIR, 'authenticated',
