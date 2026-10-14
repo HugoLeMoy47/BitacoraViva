@@ -268,7 +268,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
           />
         )}
 
-        {current === 'tasks' && <TasksView user={currentUser} section={route.id === 'tasks' ? route.param : null} query={route.id === 'tasks' ? route.query : ''} />}
+        {current === 'tasks' && <TasksView user={currentUser} section={route.id === 'tasks' ? route.param : null} sub={route.id === 'tasks' ? route.sub : null} query={route.id === 'tasks' ? route.query : ''} />}
 
         {current === 'areas' && <AreasView areas={data.areas} />}
         {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}

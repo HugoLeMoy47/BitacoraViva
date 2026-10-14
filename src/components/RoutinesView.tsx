@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Archive, MapPin, Pencil, Plus, Tag } from 'lucide-react';
 import { t } from '../lib/i18n';
-import { RoutineDraft } from '../lib/tasks';
+import { navigate } from '../lib/router';
 import { RoutineTemplate, RoutineTemplateItem, TaskCategory, WorkArea } from '../types/database';
 import { ModalShell } from './ModalShell';
-import { RoutineFormModal } from './RoutineFormModal';
 
 // Plantillas de rutina (BV-7.11), para quien gestiona. Una plantilla mal armada se multiplica por cada
 // persona que la inicie: por eso se revisa aquí, con sus pasos a la vista, antes de ofrecerla.
@@ -15,13 +14,10 @@ interface RoutinesViewProps {
   categories: TaskCategory[];
   workAreas: WorkArea[];
   busyId: string | null;
-  saving: boolean;
-  onSave: (draft: RoutineDraft) => Promise<boolean>;
   onArchive: (id: string) => Promise<boolean>;
 }
 
-export const RoutinesView: React.FC<RoutinesViewProps> = ({ routines, items, categories, workAreas, busyId, saving, onSave, onArchive }) => {
-  const [form, setForm] = useState<{ routine: RoutineTemplate | null } | null>(null);
+export const RoutinesView: React.FC<RoutinesViewProps> = ({ routines, items, categories, workAreas, busyId, onArchive }) => {
   const [archiving, setArchiving] = useState<RoutineTemplate | null>(null);
 
   const active = routines.filter((r) => !r.archived_at);
@@ -29,9 +25,6 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({ routines, items, cat
   const categoryLabel = (id: string | null) => categories.find((c) => c.id === id)?.label_es;
   const workAreaLabel = (id: string | null) => workAreas.find((a) => a.id === id)?.label_es;
 
-  const submit = async (draft: RoutineDraft) => {
-    if (await onSave(draft)) setForm(null);
-  };
   const confirmArchive = async () => {
     if (archiving && (await onArchive(archiving.id))) setArchiving(null);
   };
@@ -42,7 +35,7 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({ routines, items, cat
         <p className="max-w-2xl text-sm text-gray-600">{t('tasks.routines.intro')}</p>
         <button
           type="button"
-          onClick={() => setForm({ routine: null })}
+          onClick={() => navigate('tasks', 'rutinas', { sub: 'nueva' })}
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -85,7 +78,7 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({ routines, items, cat
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setForm({ routine: r })}
+                    onClick={() => navigate('tasks', 'rutinas', { sub: r.id })}
                     disabled={busyId === r.id}
                     className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                   >
@@ -108,7 +101,6 @@ export const RoutinesView: React.FC<RoutinesViewProps> = ({ routines, items, cat
         </ul>
       )}
 
-      {form && <RoutineFormModal routine={form.routine} items={items} categories={categories} workAreas={workAreas} busy={saving} onClose={() => setForm(null)} onSubmit={submit} />}
 
       {archiving && (
         <ModalShell onClose={() => setArchiving(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-carbon/60 p-4 backdrop-blur-sm">

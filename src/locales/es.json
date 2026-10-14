@@ -1260,7 +1260,11 @@
     },
     "reason_name": "Escribe el nombre de la tarea.",
     "reason_name_long": "El nombre admite hasta 120 caracteres.",
-    "reason_details_long": "Los detalles admiten hasta 1000 caracteres."
+    "reason_details_long": "Los detalles admiten hasta 1000 caracteres.",
+    "page": {
+      "back_to_board": "Volver al tablero de tareas",
+      "back_to_routines": "Volver a las rutinas"
+    }
   },
   "subfolio": {
     "title": "Abrir subfolio",

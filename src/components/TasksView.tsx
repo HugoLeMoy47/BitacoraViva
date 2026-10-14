@@ -8,13 +8,14 @@ import { navigate } from '../lib/router';
 import { canManageTasks } from '../lib/navigation';
 import { useTasks } from '../lib/useTasks';
 import { usePhoneScreen } from '../lib/usePhoneScreen';
-import { TaskInput } from '../lib/tasks';
+import { RoutineDraft, TaskInput } from '../lib/tasks';
 import { Advance, canMove, groupByStatus, progressOf } from '../lib/taskFlow';
 import { Task, TaskStatus } from '../types/database';
 import { TaskBoard } from './TaskBoard';
 import { TaskCard } from './TaskCard';
 import { TaskMobileList } from './TaskMobileList';
-import { TaskFormModal } from './TaskFormModal';
+import { TaskFormPage } from './TaskFormPage';
+import { RoutineFormPage } from './RoutineFormPage';
 import { TaskArchiveModal } from './TaskArchiveModal';
 import { TaskReportsView } from './TaskReportsView';
 import { TaskCatalogsView } from './TaskCatalogsView';
@@ -52,11 +53,13 @@ interface TasksViewProps {
   user: SessionUser;
   /** Segmento de la ruta tras «tareas»: `reportes`, `catalogos` o nada (tablero) */
   section: string | null;
+  /** Subruta: «editar/<id>» de una tarea o «rutinas/nueva» y «rutinas/<id>» (formularios como página) */
+  sub: string | null;
   /** Cadena de consulta de la ruta (filtros de un reporte compartido) */
   query: string;
 }
 
-export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionParam, query }) => {
+export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionParam, sub, query }) => {
   const { userNames, organizationName } = useCatalog();
   const toast = useToast();
   const tasks = useTasks(user);
@@ -76,7 +79,6 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
 
   const [filter, setFilter] = useState<PersonFilter>('all');
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>('pending');
-  const [form, setForm] = useState<{ task: Task | null } | null>(null);
   const [archiving, setArchiving] = useState<Task | null>(null);
   const [startingRoutine, setStartingRoutine] = useState(false);
   const [evidenceTask, setEvidenceTask] = useState<Task | null>(null);
@@ -164,10 +166,13 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
     if (ok && to === 'done' && !isManagement) celebrate(task);
   };
 
-  const submitForm = async (input: TaskInput) => {
-    if (!form) return;
-    const ok = form.task ? await tasks.update(form.task.id, input) : await tasks.create(input);
-    if (ok) setForm(null);
+  // Los formularios de tarea y de rutina son páginas: al terminar o cancelar se REEMPLAZA su entrada del historial
+  const submitTask = async (task: Task | null, input: TaskInput) => {
+    const ok = task ? await tasks.update(task.id, input) : await tasks.create(input);
+    if (ok) navigate('tasks', null, { replace: true });
+  };
+  const submitRoutine = async (draft: RoutineDraft) => {
+    if (await tasks.saveRoutine(draft)) navigate('tasks', 'rutinas', { replace: true });
   };
 
   const confirmArchive = async () => {
@@ -190,7 +195,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
       onDragStart={(e, dragged) => e.dataTransfer.setData('text/plain', dragged.id)}
       onAdvance={handleAdvance}
       onReopen={handleReopen}
-      onEdit={(x) => setForm({ task: x })}
+      onEdit={(x) => navigate('tasks', 'editar', { sub: x.id })}
       onArchive={setArchiving}
       onClaim={isManagement ? undefined : handleClaim}
       onRelease={isManagement ? undefined : handleRelease}
@@ -210,6 +215,40 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
         </button>
       </div>
     );
+  }
+
+  // Formularios como página (solo gestión): #/tareas/nueva, #/tareas/editar/<id>, #/tareas/rutinas/nueva y #/tareas/rutinas/<id>
+  if (isManagement && (sectionParam === 'nueva' || (sectionParam === 'editar' && sub))) {
+    const editing = sectionParam === 'editar' ? tasks.data.tasks.find((x) => x.id === sub) ?? null : null;
+    if (sectionParam === 'nueva' || editing) {
+      return (
+        <TaskFormPage
+          task={editing}
+          categories={categories}
+          workAreas={workAreas}
+          assignees={assignees}
+          busy={tasks.saving}
+          onCancel={() => navigate('tasks', null, { replace: true })}
+          onSubmit={(input) => submitTask(editing, input)}
+        />
+      );
+    }
+  }
+  if (isManagement && sectionParam === 'rutinas' && sub) {
+    const editing = sub === 'nueva' ? null : tasks.data.routines.find((r) => r.id === sub) ?? null;
+    if (sub === 'nueva' || editing) {
+      return (
+        <RoutineFormPage
+          routine={editing}
+          items={tasks.data.routineItems}
+          categories={categories}
+          workAreas={workAreas}
+          busy={tasks.saving}
+          onCancel={() => navigate('tasks', 'rutinas', { replace: true })}
+          onSubmit={submitRoutine}
+        />
+      );
+    }
   }
 
   const nothingYet = isManagement && live.length === 0;
@@ -251,7 +290,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
             </label>
             <button
               type="button"
-              onClick={() => setForm({ task: null })}
+              onClick={() => navigate('tasks', 'nueva')}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
@@ -289,8 +328,6 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
           categories={categories}
           workAreas={workAreas}
           busyId={tasks.busyId}
-          saving={tasks.saving}
-          onSave={tasks.saveRoutine}
           onArchive={tasks.archiveRoutine}
         />
       )}
@@ -362,17 +399,6 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
         </>
       )}
 
-      {form && (
-        <TaskFormModal
-          task={form.task}
-          categories={categories}
-          workAreas={workAreas}
-          assignees={assignees}
-          busy={tasks.saving}
-          onClose={() => setForm(null)}
-          onSubmit={submitForm}
-        />
-      )}
       {archiving && <TaskArchiveModal task={archiving} busy={tasks.busyId === archiving.id} onClose={() => setArchiving(null)} onConfirm={confirmArchive} />}
       {startingRoutine && <StartRoutineModal routines={activeRoutines} items={tasks.data.routineItems} busyId={tasks.busyId} onStart={handleStartRoutine} onClose={() => setStartingRoutine(false)} />}
       {evidenceTask && (
