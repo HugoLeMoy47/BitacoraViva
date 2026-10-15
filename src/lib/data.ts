@@ -149,6 +149,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     familyUnits,
     familyMembers,
     catalogItems,
+    caseNeeds,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -186,6 +187,8 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     rows<FamilyUnit>(supabase.from('family_unit').select('*').order('family_number')),
     rows<FamilyMember>(supabase.from('family_member').select('*').is('valid_to', null)),
     rows<CatalogItem>(supabase.from('catalog_item').select('*').order('catalog').order('sort_order')),
+    // RLS: solo roles que operan expedientes
+    rows<{ case_id: string; catalog_item_id: string }>(supabase.from('case_need').select('case_id, catalog_item_id').is('valid_to', null)),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -285,6 +288,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
           .map((k) => ({ ...k, granted_by_name: userName(k.granted_by_user_id) })),
         dates: caseDates.filter((d) => d.case_id === c.id),
         family: familyOf(c.id),
+        needs: caseNeeds.filter((n) => n.case_id === c.id).map((n) => n.catalog_item_id),
         documents: personDocuments
           .filter((d) => d.person_id === c.titular_person_id)
           .map((d) => ({ ...d, type_label: documentTypeById.get(d.document_type_id)?.label_es ?? '—' })),
@@ -646,6 +650,14 @@ export const api = {
 
   setPersonReligion: (personId: string, itemId: string | null, detail: string, reason?: string) =>
     rpc('fn_set_person_religion', { p_person_id: personId, p_item_id: itemId, p_detail: detail.trim() || null, p_reason: reason?.trim() || null }),
+
+  // Necesidades específicas: el conjunto completo de casillas marcadas (E14 fase 4b)
+  setCaseNeeds: (caseId: string, itemIds: string[], reason?: string) =>
+    rpc('fn_set_case_needs', { p_case_id: caseId, p_item_ids: itemIds, p_reason: reason?.trim() || null }),
+
+  // Plan al ingreso: un valor del eje jurídico
+  setCaseIntakePlan: (caseId: string, valueId: string | null, reason?: string) =>
+    rpc('fn_set_case_intake_plan', { p_case_id: caseId, p_value_id: valueId, p_reason: reason?.trim() || null }),
 
   setPersonLanguage: (personId: string, itemId: string | null, detail: string, reason?: string) =>
     rpc('fn_set_person_language', { p_person_id: personId, p_item_id: itemId, p_detail: detail.trim() || null, p_reason: reason?.trim() || null }),

@@ -61,6 +61,8 @@ import { FlexibleDateInput } from './FlexibleDateInput';
 import { DatePrecision, startsInFuture, toStoredDate, todayLocalIso } from '../lib/flexDate';
 import { SmallFieldModal } from './SmallFieldModal';
 import { CatalogItemModal } from './CatalogItemModal';
+import { CaseNeedsPanel } from './CaseNeedsPanel';
+import { IntakePlanModal } from './IntakePlanModal';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -127,9 +129,10 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 }) => {
   const toast = useToast();
   const { statusAxes, statusValues, organizationName, organizationInfo, geoStates, intakeChannels, entryRoutes, catalogItems } = useCatalog();
+  const legalValues = statusValues.legal_status ?? [];
   const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>(initialTab ?? 'axes');
   // E14 fase 1: datos cortos que se editan en un modal de un solo campo
-  const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'language' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
+  const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'language' } | { kind: 'plan' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   // Ingreso y egreso del albergue llevan la fecha del movimiento: por defecto hoy, y se puede cambiar (E14 fase 2b)
   const [movementPrecision, setMovementPrecision] = useState<DatePrecision>('day');
@@ -736,6 +739,15 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             onChanged={onDataChanged ?? (async () => {})}
           />
 
+          <CaseNeedsPanel
+            caseId={caseData.id}
+            items={catalogItems.filter((i) => i.catalog === 'specific_need')}
+            currentIds={caseData.needs ?? []}
+            sensitiveOk={sensitiveOk}
+            canEdit={canEditExtra}
+            onChanged={onDataChanged ?? (async () => {})}
+          />
+
           <CaseFamilyPanel
             caseId={caseData.id}
             family={caseData.family}
@@ -789,6 +801,17 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 <span className="font-semibold text-carbon text-sm">
                   {entryRoutes.find((r) => r.code === caseData.entry_route_id)?.label_es ?? t('common.not_recorded')}
                 </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block">{t('plan.label')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {legalValues.find((v) => v.id === caseData.intake_plan_value_id)?.label_es ?? t('common.not_recorded')}
+                </span>
+                {canEditExtra && (
+                  <button type="button" onClick={() => setField({ kind: 'plan' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                    {caseData.intake_plan_value_id ? t('case_extra.change') : t('plan.register')}
+                  </button>
+                )}
               </div>
               <div>
                 <span className="text-gray-500 block">{t('case_extra.legacy_label')}</span>
@@ -1376,8 +1399,21 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         />
       )}
 
+      {field?.kind === 'plan' && onDataChanged && (
+        <IntakePlanModal
+          values={legalValues}
+          initialValueId={caseData.intake_plan_value_id ?? null}
+          onSubmit={async (valueId, reason) => {
+            await dataApi.setCaseIntakePlan(caseData.id, valueId, reason);
+            toast.success(t('case_extra.saved'));
+            await onDataChanged();
+          }}
+          onClose={() => setField(null)}
+        />
+      )}
+
       {/* E14 fase 1: referencia heredada y detalle de un marcador (un campo cada uno) */}
-      {field && field.kind !== 'religion' && field.kind !== 'language' && onDataChanged && (() => {
+      {field && field.kind !== 'religion' && field.kind !== 'language' && field.kind !== 'plan' && onDataChanged && (() => {
         const markerNotes = field.kind === 'marker' ? caseData.vulnerabilities.find((v) => v.marker_code === field.code)?.notes ?? '' : '';
         const cfg = field.kind === 'legacy'
             ? { title: t('case_extra.legacy_title'), hint: t('case_extra.legacy_hint'), label: t('case_extra.legacy_label'), initial: caseData.legacy_reference ?? '', max: 120, multiline: false }

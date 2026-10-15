@@ -307,6 +307,8 @@ export interface Case {
   assigned_user_id?: string | null;
   /** EXPEDIENTE de la hoja de casos anterior (E14); el folio de caso del sistema no cambia */
   legacy_reference?: string | null;
+  /** Plan al ingreso: valor del eje jurídico (E14 fase 4b); vacío = «No registrado» */
+  intake_plan_value_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -315,7 +317,7 @@ export interface Case {
 export interface CatalogItem {
   id: string;
   organization_id: string;
-  catalog: 'language' | 'religion';
+  catalog: 'language' | 'religion' | 'specific_need';
   key: string;
   label_es: string;
   legacy_code?: string | null;
@@ -533,6 +535,8 @@ export interface CaseWithDetails extends Case {
   dates?: CaseDate[];
   /** Familia del sistema paralelo (E14 fase 3); vacío = «No registrado» */
   family?: CaseFamilyView | null;
+  /** Necesidades específicas marcadas (valores vigentes del diccionario, E14 fase 4b) */
+  needs?: string[];
 }
 
 // ------------------------------------------------------------------------------

@@ -369,6 +369,7 @@
       "authority_request": "Requerimiento de autoridad",
       "case": "Expediente",
       "case_date": "Fecha del caso",
+      "case_need": "Necesidad específica",
       "case_status": "Estatus del expediente",
       "case_task_kind": "Tipo de tarea ligada",
       "case_vulnerability_marker": "Marcador de vulnerabilidad",
@@ -1020,6 +1021,7 @@
       "bv331": "El consecutivo debe ser un número entero positivo, o déjalo vacío.",
       "bv332": "Elige una familia que ya existe o escribe el folio de una nueva, no las dos cosas.",
       "bv333": "El detalle necesita un valor del diccionario que lo explique. Elige uno primero.",
+      "bv334": "«La persona no quiso responder» no se combina con otras necesidades. Marca una cosa o la otra.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
       "bv403": "Para una persona menor de 18 años, el consentimiento exige su asentimiento y la identidad de quien la representa.",
@@ -1647,5 +1649,20 @@
     "language_hint": "Elige el idioma del diccionario y, si hace falta, precísalo (por ejemplo, qué lengua indígena). Es un dato sensible.",
     "language_register": "Registrar idioma",
     "religion_hint": "Elige la religión del diccionario y, si hace falta, precísala. Es un dato sensible: se registra solo si la persona quiere compartirlo."
+  },
+  "needs": {
+    "title": "Necesidades específicas",
+    "subtitle": "Marca lo que aplica. Es un dato sensible: sin consentimiento sensible vigente solo se puede registrar que la persona no quiso responder. Lo que se desmarca queda en el historial.",
+    "reason_hint": "Quitaste una necesidad ya marcada: explica por qué. Queda en el historial.",
+    "reason_remove": "Para guardar, escribe el motivo por el que quitas una necesidad.",
+    "save": "Guardar necesidades",
+    "saved": "Necesidades guardadas."
+  },
+  "plan": {
+    "label": "Plan al ingreso",
+    "register": "Registrar plan",
+    "title": "Plan al ingreso",
+    "hint": "El plan con el que la persona llegó. Usa los mismos valores que la situación jurídica actual, que se cambia aparte, en el eje jurídico.",
+    "field": "Plan al ingreso"
   }
 }
