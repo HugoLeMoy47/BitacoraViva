@@ -2120,6 +2120,117 @@ begin
             'select count(*)::text from public.geo_state', 'ERR');
     end;
 
+    -- ============================================================================================
+    -- ===== E14 fase 2: las cuatro fechas del caso, con precisión flexible (día, mes o año)
+    -- ===== (migración 20261016000001). Ingreso y egreso a la nación y al albergue; lo corregido se cierra con motivo.
+    -- ============================================================================================
+    declare
+        c1 constant text := pg_temp.id('5000', 32);   -- TST-A-0E1, persona nacida el 1985-03-04
+        sd text := $q$select count(*)::text from (select public.fn_set_case_date(%L::uuid, %L, %L::date, %L, %L)) x$q$;
+        nc2 text := replace(new_case, '::jsonb)) x', '::jsonb, %L::jsonb)) x');
+    begin
+        perform pg_temp.expect('F2 control positivo: ingreso registra el ingreso a la nación con día exacto', INT, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-15', 'day', null), '1');
+        perform pg_temp.expect('F2 control positivo: Trabajo Social registra el ingreso al albergue solo con mes', CW, 'authenticated',
+            format(sd, c1, 'shelter_entry', '2026-09-17', 'month', null), '1');
+        perform pg_temp.expect('F2: con precisión de mes se guarda el primer día del mes', null, null,
+            format($q$select value::text || '/' || precision from public.case_date where case_id = %L::uuid and kind = 'shelter_entry' and valid_to is null$q$, c1), '2026-09-01/month');
+        perform pg_temp.expect('F2: con precisión de año se guarda el primero de enero', DIR, 'authenticated',
+            format(sd, c1, 'nation_exit', '2026-11-30', 'year', null), '1');
+        perform pg_temp.expect('F2: el año queda como 1 de enero con su precisión', null, null,
+            format($q$select value::text || '/' || precision from public.case_date where case_id = %L::uuid and kind = 'nation_exit' and valid_to is null$q$, c1), '2026-01-01/year');
+
+        -- ----- Roles y organización
+        perform pg_temp.expect('F2: el rol de solo lectura no registra fechas → BV120', VW, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-16', 'day', 'x'), 'ERR:BV120');
+        perform pg_temp.expect('F2: el voluntariado no registra fechas → BV120', VOL, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-16', 'day', 'x'), 'ERR:BV120');
+        perform pg_temp.expect('F2: sin rol vigente no registra fechas → BV120', NR, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-16', 'day', 'x'), 'ERR:BV120');
+        perform pg_temp.expect('F2: anónimo no registra fechas', null, 'anon',
+            format(sd, c1, 'nation_entry', '2026-03-16', 'day', 'x'), 'ERR');
+        perform pg_temp.expect('F2: dirección de otra organización no ve el expediente → BV201', DIRB2, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-16', 'day', 'x'), 'ERR:BV201');
+
+        -- ----- Validaciones
+        perform pg_temp.expect('F2: un tipo de fecha que no existe → BV325', DIR, 'authenticated',
+            format(sd, c1, 'cumpleanos', '2026-03-16', 'day', null), 'ERR:BV325');
+        perform pg_temp.expect('F2: una precisión que no existe → BV325', DIR, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-16', 'semana', null), 'ERR:BV325');
+        perform pg_temp.expect('F2: una fecha futura no se registra → BV326', DIR, 'authenticated',
+            format(sd, c1, 'shelter_exit', (current_date + 10)::text, 'day', null), 'ERR:BV326');
+        perform pg_temp.expect('F2: un ingreso anterior al nacimiento es imposible → BV327', DIR, 'authenticated',
+            format(sd, c1, 'nation_entry', '1980-01-01', 'day', 'x'), 'ERR:BV327');
+        perform pg_temp.expect('F2: con precisión de año el año de nacimiento sí cabe (puede ser después del nacimiento)', DIR, 'authenticated',
+            format(sd, pg_temp.id('5000', 34), 'nation_entry', '1985-06-01', 'year', null), '1');
+        perform pg_temp.expect('F2: un egreso del albergue anterior a su ingreso → BV327', DIR, 'authenticated',
+            format(sd, c1, 'shelter_exit', '2026-08-01', 'day', null), 'ERR:BV327');
+        perform pg_temp.expect('F2 control positivo: un egreso posterior al ingreso sí se registra', DIR, 'authenticated',
+            format(sd, c1, 'shelter_exit', '2026-09-20', 'day', null), '1');
+        perform pg_temp.expect('F2: un ingreso posterior al egreso ya registrado → BV327', DIR, 'authenticated',
+            format(sd, c1, 'shelter_entry', '2026-10-05', 'day', 'x'), 'ERR:BV327');
+
+        -- ----- Lo corregido se cierra con motivo; nada se borra
+        perform pg_temp.expect('F2: cambiar una fecha ya registrada exige motivo → BV304', DIR, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-14', 'day', null), 'ERR:BV304');
+        perform pg_temp.expect('F2 control positivo: con motivo se corrige la fecha', DIR, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-14', 'day', 'La persona recordó otra fecha'), '1');
+        perform pg_temp.expect('F2: solo hay una fecha vigente de cada tipo', null, null,
+            format($q$select count(*)::text from public.case_date where case_id = %L::uuid and kind = 'nation_entry' and valid_to is null$q$, c1), '1');
+        perform pg_temp.expect('F2: la anterior quedó cerrada con su motivo (no se borró)', null, null,
+            format($q$select count(*)::text from public.case_date where case_id = %L::uuid and kind = 'nation_entry' and valid_to is not null and change_reason = 'La persona recordó otra fecha'$q$, c1), '1');
+        perform pg_temp.expect('F2: repetir la misma fecha y precisión no crea otro registro', DIR, 'authenticated',
+            format(sd, c1, 'nation_entry', '2026-03-14', 'day', null), '1');
+        perform pg_temp.expect('F2: siguen siendo 2 registros del tipo (uno cerrado y uno vigente)', null, null,
+            format($q$select count(*)::text from public.case_date where case_id = %L::uuid and kind = 'nation_entry'$q$, c1), '2');
+        perform pg_temp.expect('F2: quitar una fecha exige motivo → BV304', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_date(%L::uuid, 'nation_exit', null, null, null)) x$q$, c1), 'ERR:BV304');
+        perform pg_temp.expect('F2 control positivo: con motivo se quita (se cierra) la fecha', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_date(%L::uuid, 'nation_exit', null, null, 'Se registró por error')) x$q$, c1), '1');
+        perform pg_temp.expect('F2: quitada la fecha ya no hay vigente de ese tipo', null, null,
+            format($q$select count(*)::text from public.case_date where case_id = %L::uuid and kind = 'nation_exit' and valid_to is null$q$, c1), '0');
+        perform pg_temp.expect('F2: quitar una fecha que no existe no hace nada', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_date(%L::uuid, 'nation_exit', null, null, null)) x$q$, c1), '1');
+
+        -- ----- Sin escritura directa y con visibilidad de roles operativos
+        perform pg_temp.expect('F2: no se inserta una fecha por la API directa', DIR, 'authenticated',
+            format($q$with i as (insert into public.case_date (organization_id, case_id, kind, value, precision, created_by) values (%L, %L::uuid, 'nation_entry', '2026-01-01', 'day', %L) returning 1) select count(*)::text from i$q$, ORG_A, c1, DIR), 'ERR');
+        perform pg_temp.expect('F2: no se edita una fecha por la API directa', DIR, 'authenticated',
+            $q$with u as (update public.case_date set value = '2000-01-01' returning 1) select count(*)::text from u$q$, 'ERR');
+        perform pg_temp.expect('F2: no se borra una fecha por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.case_date returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('F2 control positivo: dirección ve las fechas de su organización', DIR, 'authenticated', 'select count(*)::text from public.case_date', '>0');
+        perform pg_temp.expect('F2 control positivo: quien atiende las ve', CW, 'authenticated', 'select count(*)::text from public.case_date', '>0');
+        perform pg_temp.expect('F2: el rol de solo lectura no ve fechas de casos', VW, 'authenticated', 'select count(*)::text from public.case_date', '0');
+        perform pg_temp.expect('F2: sin rol no se ven fechas', NR, 'authenticated', 'select count(*)::text from public.case_date', '0');
+        perform pg_temp.expect('F2: otra organización no ve las fechas de A', DIRB2, 'authenticated', 'select count(*)::text from public.case_date', '0');
+        perform pg_temp.expect('F2: la auditoría deja eventos de las fechas', null, null,
+            $q$select count(*)::text from public.audit_event where table_name = 'case_date' and created_at >= transaction_timestamp()$q$, '>0');
+        perform pg_temp.expect('F2: la auditoría guarda nombres de campos, no los valores de las fechas', null, null,
+            $q$select count(*)::text from public.audit_event where table_name = 'case_date' and created_at >= transaction_timestamp()
+               and (coalesce(new_values::text, '') like '%2026-03-1%' or coalesce(new_values::text, '') like '%2026-09-%')$q$, '0');
+
+        -- ----- Alta: las fechas viajan en la misma transacción
+        perform pg_temp.expect('F2 control positivo: el alta registra el ingreso a la nación y al albergue', INT, 'authenticated',
+            format(nc2, '[{"kind":"nation_entry","value":"2026-03-15","precision":"month"},{"kind":"shelter_entry","value":"2026-10-02","precision":"day"}]'), '1');
+        perform pg_temp.expect('F2: las fechas del alta quedaron guardadas con su precisión', null, null,
+            $q$select count(*)::text from public.case_date where kind = 'nation_entry' and value = '2026-03-01' and precision = 'month' and created_at >= transaction_timestamp()$q$, '>0');
+        perform pg_temp.expect('F2: el alta con un tipo de fecha inválido no se abre → BV325', INT, 'authenticated',
+            format(nc2, '[{"kind":"otro","value":"2026-03-15","precision":"day"}]'), 'ERR:BV325');
+        perform pg_temp.expect('F2: el alta con una fecha futura no se abre → BV326', INT, 'authenticated',
+            format(nc2, format('[{"kind":"shelter_entry","value":"%s","precision":"day"}]', current_date + 5)), 'ERR:BV326');
+        perform pg_temp.expect('F2: las fechas del alta deben venir como arreglo → BV325', INT, 'authenticated',
+            format(nc2, '{"kind":"nation_entry"}'), 'ERR:BV325');
+        perform pg_temp.expect('F2: el alta con un egreso anterior al ingreso no se abre → BV327', INT, 'authenticated',
+            format(nc2, '[{"kind":"shelter_entry","value":"2026-10-02","precision":"day"},{"kind":"shelter_exit","value":"2026-09-01","precision":"day"}]'), 'ERR:BV327');
+
+        -- ----- Derecho de acceso y anonimización
+        perform pg_temp.expect('F2: el extracto de acceso ARCO incluye las fechas de los casos', DIR, 'authenticated',
+            format($q$select (jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'dates') > 0)::text$q$, pg_temp.id('4000', 32)), 'true');
+        perform pg_temp.expect('F2 prep: fecha del caso de la persona que se anonimiza', DIR, 'authenticated',
+            format(sd, 'aaaaaaaa-5000-0000-0000-000000000001', 'shelter_entry', '2026-02-10', 'day', null), '1');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
@@ -2209,6 +2320,10 @@ begin
         $q$select count(*)::text from public.case_vulnerability_marker where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and notes is not null$q$, '0');
     perform pg_temp.expect('E14: el esqueleto sigue: el marcador permanece, sin detalle', null, null,
         $q$select count(*)::text from public.case_vulnerability_marker where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and marker_code = 'disability'$q$, '1');
+
+    -- ===== E14 fase 2: las fechas del caso son parte del esqueleto del folio y sobreviven a la anonimización
+    perform pg_temp.expect('F2: tras anonimizar, las fechas del caso permanecen (esqueleto estadístico)', null, null,
+        $q$select count(*)::text from public.case_date where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is null$q$, '1');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

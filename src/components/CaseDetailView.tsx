@@ -55,6 +55,7 @@ import { hasCurrentSensitiveConsent } from '../lib/privacy';
 import { useToast } from '../lib/toast';
 import { PersonDocumentsPanel } from './PersonDocumentsPanel';
 import { MunicipalityName } from './MunicipalityName';
+import { CaseDatesPanel } from './CaseDatesPanel';
 import { SmallFieldModal } from './SmallFieldModal';
 
 interface CaseDetailViewProps {
@@ -709,6 +710,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             onChanged={onDataChanged ?? (async () => {})}
           />
 
+          <CaseDatesPanel
+            caseId={caseData.id}
+            dates={caseData.dates ?? []}
+            legacyEntryText={freeTextOrNull(caseData.entry_date_str)}
+            canEdit={canEditExtra}
+            onChanged={onDataChanged ?? (async () => {})}
+          />
+
           <div>
             <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
               {t('cases.section_intake_context')}
@@ -717,10 +726,6 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div>
                 <span className="text-gray-500 block">{t('cases.field_window_type')}</span>
                 <span className="font-semibold text-carbon text-sm capitalize">{caseData.intake_window_type}</span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_entry_date')}</span>
-                <span className="font-semibold text-carbon text-sm">{freeTextOrNull(caseData.entry_date_str) ?? t('cases.not_specified')}</span>
               </div>
               <div>
                 <span className="text-gray-500 block">{t('cases.field_family_travel')}</span>

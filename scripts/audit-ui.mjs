@@ -469,8 +469,12 @@ try {
             if (await page.getByRole('button', { name: /Siguiente/ }).isEnabled()) {
               supuestos1.push({ rule: 'valor-supuesto', detail: 'alta paso 1: «Siguiente» está habilitado sin haber elegido el tipo de ventanilla' });
             }
-            if (await page.evaluate(() => [...document.querySelectorAll('main select')].some((s) => s.value !== ''))) {
+            // Los selectores de precisión de las fechas (id «…-p») no son datos: solo dicen cuánto se sabe
+            if (await page.evaluate(() => [...document.querySelectorAll('main select')].filter((s) => !/-p$/.test(s.id)).some((s) => s.value !== ''))) {
               supuestos1.push({ rule: 'valor-supuesto', detail: 'alta paso 1: estado, municipio, canal o vía vienen con un valor de antemano' });
+            }
+            if (await page.evaluate(() => [...document.querySelectorAll('main input[type=date], main input[type=month], main input[type=number]')].some((i) => i.value !== ''))) {
+              supuestos1.push({ rule: 'valor-supuesto', detail: 'alta paso 1: una fecha de ingreso viene escrita de antemano' });
             }
             record(role.key, vp.name, 'alta/paso 1', [...(await auditNow()), ...supuestos1]);
             await page.getByRole('button', { name: /Ventanilla fija/ }).click();
