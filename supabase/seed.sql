@@ -263,6 +263,15 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
 on conflict (organization_id, catalog, key) do nothing;
 
+-- 5h. Grupos por edad (E14 fase 5): los de la hoja de casos, solo por edad (sin sexo); dirección y Trabajo Social los editan.
+insert into public.age_band (organization_id, label_es, min_age, sort_order)
+select '00000000-0000-0000-0000-000000000001', v.label_es, v.min_age, v.sort_order
+from (values
+    ('NNA 0-3', 0, 1), ('NNA 4-6', 4, 2), ('NNA 7-11', 7, 3), ('NNA 12-17', 12, 4),
+    ('Personas adultas 18-59', 18, 5), ('Personas adultas mayores 60+', 60, 6)
+) as v(label_es, min_age, sort_order)
+where not exists (select 1 from public.age_band a where a.organization_id = '00000000-0000-0000-0000-000000000001');
+
 -- 5g. Líneas de servicio (E14 fase 4): las once columnas de la hoja de casos de CAFEMIN; dirección y Trabajo Social las editan.
 insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
     ('00000000-0000-0000-0000-000000000001', 'service_line', 'hospitality', 'Hospitalidad', 'HOSPITALIDAD', false, 1),

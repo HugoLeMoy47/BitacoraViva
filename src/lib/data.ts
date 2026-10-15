@@ -14,6 +14,7 @@ import {
   Consent,
   CaseFamilyView,
   CatalogItem,
+  AgeBand,
   DocumentType,
   FamilyMember,
   FamilyType,
@@ -63,6 +64,8 @@ export interface OrgData {
   familyUnits: FamilyUnit[];
   /** Diccionarios editables por dirección y Trabajo Social (idioma, religión) */
   catalogItems: CatalogItem[];
+  /** Grupos por edad vigentes (E14 fase 5) */
+  ageBands: AgeBand[];
   auditEvents: AuditEvent[];
   authorityRequests: AuthorityRequest[];
   sharingEvents: SharingEvent[];
@@ -89,6 +92,7 @@ export const EMPTY_ORG_DATA: OrgData = {
   familyTypes: [],
   familyUnits: [],
   catalogItems: [],
+  ageBands: [],
   auditEvents: [],
   authorityRequests: [],
   sharingEvents: [],
@@ -150,6 +154,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     familyMembers,
     catalogItems,
     caseNeeds,
+    ageBands,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -189,6 +194,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     rows<CatalogItem>(supabase.from('catalog_item').select('*').order('catalog').order('sort_order')),
     // RLS: solo roles que operan expedientes
     rows<{ case_id: string; catalog_item_id: string }>(supabase.from('case_need').select('case_id, catalog_item_id').is('valid_to', null)),
+    rows<AgeBand>(supabase.from('age_band').select('*').is('valid_to', null).order('sort_order')),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -320,6 +326,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     familyTypes,
     familyUnits,
     catalogItems,
+    ageBands,
     auditEvents: audit,
     authorityRequests: authority,
     sharingEvents,

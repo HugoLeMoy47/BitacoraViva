@@ -441,6 +441,21 @@
     "governance_note": "Nota de gobernanza: ante un requerimiento legal de entrega de expediente, las notas de trabajo protegidas no forman parte de la titularidad de la persona y se excluyen por protocolo.",
     "count": "{n} oficios registrados"
   },
+  "derived": {
+    "title": "Datos calculados",
+    "subtitle": "Se calculan con los datos del expediente; no se capturan. Si falta un dato, aquí se dice cuál.",
+    "age": "Edad",
+    "years": "años",
+    "approx": "aproximada: la fecha de nacimiento es estimada",
+    "days": "días",
+    "age_group": "Grupo por edad",
+    "birthday_month": "Mes de cumpleaños",
+    "stay_days": "Días de estancia",
+    "why_age": "Falta una fecha de nacimiento válida",
+    "why_no_bands": "La organización no ha configurado grupos por edad",
+    "why_estimated": "La fecha de nacimiento es estimada",
+    "why_stay": "Se necesita el ingreso y, si ya salió, la salida, ambos con el día exacto"
+  },
   "journal": {
     "tab_title": "Bitácora de intervenciones",
     "btn_new_entry": "+ Nueva entrada de bitácora",
@@ -833,9 +848,11 @@
     "sex": {
       "1": "Masculino",
       "2": "Femenino",
-      "3": "Otro / no binario"
+      "3": "Otro / no binario",
+      "sin_dato": "Sin dato"
     },
     "age_years": "{band} años",
+    "age_none": "Sin dato (no hay grupos por edad configurados)",
     "period": {
       "label": "Periodo de ingreso",
       "all": "Todo",
@@ -1061,6 +1078,8 @@
       "bv331": "El consecutivo debe ser un número entero positivo, o déjalo vacío.",
       "bv332": "Elige una familia que ya existe o escribe el folio de una nueva, no las dos cosas.",
       "bv333": "El detalle necesita un valor del diccionario que lo explique. Elige uno primero.",
+      "bv335": "Los grupos por edad los administran dirección y Trabajo Social.",
+      "bv336": "Revisa los grupos por edad: el primero empieza en 0 años, cada uno empieza en una edad mayor que el anterior, todos llevan nombre y los nombres no se repiten.",
       "bv334": "«La persona no quiso responder» no se combina con otras necesidades. Marca una cosa o la otra.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
