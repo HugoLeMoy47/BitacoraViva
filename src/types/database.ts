@@ -317,7 +317,7 @@ export interface Case {
 export interface CatalogItem {
   id: string;
   organization_id: string;
-  catalog: 'language' | 'religion' | 'specific_need';
+  catalog: 'language' | 'religion' | 'specific_need' | 'service_line';
   key: string;
   label_es: string;
   legacy_code?: string | null;
@@ -549,7 +549,12 @@ export type JournalEntryType =
   | 'referral' 
   | 'home_visit' 
   | 'incident' 
-  | 'note';
+  | 'note'
+  // E14 fase 4: bitácora por área
+  | 'diagnosis'
+  | 'integral_route'
+  | 'case_meeting'
+  | 'warning';
 
 export type JournalVisibility = 'area_private' | 'shared';
 
@@ -570,6 +575,11 @@ export interface JournalEntry {
   created_at: string;
   visibility: JournalVisibility;
   superseded_by_id?: string | null;
+  /** Línea de servicio (la «columna» de la hoja de casos); opcional (E14 fase 4) */
+  service_line_item_id?: string | null;
+  /** Procedencia: 'app' escrita aquí, 'import' traída de la hoja de casos con su autoría original */
+  source?: 'app' | 'import';
+  source_author_label?: string | null;
   sharing_event?: SharingEvent | null;
 }
 

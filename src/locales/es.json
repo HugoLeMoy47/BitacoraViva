@@ -467,8 +467,48 @@
       "referral": "Derivación e interconsulta",
       "home_visit": "Visita domiciliaria / campo",
       "incident": "Incidencia / evento crítico",
-      "note": "Nota general de atención"
+      "note": "Nota general de atención",
+      "diagnosis": "Diagnóstico de Trabajo Social",
+      "integral_route": "Ruta de atención integral",
+      "case_meeting": "Reunión de casos",
+      "warning": "Llamada de atención"
     },
+    "templates": {
+      "hint": "Escribe solo lo que sepas: una sección vacía no se guarda. El resultado es el texto de la entrada.",
+      "diagnosis": {
+        "family": "Familia",
+        "intake": "Ingreso",
+        "exit_reason": "Motivo de salida",
+        "in_mexico": "En México",
+        "plan": "Plan",
+        "health": "Salud"
+      },
+      "case_meeting": {
+        "detected": "Qué se detecta",
+        "done": "Qué se hizo",
+        "referred": "Se canaliza"
+      },
+      "referral_kind": "Tipo de canalización",
+      "referral_none": "No se indica",
+      "referral_general": "General",
+      "referral_priority": "Prioritaria"
+    },
+    "warning_next": "Esta será la {ordinal} llamada de atención que tú ves en este expediente. El número se calcula; no se escribe.",
+    "warning_ordinal_1": "primera",
+    "warning_ordinal_2": "segunda",
+    "warning_ordinal_3": "tercera",
+    "warning_ordinal_n": "siguiente",
+    "warning_badge_1": "1.ª llamada",
+    "warning_badge_2": "2.ª llamada",
+    "warning_badge_3": "3.ª llamada",
+    "warning_badge_n": "{n}.ª llamada",
+    "service_line": {
+      "label": "Línea de servicio (opcional)",
+      "none": "Sin línea de servicio",
+      "help": "La «columna» de la hoja de casos a la que pertenece esta entrada. Dirección y Trabajo Social editan la lista."
+    },
+    "imported_badge": "Importada",
+    "imported_author": "Autoría original: {author}",
     "new_modal": {
       "title": "Nueva intervención en bitácora",
       "subtitle": "Registro inmutable con fecha de suceso y privacidad por defecto al área.",

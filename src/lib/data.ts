@@ -519,6 +519,7 @@ export const api = {
     occurred_at: string;
     is_work_note: boolean;
     area_id: string | null;
+    service_line_item_id?: string | null;
   }) =>
     rpc<string>('fn_create_journal_entry', {
       p_case_id: e.case_id,
@@ -527,6 +528,7 @@ export const api = {
       p_occurred_at: e.occurred_at,
       p_is_work_note: e.is_work_note,
       p_area_id: e.area_id,
+      p_service_line_item_id: e.service_line_item_id ?? null,
     }),
 
   createClarificationNote: (supersededId: string, body: string, occurredAt: string, isWorkNote: boolean) =>

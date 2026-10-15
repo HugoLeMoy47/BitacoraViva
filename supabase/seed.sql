@@ -263,6 +263,21 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
 on conflict (organization_id, catalog, key) do nothing;
 
+-- 5g. Líneas de servicio (E14 fase 4): las once columnas de la hoja de casos de CAFEMIN; dirección y Trabajo Social las editan.
+insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'hospitality', 'Hospitalidad', 'HOSPITALIDAD', false, 1),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'life_project', 'Proyecto de vida', 'PROYECTO DE VIDA', false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'physical_health', 'Salud física', 'SALUD FÍSICA', false, 3),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'psychology', 'Psicología', 'PSICOLOGÍA', false, 4),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'psychotherapy', 'Psicoterapia', 'PSICOTERAPIA', false, 5),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'psychiatry', 'Psiquiatría', 'PSIQUIATRÍA', false, 6),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'employability', 'Empleabilidad / trabajo externo', 'EMPLEABILIDAD', false, 7),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'internal_service', 'Servicio interno', 'SERVICIO INTERNO', false, 8),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'training', 'Formación', 'FORMACIÓN', false, 9),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'school', 'Escuela', 'ESCUELA', false, 10),
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'legal', 'Jurídico', 'JURÍDICO', false, 11)
+on conflict (organization_id, catalog, key) do nothing;
+
 -- 5e. Diccionarios editables (E14 fase 4a): idioma y religión de la hoja de casos de CAFEMIN, más el valor del sistema
 -- «La persona no quiso responder». Dirección y Trabajo Social los editan. Tipo de documento «TRP» de la hoja.
 insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
