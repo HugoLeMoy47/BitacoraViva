@@ -8,7 +8,7 @@ import { RouteId } from './router';
 //
 // Los roles se ACUMULAN (ADR-0007): una persona con varios roles ve la unión de sus pantallas.
 const ROLE_ROUTES: Record<RoleName, RouteId[]> = {
-  director: ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration'],
+  director: ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration', 'dictionaries'],
   intake_officer: ['cases', 'tasks', 'indicators'],
   caseworker: ['cases', 'tasks', 'indicators'],
   viewer: ['indicators'],
@@ -17,10 +17,10 @@ const ROLE_ROUTES: Record<RoleName, RouteId[]> = {
 };
 
 // Orden canónico: define el orden de la barra y cuál es la pantalla de inicio
-const ROUTE_ORDER: RouteId[] = ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration', 'about'];
+const ROUTE_ORDER: RouteId[] = ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration', 'dictionaries', 'about'];
 
 export const PRIMARY_ROUTES: RouteId[] = ['operations', 'cases', 'tasks', 'indicators'];
-export const ADMIN_ROUTES: RouteId[] = ['areas', 'audit', 'authority', 'configuration'];
+export const ADMIN_ROUTES: RouteId[] = ['areas', 'audit', 'authority', 'configuration', 'dictionaries'];
 
 /** Roles con acceso al expediente (o a sus indicadores). Los de tareas no cuentan. */
 const CASE_ROLES: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer'];
@@ -30,10 +30,14 @@ export const hasCaseAccess = (roles: RoleName[]): boolean => roles.some((r) => C
 /** Gestión de tareas: crear, editar, reabrir, cerrar sin foto y archivar. */
 export const canManageTasks = (roles: RoleName[]): boolean => roles.includes('director') || roles.includes('task_manager');
 
-/** Pantallas permitidas (unión de las de todos los roles). «Acerca de» sólo existe en entorno demo. */
-export function allowedRoutes(roles: RoleName[], isDemo: boolean): RouteId[] {
+/**
+ * Pantallas permitidas (unión de las de todos los roles). «Acerca de» sólo existe en entorno demo.
+ * «Diccionarios» también la ve Trabajo Social (rol operativo en esa área): `canManageCatalogs` sale de `lib/dictionaries`.
+ */
+export function allowedRoutes(roles: RoleName[], isDemo: boolean, canManageCatalogs = false): RouteId[] {
   const union = new Set<RouteId>(roles.flatMap((r) => ROLE_ROUTES[r] ?? []));
   if (isDemo) union.add('about');
+  if (canManageCatalogs) union.add('dictionaries');
   return ROUTE_ORDER.filter((r) => union.has(r));
 }
 
@@ -57,5 +61,6 @@ export const ROUTE_LABEL_KEY: Record<RouteId, string> = {
   audit: 'navigation.audit_trail',
   authority: 'navigation.authority_requests',
   configuration: 'navigation.configuration',
+  dictionaries: 'navigation.dictionaries',
   about: 'navigation.about',
 };

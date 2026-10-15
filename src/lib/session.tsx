@@ -20,6 +20,8 @@ export interface SessionUser {
   userRole: UserRole;
   /** Áreas a las que pertenece la persona por sus roles vigentes (compartimentación, Ethos C2) */
   areaIds: string[];
+  /** Códigos de esas áreas (p. ej. `trabajo_social`): deciden qué pantallas ve quien tiene un rol operativo */
+  areaCodes: string[];
   assignedAreaId?: string;
   assignedAreaCode?: string;
   assignedAreaName?: string;
@@ -59,7 +61,8 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
   const userRole =
     ROLE_PRIORITY.map((r) => roles.find((x) => x.role_name === r)).find(Boolean) || roles[0];
 
-  const [areaRes, orgRes] = await Promise.all([
+  const allAreaIds = Array.from(new Set(roles.map((r) => r.area_id).filter((a): a is string => !!a)));
+  const [areaRes, orgRes, areasRes] = await Promise.all([
     userRole.area_id
       ? supabase.from('area').select('id, code, name').eq('id', userRole.area_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -68,6 +71,9 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
       .select('enforce_absolute_session_timeout')
       .eq('id', profile.organization_id)
       .maybeSingle(),
+    allAreaIds.length > 0
+      ? supabase.from('area').select('code').in('id', allAreaIds)
+      : Promise.resolve({ data: [] as { code: string }[] }),
   ]);
 
   const area = areaRes.data;
@@ -78,7 +84,8 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
     role: userRole.role_name,
     roles: Array.from(new Set(roles.map((r) => r.role_name))),
     userRole,
-    areaIds: Array.from(new Set(roles.map((r) => r.area_id).filter((a): a is string => !!a))),
+    areaIds: allAreaIds,
+    areaCodes: ((areasRes.data ?? []) as { code: string }[]).map((a) => a.code),
     assignedAreaId: area?.id,
     assignedAreaCode: area?.code,
     assignedAreaName: area?.name,

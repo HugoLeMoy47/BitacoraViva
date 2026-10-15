@@ -13,6 +13,8 @@ import { CatalogProvider } from './lib/catalog';
 import { EnvironmentProvider, useEnvironment } from './lib/environment';
 import { RouteId, navigate, useRoute } from './lib/router';
 import { allowedRoutes, defaultRoute, hasCaseAccess } from './lib/navigation';
+import { canManageCatalogs } from './lib/dictionaries';
+import { DictionariesView } from './components/DictionariesView';
 import { AppShell } from './components/AppShell';
 import { CasesView } from './components/CasesView';
 import { DirectorSharingInbox } from './components/DirectorSharingInbox';
@@ -46,7 +48,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     window.scrollTo(0, 0);
   }, [route.id, route.param, route.sub]);
   const { isDemo } = useEnvironment();
-  const allowed = allowedRoutes(roles, isDemo);
+  const allowed = allowedRoutes(roles, isDemo, canManageCatalogs(roles, currentUser.areaCodes ?? []));
   const current: RouteId = route.id && allowed.includes(route.id) ? route.id : defaultRoute(roles);
   const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
   const [data, setData] = useState<OrgData>(EMPTY_ORG_DATA);
@@ -287,6 +289,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
         {current === 'tasks' && <TasksView user={currentUser} section={route.id === 'tasks' ? route.param : null} sub={route.id === 'tasks' ? route.sub : null} query={route.id === 'tasks' ? route.query : ''} />}
 
         {current === 'areas' && <AreasView areas={data.areas} />}
+        {current === 'dictionaries' && <DictionariesView onChanged={async () => { await reload(); }} />}
         {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}
         {current === 'authority' && <AuthorityView requests={data.authorityRequests} />}
         {current === 'configuration' && (

@@ -72,6 +72,7 @@
     "primary": "Navegación principal",
     "skip": "Saltar al contenido",
     "configuration": "Configuración",
+    "dictionaries": "Diccionarios",
     "tasks": "Tareas"
   },
   "dashboard": {
@@ -363,6 +364,7 @@
     "tables": {
       "app_config": "Configuración del entorno",
       "arco_request": "Solicitud de derechos ARCO",
+      "age_band": "Grupo por edad",
       "area": "Área",
       "attachment": "Adjunto",
       "audit_event": "Registro de auditoría",
@@ -440,6 +442,59 @@
     "status_pending": "Trámite externo / en proceso",
     "governance_note": "Nota de gobernanza: ante un requerimiento legal de entrega de expediente, las notas de trabajo protegidas no forman parte de la titularidad de la persona y se excluyen por protocolo.",
     "count": "{n} oficios registrados"
+  },
+  "dictionaries": {
+    "title": "Diccionarios",
+    "subtitle": "Las listas de opciones que usa el sistema. Dirección y Trabajo Social las administran. Retirar un valor no borra nada: deja de ofrecerse, pero lo ya registrado lo conserva.",
+    "tabs": "Diccionarios",
+    "tab": {
+      "service_line": "Líneas de servicio",
+      "specific_need": "Necesidades específicas",
+      "language": "Idiomas",
+      "religion": "Religiones",
+      "age_bands": "Grupos por edad"
+    },
+    "hint": {
+      "service_line": "Las «columnas» de la hoja de casos a las que se asigna una entrada de bitácora (hospitalidad, psicología, jurídico…).",
+      "specific_need": "Las casillas de necesidades específicas de la ficha de la persona.",
+      "language": "Los idiomas que se ofrecen en la ficha de la persona.",
+      "religion": "Las religiones que se ofrecen en la ficha de la persona.",
+      "age_bands": "Los grupos con que se agrupa la edad en la ficha y en los indicadores. Se calculan solo por edad, sin tomar en cuenta el sexo."
+    },
+    "sensitive_note": "Lo que se registra de estos valores en una persona es dato sensible y exige su consentimiento; la lista en sí no lo es.",
+    "system": "Del sistema",
+    "retired": "Retirado",
+    "item_name": "Nombre del valor",
+    "rename": "Cambiar nombre",
+    "retire": "Retirar",
+    "reactivate": "Volver a ofrecer",
+    "empty": "Todavía no hay valores en este diccionario.",
+    "new_value": "Valor nuevo",
+    "add": "Agregar",
+    "reason_name": "Escribe el nombre del valor nuevo.",
+    "reason_exists": "Ya existe un valor con ese nombre.",
+    "added": "Valor agregado.",
+    "renamed": "Nombre actualizado.",
+    "retired_ok": "El valor ya no se ofrece. Lo ya registrado se conserva.",
+    "reactivated": "El valor se vuelve a ofrecer.",
+    "band_name": "Nombre del grupo",
+    "band_from": "Desde (años)",
+    "band_add": "Agregar un grupo",
+    "band_remove": "Quitar el grupo {name}",
+    "bands_none": "Esta organización todavía no tiene grupos por edad: mientras no los defina, los indicadores dicen «sin dato».",
+    "bands_explain": "Cada grupo termina donde empieza el siguiente y el último queda abierto. El primero empieza en 0 años.",
+    "bands_reason": "Motivo del cambio",
+    "bands_save": "Guardar los grupos",
+    "bands_saved": "Grupos por edad actualizados. Los anteriores quedan en el historial.",
+    "bands_no_change": "No hay cambios que guardar.",
+    "bands_need_reason": "Escribe el motivo del cambio: los grupos anteriores se cierran y quedan en el historial.",
+    "bands_err_empty": "Agrega al menos un grupo.",
+    "bands_err_max": "Máximo 12 grupos.",
+    "bands_err_first": "El primer grupo empieza en 0 años.",
+    "bands_err_order": "Cada grupo debe empezar en una edad mayor que el anterior.",
+    "bands_err_name": "Cada grupo necesita un nombre.",
+    "bands_err_age": "La edad de inicio es un número entero de años.",
+    "bands_err_dup": "Dos grupos no pueden llamarse igual."
   },
   "derived": {
     "title": "Datos calculados",
@@ -925,6 +980,7 @@
     }
   },
   "common": {
+    "save": "Guardar",
     "yes": "Sí",
     "no": "No",
     "cancel": "Cancelar",
