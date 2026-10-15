@@ -549,6 +549,16 @@ export const api = {
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),
 
+  // Ingreso o egreso del albergue: el estatus de alojamiento y la fecha del movimiento, en una sola operación (E14 fase 2b)
+  changeShelterStatus: (caseId: string, newValueCode: string, reason: string, date: string, precision: string) =>
+    rpc<string>('fn_change_shelter_status', {
+      p_case_id: caseId,
+      p_new_value_code: newValueCode,
+      p_reason: reason,
+      p_date: date,
+      p_precision: precision,
+    }),
+
   // Una fecha del caso: se corrige o se quita con motivo (E14 fase 2). Con valor vacío la quita.
   setCaseDate: (caseId: string, kind: string, value: string | null, precision: string | null, reason?: string) =>
     rpc<string | null>('fn_set_case_date', {

@@ -32,7 +32,9 @@ interface CasesViewProps {
     caseId: string, 
     axisCode: StatusAxisCode, 
     newValueCode: string, 
-    reason: string
+    reason: string,
+    /** Fecha del movimiento: obligatoria al pasar a «albergada» o a «salida del albergue» (E14 fase 2b) */
+    movement?: { value: string; precision: string }
   ) => void;
   onAddJournalEntry?: (entry: JournalEntry) => void;
   onAddClarification?: (originalEntryId: string, clarificationEntry: JournalEntry) => void;

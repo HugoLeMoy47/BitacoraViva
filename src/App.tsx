@@ -122,8 +122,15 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     caseId: string,
     axisCode: StatusAxisCode,
     newValueCode: string,
-    reason: string
-  ) => run(() => api.changeCaseStatus(caseId, axisCode, newValueCode, reason), 'toast.status_changed');
+    reason: string,
+    movement?: { value: string; precision: string }
+  ) =>
+    run(
+      () => movement
+        ? api.changeShelterStatus(caseId, newValueCode, reason, movement.value, movement.precision)
+        : api.changeCaseStatus(caseId, axisCode, newValueCode, reason),
+      'toast.status_changed'
+    );
 
   // Handlers para Bitácora de Área (Épica E4)
   const handleAddJournalEntry = (entry: JournalEntry) =>

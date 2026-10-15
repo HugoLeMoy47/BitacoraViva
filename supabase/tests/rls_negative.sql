@@ -2231,6 +2231,92 @@ begin
             format(sd, 'aaaaaaaa-5000-0000-0000-000000000001', 'shelter_entry', '2026-02-10', 'day', null), '1');
     end;
 
+    -- ============================================================================================
+    -- ===== E14 fase 2b: el egreso y el ingreso al albergue se capturan con el estatus de alojamiento
+    -- ===== (migración 20261016000002). Opción A del Product Owner: el estatus manda y la fecha acompaña.
+    -- ===== «Albergada» = ingreso; «Salida del albergue» = egreso. Reubicada, en tránsito y atención externa
+    -- ===== son estatus fuera del albergue (la persona puede no haber ingresado nunca): no llevan fecha.
+    -- ============================================================================================
+    declare
+        f1 constant text := pg_temp.id('5000', 40);   -- TST-A-0F1
+        f2 constant text := pg_temp.id('5000', 41);   -- TST-A-0F2
+        sh text := $q$select count(*)::text from (select public.fn_change_shelter_status(%L::uuid, %L, %L, %L::date, %L)) x$q$;
+        cur text := $q$select sv.code from public.case_status cs join public.status_value sv on sv.id = cs.value_id
+                       join public.status_axis ax on ax.id = cs.axis_id
+                       where cs.case_id = %L::uuid and ax.code = 'shelter_status' and cs.valid_to is null$q$;
+    begin
+        -- Escenario: el eje de alojamiento y dos expedientes nuevos
+        insert into public.status_axis (id, organization_id, code, label_es, is_primary, is_system, sort_order)
+        values ('aaaaaaaa-2000-0000-0000-000000000003', ORG_A::uuid, 'shelter_status', 'Alojamiento', false, true, 3);
+        insert into public.status_value (id, axis_id, organization_id, code, label_es, sort_order, is_system)
+        select ('aaaaaaaa-2100-0000-0000-0000000000' || v.n)::uuid, 'aaaaaaaa-2000-0000-0000-000000000003', ORG_A::uuid, v.code, v.label, v.o, false
+        from (values ('41', 'sheltered', 'Albergada', 2), ('42', 'left_shelter', 'Salida del albergue', 5), ('43', 'in_transit', 'En tránsito', 3),
+                     ('44', 'relocated', 'Reubicada', 4), ('45', 'external', 'Atención externa', 1)) as v(n, code, label, o);
+        insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date) values
+            (pg_temp.id('4000', 40)::uuid, ORG_A::uuid, 'Nu', 'Alojada', '1990-01-01'),
+            (pg_temp.id('4000', 41)::uuid, ORG_A::uuid, 'Xi', 'EnTransito', '1990-01-01');
+        insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type)
+        select pg_temp.id('5000', 40 + k)::uuid, ORG_A::uuid, 'TST-A-0F' || (1 + k), pg_temp.id('4000', 40 + k)::uuid,
+               'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002', 'fija'
+        from generate_series(0, 1) k;
+
+        -- ----- Roles y organización
+        perform pg_temp.expect('F2b: el rol de solo lectura no cambia el alojamiento → BV120', VW, 'authenticated',
+            format(sh, f1, 'sheltered', 'Ingresó', '2026-10-01', 'day'), 'ERR:BV120');
+        perform pg_temp.expect('F2b: el voluntariado no cambia el alojamiento → BV120', VOL, 'authenticated',
+            format(sh, f1, 'sheltered', 'Ingresó', '2026-10-01', 'day'), 'ERR:BV120');
+        perform pg_temp.expect('F2b: dirección de otra organización no ve el expediente → BV201', DIRB2, 'authenticated',
+            format(sh, f1, 'sheltered', 'Ingresó', '2026-10-01', 'day'), 'ERR:BV201');
+        perform pg_temp.expect('F2b: anónimo no cambia el alojamiento', null, 'anon',
+            format(sh, f1, 'sheltered', 'Ingresó', '2026-10-01', 'day'), 'ERR');
+
+        -- ----- El cambio genérico de estatus ya no sirve para ingreso y egreso: sin fecha no se puede
+        perform pg_temp.expect('F2b: pasar a «albergada» sin fecha por el cambio genérico → BV328', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_change_case_status(%L::uuid, 'shelter_status', 'sheltered', 'x')) x$q$, f2), 'ERR:BV328');
+        perform pg_temp.expect('F2b: pasar a «salida del albergue» sin fecha por el cambio genérico → BV328', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_change_case_status(%L::uuid, 'shelter_status', 'left_shelter', 'x')) x$q$, f2), 'ERR:BV328');
+        perform pg_temp.expect('F2b control positivo: «en tránsito» sigue cambiando por el cambio genérico (no lleva fecha)', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_change_case_status(%L::uuid, 'shelter_status', 'in_transit', 'Pasa por la ciudad')) x$q$, f2), '1');
+        perform pg_temp.expect('F2b control positivo: «reubicada» y «atención externa» tampoco llevan fecha', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_change_case_status(%L::uuid, 'shelter_status', 'relocated', 'x'), public.fn_change_case_status(%L::uuid, 'shelter_status', 'external', 'y')) x$q$, f2, f2), '1');
+        perform pg_temp.expect('F2b: el cambio con fecha solo es para ingreso y egreso (otro estatus → BV329)', DIR, 'authenticated',
+            format(sh, f2, 'in_transit', 'x', '2026-10-01', 'day'), 'ERR:BV329');
+
+        -- ----- La fecha es obligatoria y se valida
+        perform pg_temp.expect('F2b: sin fecha no se registra el ingreso al albergue → BV325', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_change_shelter_status(%L::uuid, 'sheltered', 'Ingresó', null, 'day')) x$q$, f1), 'ERR:BV325');
+        perform pg_temp.expect('F2b: una fecha futura no se registra → BV326', DIR, 'authenticated',
+            format(sh, f1, 'sheltered', 'Ingresó', (current_date + 3)::text, 'day'), 'ERR:BV326');
+        perform pg_temp.expect('F2b: sin motivo no se cambia el alojamiento → BV305', DIR, 'authenticated',
+            format(sh, f1, 'sheltered', '', '2026-10-01', 'day'), 'ERR:BV305');
+        perform pg_temp.expect('F2b: tras los rechazos el alojamiento no cambió', null, null, format(cur, f1), 'NULL|');
+
+        -- ----- Ingreso al albergue: estatus y fecha en una sola operación
+        perform pg_temp.expect('F2b control positivo: ingreso al albergue con fecha exacta', INT, 'authenticated',
+            format(sh, f1, 'sheltered', 'Ingresó al albergue', '2026-10-01', 'day'), '1');
+        perform pg_temp.expect('F2b: el estatus quedó «albergada»', null, null, format(cur, f1), 'sheltered');
+        perform pg_temp.expect('F2b: la fecha de ingreso al albergue quedó guardada con su precisión', null, null,
+            format($q$select value::text || '/' || precision from public.case_date where case_id = %L::uuid and kind = 'shelter_entry' and valid_to is null$q$, f1), '2026-10-01/day');
+
+        -- ----- Egreso: coherencia con el ingreso; si falla, el estatus no cambia
+        perform pg_temp.expect('F2b: un egreso anterior al ingreso → BV327', DIR, 'authenticated',
+            format(sh, f1, 'left_shelter', 'Salió', '2026-09-01', 'day'), 'ERR:BV327');
+        perform pg_temp.expect('F2b: si la fecha no cuadra, el estatus tampoco cambió (una sola operación)', null, null, format(cur, f1), 'sheltered');
+        perform pg_temp.expect('F2b control positivo: egreso con solo el mes', CW, 'authenticated',
+            format(sh, f1, 'left_shelter', 'Salió del albergue', '2026-10-20', 'month'), '1');
+        perform pg_temp.expect('F2b: el estatus quedó «salida del albergue»', null, null, format(cur, f1), 'left_shelter');
+        perform pg_temp.expect('F2b: la fecha de egreso quedó con precisión de mes', null, null,
+            format($q$select value::text || '/' || precision from public.case_date where case_id = %L::uuid and kind = 'shelter_exit' and valid_to is null$q$, f1), '2026-10-01/month');
+        -- Reingreso en el mismo caso (con fechas exactas): el ingreso no puede ser posterior al egreso; se abre un caso nuevo vinculado
+        perform pg_temp.expect('F2b: ingreso con fecha exacta en otro expediente', DIR, 'authenticated',
+            format(sh, f2, 'sheltered', 'Ingresó', '2026-10-01', 'day'), '1');
+        perform pg_temp.expect('F2b: egreso con fecha exacta en ese expediente', DIR, 'authenticated',
+            format(sh, f2, 'left_shelter', 'Salió', '2026-10-05', 'day'), '1');
+        perform pg_temp.expect('F2b: volver a ingresar en el mismo caso, después del egreso → BV327 (el reingreso es un caso nuevo vinculado)', DIR, 'authenticated',
+            format(sh, f2, 'sheltered', 'Regresó', '2026-10-10', 'day'), 'ERR:BV327');
+        perform pg_temp.expect('F2b: el alojamiento sigue en «salida del albergue» tras ese rechazo', null, null, format(cur, f2), 'left_shelter');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
