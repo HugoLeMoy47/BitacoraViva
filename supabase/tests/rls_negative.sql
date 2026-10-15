@@ -2570,6 +2570,132 @@ begin
             format(asg, 'aaaaaaaa-5000-0000-0000-000000000001', u1, '5', null), '1');
     end;
 
+    -- ============================================================================================
+    -- ===== E14 fase 4b: necesidades específicas (casillas) y plan al ingreso (migración 20261019000001)
+    -- ===== Las necesidades son una lista de casillas de un diccionario editable por dirección y Trabajo Social; son datos
+    -- ===== sensibles (D-14) salvo «La persona no quiso responder». El plan al ingreso usa los valores del eje jurídico.
+    -- ============================================================================================
+    declare
+        c_ok constant text := pg_temp.id('5000', 32);   -- con consentimiento sensible vigente
+        c_no constant text := pg_temp.id('5000', 33);   -- sin consentimiento sensible
+        c_rv constant text := pg_temp.id('5000', 34);   -- consentimiento sensible revocado
+        n_dis constant text := 'aaaaaaaa-c000-0000-0000-000000000021';
+        n_pre constant text := 'aaaaaaaa-c000-0000-0000-000000000022';
+        n_nr  constant text := 'aaaaaaaa-c000-0000-0000-000000000023';
+        n_old constant text := 'aaaaaaaa-c000-0000-0000-000000000024';
+        n_b   constant text := 'bbbbbbbb-c000-0000-0000-000000000002';
+        setn text := $q$select count(*)::text from (select public.fn_set_case_needs(%L::uuid, %L::uuid[], %L)) x$q$;
+        setp text := $q$select count(*)::text from (select public.fn_set_case_intake_plan(%L::uuid, %L::uuid, %L)) x$q$;
+        cur text := $q$select count(*)::text from public.case_need where case_id = %L::uuid and valid_to is null$q$;
+    begin
+        begin
+            insert into public.catalog_item (id, organization_id, catalog, key, label_es, is_active, is_system, sort_order) values
+                (n_dis::uuid, ORG_A::uuid, 'specific_need', 'disability', 'Discapacidad (prueba)', true, false, 1),
+                (n_pre::uuid, ORG_A::uuid, 'specific_need', 'pregnancy', 'Embarazo (prueba)', true, false, 2),
+                (n_nr::uuid, ORG_A::uuid, 'specific_need', 'no_response', 'La persona no quiso responder', true, true, 99),
+                (n_old::uuid, ORG_A::uuid, 'specific_need', 'retired', 'Valor retirado', false, false, 5),
+                (n_b::uuid, ORG_B::uuid, 'specific_need', 'disability', 'Discapacidad B', true, false, 1);
+        exception when others then
+            raise notice 'F4b escenario: sin el diccionario de necesidades todavía (%).', sqlerrm;
+        end;
+        -- Un segundo valor del eje jurídico de A (el escenario trae «sin determinar» y «solicitante de asilo»)
+        insert into public.status_value (id, axis_id, organization_id, code, label_es, sort_order, is_system)
+        values ('aaaaaaaa-2100-0000-0000-000000000033', 'aaaaaaaa-2000-0000-0000-000000000001', ORG_A::uuid, 'permanent_resident', 'Residente permanente', 3, false);
+
+        -- ----- Necesidades específicas: casillas del diccionario
+        perform pg_temp.expect('F4b control positivo: quien atiende marca dos necesidades (con consentimiento sensible)', CW, 'authenticated',
+            format(setn, c_ok, format('{%s,%s}', n_dis, n_pre), null), '1');
+        perform pg_temp.expect('F4b: quedaron dos necesidades vigentes', null, null, format(cur, c_ok), '2');
+        perform pg_temp.expect('F4b: el rol de solo lectura no marca necesidades → BV120', VW, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_dis), null), 'ERR:BV120');
+        perform pg_temp.expect('F4b: el voluntariado no marca necesidades → BV120', VOL, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_dis), null), 'ERR:BV120');
+        perform pg_temp.expect('F4b: otra organización no ve el expediente → BV201', DIRB2, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_b), null), 'ERR:BV201');
+        perform pg_temp.expect('F4b: sin consentimiento sensible no se marca una necesidad → BV408', CW, 'authenticated',
+            format(setn, c_no, format('{%s}', n_dis), null), 'ERR:BV408');
+        perform pg_temp.expect('F4b control positivo: «la persona no quiso responder» sin consentimiento sensible (no es un dato)', CW, 'authenticated',
+            format(setn, c_no, format('{%s}', n_nr), null), '1');
+        perform pg_temp.expect('F4b: con el consentimiento sensible revocado tampoco → BV408', CW, 'authenticated',
+            format(setn, c_rv, format('{%s}', n_pre), null), 'ERR:BV408');
+        perform pg_temp.expect('F4b: un valor de otra organización no se usa → BV220', DIR, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_b), 'x'), 'ERR:BV220');
+        perform pg_temp.expect('F4b: un valor retirado del diccionario no se usa → BV220', DIR, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_old), 'x'), 'ERR:BV220');
+        perform pg_temp.expect('F4b: un valor de otro diccionario (religión) no vale como necesidad → BV220', DIR, 'authenticated',
+            format(setn, c_ok, '{aaaaaaaa-c000-0000-0000-000000000001}', 'x'), 'ERR:BV220');
+        perform pg_temp.expect('F4b: «no quiso responder» no se combina con otras necesidades → BV334', DIR, 'authenticated',
+            format(setn, c_ok, format('{%s,%s}', n_dis, n_nr), 'x'), 'ERR:BV334');
+        perform pg_temp.expect('F4b: quitar una necesidad ya marcada exige motivo → BV304', CW, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_dis), null), 'ERR:BV304');
+        perform pg_temp.expect('F4b control positivo: con motivo se quita (se cierra) una necesidad', CW, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_dis), 'Ya no aplica'), '1');
+        perform pg_temp.expect('F4b: queda una necesidad vigente', null, null, format(cur, c_ok), '1');
+        perform pg_temp.expect('F4b: la que se quitó no se borró: quedó cerrada con su motivo', null, null,
+            format($q$select count(*)::text from public.case_need where case_id = %L::uuid and valid_to is not null and change_reason = 'Ya no aplica'$q$, c_ok), '1');
+        perform pg_temp.expect('F4b: repetir las mismas necesidades no crea registros nuevos', CW, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_dis), null), '1');
+        perform pg_temp.expect('F4b: siguen siendo dos registros en total (uno vigente y uno cerrado) más el de la primera marca', null, null,
+            format($q$select count(*)::text from public.case_need where case_id = %L::uuid$q$, c_ok), '2');
+        perform pg_temp.expect('F4b: agregar necesidades no exige motivo (solo quitarlas)', CW, 'authenticated',
+            format(setn, c_ok, format('{%s,%s}', n_dis, n_pre), null), '1');
+        perform pg_temp.expect('F4b: quitar todas exige motivo → BV304', DIR, 'authenticated',
+            format(setn, c_ok, '{}', null), 'ERR:BV304');
+        perform pg_temp.expect('F4b control positivo: con motivo se quitan todas', DIR, 'authenticated',
+            format(setn, c_ok, '{}', 'Se registraron por error'), '1');
+        perform pg_temp.expect('F4b: no queda ninguna vigente', null, null, format(cur, c_ok), '0');
+        perform pg_temp.expect('F4b: no se inserta una necesidad por la API directa', DIR, 'authenticated',
+            format($q$with i as (insert into public.case_need (organization_id, case_id, catalog_item_id, created_by) values (%L, %L::uuid, %L::uuid, %L) returning 1) select count(*)::text from i$q$, ORG_A, c_ok, n_dis, DIR), 'ERR');
+        perform pg_temp.expect('F4b: no se edita una necesidad por la API directa', DIR, 'authenticated',
+            $q$with u as (update public.case_need set valid_to = null returning 1) select count(*)::text from u$q$, 'ERR');
+        perform pg_temp.expect('F4b: no se borra una necesidad por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.case_need returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('F4b control positivo: quien atiende ve las necesidades', CW, 'authenticated', 'select (count(*) > 0)::text from public.case_need', 'true');
+        perform pg_temp.expect('F4b: el rol de solo lectura no ve necesidades de los casos', VW, 'authenticated', 'select count(*)::text from public.case_need', '0');
+        perform pg_temp.expect('F4b: sin rol no se ven necesidades', NR, 'authenticated', 'select count(*)::text from public.case_need', '0');
+        perform pg_temp.expect('F4b: otra organización no ve las necesidades de A', DIRB2, 'authenticated', 'select count(*)::text from public.case_need', '0');
+        perform pg_temp.expect('F4b: la auditoría de las necesidades guarda nombres de campos, no el texto de lo marcado', null, null,
+            $q$select count(*)::text from public.audit_event where table_name = 'case_need' and created_at >= transaction_timestamp()
+               and (coalesce(new_values::text, '') ilike '%Discapacidad%' or coalesce(new_values::text, '') ilike '%Embarazo%')$q$, '0');
+        perform pg_temp.expect('F4b: la auditoría deja eventos de las necesidades', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where table_name = 'case_need' and created_at >= transaction_timestamp()$q$, 'true');
+        perform pg_temp.expect('F4b prep: necesidades de la persona que se anonimiza y del extracto', DIR, 'authenticated',
+            format(setn, c_ok, format('{%s}', n_pre), null), '1');
+        perform pg_temp.expect('F4b: el extracto de acceso ARCO incluye las necesidades específicas', DIR, 'authenticated',
+            format($q$select (jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'specific_needs') > 0)::text$q$, pg_temp.id('4000', 32)), 'true');
+        perform pg_temp.expect('F4b prep: una necesidad en el expediente de la persona que se anonimiza', DIR, 'authenticated',
+            format(setn, 'aaaaaaaa-5000-0000-0000-000000000001', format('{%s}', n_dis), null), '1');
+
+        -- ----- Plan al ingreso: un valor del eje jurídico
+        perform pg_temp.expect('F4b control positivo: ingreso registra el plan al ingreso', INT, 'authenticated',
+            format(setp, c_ok, 'aaaaaaaa-2100-0000-0000-000000000032', null), '1');
+        perform pg_temp.expect('F4b: el plan al ingreso quedó guardado', null, null,
+            format('select intake_plan_value_id::text from public."case" where id = %L::uuid', c_ok), 'aaaaaaaa-2100-0000-0000-000000000032');
+        perform pg_temp.expect('F4b: el rol de solo lectura no registra el plan al ingreso → BV120', VW, 'authenticated',
+            format(setp, c_ok, 'aaaaaaaa-2100-0000-0000-000000000033', 'x'), 'ERR:BV120');
+        perform pg_temp.expect('F4b: otra organización no ve el expediente → BV201', DIRB2, 'authenticated',
+            format(setp, c_ok, 'bbbbbbbb-2100-0000-0000-000000000001', 'x'), 'ERR:BV201');
+        perform pg_temp.expect('F4b: un valor de otro eje no vale como plan al ingreso → BV220', DIR, 'authenticated',
+            format(setp, c_ok, 'aaaaaaaa-2100-0000-0000-000000000011', 'x'), 'ERR:BV220');
+        perform pg_temp.expect('F4b: un valor de otra organización no vale como plan al ingreso → BV220', DIR, 'authenticated',
+            format(setp, c_ok, 'bbbbbbbb-2100-0000-0000-000000000001', 'x'), 'ERR:BV220');
+        perform pg_temp.expect('F4b: cambiar el plan ya registrado exige motivo → BV304', INT, 'authenticated',
+            format(setp, c_ok, 'aaaaaaaa-2100-0000-0000-000000000033', null), 'ERR:BV304');
+        perform pg_temp.expect('F4b control positivo: con motivo se cambia el plan al ingreso', INT, 'authenticated',
+            format(setp, c_ok, 'aaaaaaaa-2100-0000-0000-000000000033', 'La persona precisó su plan'), '1');
+        perform pg_temp.expect('F4b: repetir el mismo plan no hace nada ni pide motivo', INT, 'authenticated',
+            format(setp, c_ok, 'aaaaaaaa-2100-0000-0000-000000000033', null), '1');
+        perform pg_temp.expect('F4b: quitar el plan ya registrado exige motivo → BV304', INT, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_intake_plan(%L::uuid, null, null)) x$q$, c_ok), 'ERR:BV304');
+        perform pg_temp.expect('F4b control positivo: con motivo se quita el plan', INT, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_intake_plan(%L::uuid, null, 'Se capturó por error')) x$q$, c_ok), '1');
+        perform pg_temp.expect('F4b: el plan no se escribe por la API directa', INT, 'authenticated',
+            format($q$with u as (update public."case" set intake_plan_value_id = 'aaaaaaaa-2100-0000-0000-000000000032' where id = %L::uuid returning 1) select count(*)::text from u$q$, c_ok), 'ERR');
+        perform pg_temp.expect('F4b: el cambio del plan deja su motivo en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where action = 'RECTIFICATION' and table_name = 'case' and new_values ? 'reason'
+               and new_values->>'reason' = 'La persona precisó su plan' and created_at >= transaction_timestamp()$q$, 'true');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
@@ -2670,6 +2796,12 @@ begin
         $q$select count(*)::text from public.family_member where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is null$q$, '0');
     perform pg_temp.expect('F3: la pertenencia sigue como registro cerrado, con el motivo suprimido', null, null,
         $q$select count(*)::text from public.family_member where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null$q$, '1');
+
+    -- ===== E14 fase 4b: al anonimizar se cierran las necesidades específicas (datos sensibles)
+    perform pg_temp.expect('F4b: tras anonimizar, no queda ninguna necesidad vigente', null, null,
+        $q$select count(*)::text from public.case_need where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is null$q$, '0');
+    perform pg_temp.expect('F4b: la necesidad queda como registro cerrado, con el motivo suprimido', null, null,
+        $q$select count(*)::text from public.case_need where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null and change_reason = '[SUPRIMIDO - ADR-0001]'$q$, '1');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

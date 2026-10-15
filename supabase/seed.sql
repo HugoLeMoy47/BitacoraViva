@@ -152,7 +152,13 @@ begin
         (v_ax_leg, v_org, 'recognized_refugee', 'Persona refugiada reconocida', 3, false),
         (v_ax_leg, v_org, 'humanitarian_visa', 'Visitante por razones humanitarias (TVRH)', 4, false),
         (v_ax_leg, v_org, 'irregular_situation', 'Situación migratoria irregular', 5, false),
-        (v_ax_leg, v_org, 'returnee', 'Persona retornada / repatriada', 6, false)
+        (v_ax_leg, v_org, 'returnee', 'Persona retornada / repatriada', 6, false),
+        -- E14 fase 4b: valores de PLAN y JURÍDICO de la hoja de casos (plan al ingreso y situación actual comparten diccionario)
+        (v_ax_leg, v_org, 'permanent_resident', 'Residente permanente', 10, false),
+        (v_ax_leg, v_org, 'visitor_card', 'Tarjeta de visitante INM/PFNNA', 11, false),
+        (v_ax_leg, v_org, 'family_link_registration', 'Registro por vínculo familiar', 12, false),
+        (v_ax_leg, v_org, 'voluntary_return', 'Retorno voluntario', 13, false),
+        (v_ax_leg, v_org, 'indefinite_plan', 'Plan indefinido', 14, false)
     on conflict do nothing;
 
     -- Valores: engagement_status (Prioritario)
@@ -240,6 +246,22 @@ insert into public.family_type (organization_id, key, label_es, legacy_code, sor
     ('00000000-0000-0000-0000-000000000001', 'reconstituted', 'Familia reconstituida', 'FAM-REC', 5),
     ('00000000-0000-0000-0000-000000000001', 'extended', 'Familia extensa', 'FAM-EXTENSA', 6)
 on conflict (organization_id, key) do nothing;
+
+-- 5f. Necesidades específicas (E14 fase 4b): casillas de la hoja de casos de CAFEMIN, más el valor del sistema
+-- «La persona no quiso responder». Dirección y Trabajo Social las editan.
+insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'caregiver_alone', 'Cuidador sola(o)', 'CUIDADOR SOLA (O)', false, 1),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'disability', 'Discapacidad', 'DISCAPACIDAD', false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'pregnancy', 'Embarazo', 'EMBARAZO', false, 3),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'palliative_care', 'Cuidados paliativos', 'CUIDADOS PALIATIVOS', false, 4),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'unaccompanied_minor', 'NNA no acompañadxs', 'NNA NO ACOMPAÑADXS', false, 5),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'older_adult', 'Personas adultas mayores', 'PERSONAS ADULTAS MAYORES', false, 6),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'humanitarian_care', 'Atención humanitaria', 'ATENCIÓN HUMANITARIA', false, 7),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'integral_care_plan', 'Plan de atención integral', 'PLAN DE ATEN. INTEGRAL', false, 8),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'non_binary', 'No binario (LGBTQM+)', 'NO BINARIO (LGBTQM+)', false, 9),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'neurodivergence', 'Neurodivergencia', 'NEURODIVERGENCIA', false, 10),
+    ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
+on conflict (organization_id, catalog, key) do nothing;
 
 -- 5e. Diccionarios editables (E14 fase 4a): idioma y religión de la hoja de casos de CAFEMIN, más el valor del sistema
 -- «La persona no quiso responder». Dirección y Trabajo Social los editan. Tipo de documento «TRP» de la hoja.
