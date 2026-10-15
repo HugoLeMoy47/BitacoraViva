@@ -34,6 +34,11 @@ export function toStoredDate(precision: DatePrecision, raw: string): string | nu
   return /^\d{4}$/.test(v) && Number(v) >= 1900 ? `${v}-01-01` : null;
 }
 
+/** El día de hoy según quien captura (no el de UTC, que de noche ya puede ser mañana): «YYYY-MM-DD». */
+export function todayLocalIso(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 /** ¿El periodo empieza después de hoy? Lo futuro no se registra (el mes en curso sí cabe). */
 export function startsInFuture(storedValue: string, today: Date = new Date()): boolean {
   const p = parts(storedValue);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatFlexDate, startsInFuture, toStoredDate } from './flexDate';
+import { formatFlexDate, startsInFuture, toStoredDate, todayLocalIso } from './flexDate';
 
 // E14 fase 2: fechas que pueden venir completas, solo con mes o solo con año.
 
@@ -56,5 +56,15 @@ describe('startsInFuture: lo futuro no se registra', () => {
   it('hoy mismo no es futuro; mañana sí', () => {
     expect(startsInFuture('2026-10-15', hoy)).toBe(false);
     expect(startsInFuture('2026-10-16', hoy)).toBe(true);
+  });
+});
+
+describe('todayLocalIso: el día del movimiento es el de quien captura, no el de UTC', () => {
+  it('usa los componentes locales de la fecha', () => {
+    expect(todayLocalIso(new Date(2026, 9, 15, 23, 30))).toBe('2026-10-15');
+    expect(todayLocalIso(new Date(2026, 0, 2, 0, 5))).toBe('2026-01-02');
+  });
+  it('tiene el formato de un campo de fecha', () => {
+    expect(todayLocalIso()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

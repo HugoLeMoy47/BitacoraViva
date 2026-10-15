@@ -56,6 +56,8 @@ import { useToast } from '../lib/toast';
 import { PersonDocumentsPanel } from './PersonDocumentsPanel';
 import { MunicipalityName } from './MunicipalityName';
 import { CaseDatesPanel } from './CaseDatesPanel';
+import { FlexibleDateInput } from './FlexibleDateInput';
+import { DatePrecision, startsInFuture, toStoredDate, todayLocalIso } from '../lib/flexDate';
 import { SmallFieldModal } from './SmallFieldModal';
 
 interface CaseDetailViewProps {
@@ -69,7 +71,9 @@ interface CaseDetailViewProps {
     caseId: string, 
     axisCode: StatusAxisCode, 
     newValueCode: string, 
-    reason: string
+    reason: string,
+    /** Fecha del movimiento: obligatoria al pasar a «albergada» o a «salida del albergue» (E14 fase 2b) */
+    movement?: { value: string; precision: string }
   ) => void;
   onSelectSubfolio?: (subfolioCase: CaseWithDetails) => void;
   onOpenCase?: (caseNumber: string) => void;
@@ -125,6 +129,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   // E14 fase 1: datos cortos que se editan en un modal de un solo campo
   const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
+  // Ingreso y egreso del albergue llevan la fecha del movimiento: por defecto hoy, y se puede cambiar (E14 fase 2b)
+  const [movementPrecision, setMovementPrecision] = useState<DatePrecision>('day');
+  const [movementRaw, setMovementRaw] = useState(todayLocalIso());
   const [targetValueCode, setTargetValueCode] = useState<string>('');
   const [transitionReason, setTransitionReason] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -207,10 +214,15 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     setTransitioningAxis(axisCode);
     setErrorMessage(null);
     setTransitionReason('');
+    setMovementPrecision('day');
+    setMovementRaw(todayLocalIso());
     const possibleValues = statusValues[axisCode] || [];
     const firstNonCurrent = possibleValues.find(v => v.code !== caseData.statuses[axisCode]?.valueCode);
     setTargetValueCode(firstNonCurrent ? firstNonCurrent.code : (possibleValues[0]?.code || ''));
   };
+
+  // «Albergada» (ingreso) y «salida del albergue» (egreso) llevan la fecha del movimiento
+  const needsMovementDate = transitioningAxis === 'shelter_status' && (targetValueCode === 'sheltered' || targetValueCode === 'left_shelter');
 
   const handleConfirmTransition = () => {
     if (!transitioningAxis || !targetValueCode) return;
@@ -232,7 +244,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
       return;
     }
 
-    onTransitionStatus(caseData.id, transitioningAxis, targetValueCode, transitionReason.trim());
+    if (needsMovementDate) {
+      const stored = toStoredDate(movementPrecision, movementRaw);
+      if (!stored) { setErrorMessage(t('dates.reason_missing_value')); return; }
+      if (startsInFuture(stored)) { setErrorMessage(t('dates.reason_future')); return; }
+      onTransitionStatus(caseData.id, transitioningAxis, targetValueCode, transitionReason.trim(), { value: stored, precision: movementPrecision });
+    } else {
+      onTransitionStatus(caseData.id, transitioningAxis, targetValueCode, transitionReason.trim());
+    }
     setTransitioningAxis(null);
   };
 
@@ -1267,6 +1286,21 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                   ))}
                 </select>
               </div>
+
+              {needsMovementDate && (
+                <div>
+                  <FlexibleDateInput
+                    id="casede-date"
+                    label={targetValueCode === 'sheltered' ? t('dates.kind.shelter_entry') : t('dates.kind.shelter_exit')}
+                    precision={movementPrecision}
+                    value={movementRaw}
+                    onChange={(p, v) => { setMovementPrecision(p); setMovementRaw(v); }}
+                    collapsible
+                    problem={(() => { const s = toStoredDate(movementPrecision, movementRaw); return s && startsInFuture(s) ? t('dates.reason_future') : null; })()}
+                  />
+                  <p className="mt-1 text-gray-600">{t('dates.movement_hint')}</p>
+                </div>
+              )}
 
               <div>
                 <label className="block font-semibold text-carbon mb-1" htmlFor="casede-2">

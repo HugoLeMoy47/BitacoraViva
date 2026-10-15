@@ -12,15 +12,19 @@ interface Props {
   onChange: (precision: DatePrecision, value: string) => void;
   /** Mensaje de error del campo, dicho junto al campo */
   problem?: string | null;
+  /** Muestra solo el día y deja la precisión (mes o año) detrás de un botón: para donde la fecha casi siempre es exacta */
+  collapsible?: boolean;
 }
 
 const CONTROL = 'w-full min-h-11 text-sm p-2.5 border rounded-lg border-gray-300 bg-white focus:outline-none focus:border-turquesa';
 
-export const FlexibleDateInput: React.FC<Props> = ({ id, label, precision, value, onChange, problem }) => (
+export const FlexibleDateInput: React.FC<Props> = ({ id, label, precision, value, onChange, problem, collapsible = false }) => {
+  const [showPrecision, setShowPrecision] = React.useState(!collapsible || precision !== 'day');
+  return (
   <fieldset className="min-w-0">
     <legend className="mb-1 block text-sm font-medium text-gray-700">{label}</legend>
     <div className="grid grid-cols-3 gap-2">
-      <div className="col-span-1">
+      <div className={showPrecision ? 'col-span-1' : 'hidden'}>
         <label className="sr-only" htmlFor={`${id}-p`}>{t('dates.precision_label')}</label>
         <select id={`${id}-p`} className={CONTROL} value={precision} onChange={(e) => onChange(e.target.value as DatePrecision, '')}>
           <option value="day">{t('dates.precision_day')}</option>
@@ -28,7 +32,7 @@ export const FlexibleDateInput: React.FC<Props> = ({ id, label, precision, value
           <option value="year">{t('dates.precision_year')}</option>
         </select>
       </div>
-      <div className="col-span-2">
+      <div className={showPrecision ? 'col-span-2' : 'col-span-3'}>
         <label className="sr-only" htmlFor={`${id}-v`}>{label}</label>
         {precision === 'day' && (
           <input id={`${id}-v`} type="date" className={CONTROL} value={value} max={new Date().toISOString().slice(0, 10)}
@@ -44,6 +48,12 @@ export const FlexibleDateInput: React.FC<Props> = ({ id, label, precision, value
         )}
       </div>
     </div>
+    {collapsible && !showPrecision && (
+      <button type="button" onClick={() => setShowPrecision(true)} className="mt-1 min-h-11 text-sm font-semibold text-turquesa-dark hover:underline">
+        {t('dates.only_month_or_year')}
+      </button>
+    )}
     {problem && <p role="alert" className="mt-1 text-sm font-semibold text-alerta-dark">{problem}</p>}
   </fieldset>
-);
+  );
+};

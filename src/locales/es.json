@@ -1006,6 +1006,8 @@
       "bv325": "Esa fecha no es válida: revisa el tipo, cuánto se sabe (día, mes o año) y el valor.",
       "bv326": "La fecha no puede ser futura: solo se registra lo que ya pasó.",
       "bv327": "Las fechas no cuadran: el ingreso no puede ser posterior al egreso, ni una fecha anterior al nacimiento de la persona.",
+      "bv328": "El ingreso y la salida del albergue llevan la fecha del movimiento. Usa el cambio de alojamiento e indica la fecha.",
+      "bv329": "Solo el ingreso y la salida del albergue llevan fecha. Los demás estatus de alojamiento se cambian sin ella.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
       "bv403": "Para una persona menor de 18 años, el consentimiento exige su asentimiento y la identidad de quien la representa.",
@@ -1583,6 +1585,8 @@
     "reason_future": "La fecha no puede ser futura: solo se registra lo que ya pasó.",
     "reason_remove": "Para quitar la fecha, escribe primero el motivo.",
     "saved": "Fecha guardada.",
-    "removed": "Fecha quitada. Queda en el historial."
+    "removed": "Fecha quitada. Queda en el historial.",
+    "only_month_or_year": "Solo conozco el mes o el año",
+    "movement_hint": "Es la fecha en que la persona entró o salió. Por defecto es hoy; cámbiala si fue otro día, o indica solo el mes o el año si no se sabe más."
   }
 }
