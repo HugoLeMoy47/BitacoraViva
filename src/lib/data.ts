@@ -660,6 +660,19 @@ export const api = {
   setPersonReligion: (personId: string, itemId: string | null, detail: string, reason?: string) =>
     rpc('fn_set_person_religion', { p_person_id: personId, p_item_id: itemId, p_detail: detail.trim() || null, p_reason: reason?.trim() || null }),
 
+  // Diccionarios editables (pantalla «Diccionarios»): dirección y Trabajo Social; la base lo exige (RLS + auditoría)
+  addCatalogItem: async (organizationId: string, catalog: CatalogItem['catalog'], key: string, label: string, sortOrder: number) => {
+    const { error } = await supabase.from('catalog_item').insert({ organization_id: organizationId, catalog, key, label_es: label.trim(), sort_order: sortOrder });
+    if (error) throw new DbError(error.message, error.code);
+  },
+  updateCatalogItem: async (id: string, changes: { label_es?: string; is_active?: boolean }) => {
+    const { error } = await supabase.from('catalog_item').update(changes).eq('id', id);
+    if (error) throw new DbError(error.message, error.code);
+  },
+  // Grupos por edad (fase 5): el conjunto completo; lo anterior se cierra con motivo
+  setAgeBands: (bands: { label: string; min_age: number }[], reason?: string) =>
+    rpc('fn_set_age_bands', { p_bands: bands, p_reason: reason?.trim() || null }),
+
   // Necesidades específicas: el conjunto completo de casillas marcadas (E14 fase 4b)
   setCaseNeeds: (caseId: string, itemIds: string[], reason?: string) =>
     rpc('fn_set_case_needs', { p_case_id: caseId, p_item_ids: itemIds, p_reason: reason?.trim() || null }),

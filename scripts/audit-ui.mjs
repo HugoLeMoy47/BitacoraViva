@@ -35,8 +35,8 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/rectificar', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/nueva', 'tareas/reportes', 'tareas/rutinas', 'tareas/rutinas/nueva', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'acerca'] },
-  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/notas', 'indicadores', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/rectificar', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/nueva', 'tareas/reportes', 'tareas/rutinas', 'tareas/rutinas/nueva', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'diccionarios', 'acerca'] },
+  { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/notas', 'indicadores', 'diccionarios', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'expedientes/nuevo', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },
   // Seguidor de tareas (E7): roles que sólo operan tareas y no reciben ni una fila del expediente
@@ -442,6 +442,16 @@ try {
           await page.locator('main [role=tab]').nth(i).click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'configuracion/sección ' + (i + 1), await auditNow());
+        }
+
+        // Diccionarios (E14): cada pestaña
+        await page.evaluate(() => { location.hash = '#/diccionarios'; });
+        await page.waitForTimeout(1200);
+        const dicTabs = await page.locator('main [role=tab]').count();
+        for (let i = 0; i < dicTabs; i++) {
+          await page.locator('main [role=tab]').nth(i).click();
+          await page.waitForTimeout(500);
+          record(role.key, vp.name, 'diccionarios/pestaña ' + (i + 1), await auditNow());
         }
 
         await page.evaluate(() => { location.hash = '#/expedientes'; });
