@@ -241,6 +241,35 @@ insert into public.family_type (organization_id, key, label_es, legacy_code, sor
     ('00000000-0000-0000-0000-000000000001', 'extended', 'Familia extensa', 'FAM-EXTENSA', 6)
 on conflict (organization_id, key) do nothing;
 
+-- 5e. Diccionarios editables (E14 fase 4a): idioma y religión de la hoja de casos de CAFEMIN, más el valor del sistema
+-- «La persona no quiso responder». Dirección y Trabajo Social los editan. Tipo de documento «TRP» de la hoja.
+insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'language', 'spanish', 'Español', 'ESPAÑOL', false, 1),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'indigenous', 'Lengua indígena', 'LENGUA INDIGENA', false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'english', 'Inglés', 'INGLES', false, 3),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'french', 'Francés', 'FRANCES', false, 4),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'persian', 'Persa', 'PERSA', false, 5),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'indie', 'Indie', 'INDIE', false, 6),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'creole', 'Criolle', 'CRIOLLE', false, 7),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'other_languages', 'Otros idiomas', 'OTROS IDIOMAS', false, 8),
+    ('00000000-0000-0000-0000-000000000001', 'language', 'no_response', 'La persona no quiso responder', null, true, 99),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'catholic_christian', 'Católico/cristiano', 'CATÓLICO/CRISTIANO', false, 1),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'christian_non_catholic', 'Cristiano (no católico)', 'CRISTIANO ( NO CATOLICO)', false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'protestant', 'Protestante', 'PROTESTANTE', false, 3),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'evangelical', 'Evangélico', 'EVANGELICO', false, 4),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'jehovahs_witness', 'Testigo de Jehová', 'TESTIGO DE JEHOVA', false, 5),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'mormon', 'Mormón', 'MORMÓN', false, 6),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'islam', 'Islam', 'ISLAM', false, 7),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'orthodox', 'Ortodoxa', 'ORTODOXA', false, 8),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'believer', 'Creyente', 'CREYENTE', false, 9),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'non_believer', 'No creyente', 'NO CREYENTE', false, 10),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'other', 'Otro', 'OTRO', false, 11),
+    ('00000000-0000-0000-0000-000000000001', 'religion', 'no_response', 'La persona no quiso responder', null, true, 99)
+on conflict (organization_id, catalog, key) do nothing;
+insert into public.document_type (organization_id, key, label_es, legacy_code, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'trp', 'TRP', 'TRP', 7)
+on conflict (organization_id, key) do nothing;
+
 -- ==============================================================================
 -- 6. Personas y Expedientes de Demostración (Épica E3: MAP-OIM v3)
 -- ==============================================================================

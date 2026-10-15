@@ -13,6 +13,7 @@ import {
   CaseWithDetails,
   Consent,
   CaseFamilyView,
+  CatalogItem,
   DocumentType,
   FamilyMember,
   FamilyType,
@@ -60,6 +61,8 @@ export interface OrgData {
   /** Tipos de familia y familias del sistema paralelo (E14 fase 3) */
   familyTypes: FamilyType[];
   familyUnits: FamilyUnit[];
+  /** Diccionarios editables por dirección y Trabajo Social (idioma, religión) */
+  catalogItems: CatalogItem[];
   auditEvents: AuditEvent[];
   authorityRequests: AuthorityRequest[];
   sharingEvents: SharingEvent[];
@@ -85,6 +88,7 @@ export const EMPTY_ORG_DATA: OrgData = {
   entryRoutes: [],
   familyTypes: [],
   familyUnits: [],
+  catalogItems: [],
   auditEvents: [],
   authorityRequests: [],
   sharingEvents: [],
@@ -144,6 +148,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     familyTypes,
     familyUnits,
     familyMembers,
+    catalogItems,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -180,6 +185,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     // RLS: solo roles que operan expedientes
     rows<FamilyUnit>(supabase.from('family_unit').select('*').order('family_number')),
     rows<FamilyMember>(supabase.from('family_member').select('*').is('valid_to', null)),
+    rows<CatalogItem>(supabase.from('catalog_item').select('*').order('catalog').order('sort_order')),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -309,6 +315,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     entryRoutes,
     familyTypes,
     familyUnits,
+    catalogItems,
     auditEvents: audit,
     authorityRequests: authority,
     sharingEvents,
@@ -350,7 +357,7 @@ export interface SubfolioInput {
   sex_id: number | null;
   nationality_country_id: number | null;
   other_nationality: string | null;
-  primary_language_id: number | null;
+  primary_language_item_id: string | null;
   other_language: string | null;
   guardian_role: string;
   justification: string;
@@ -369,7 +376,8 @@ export interface NewCaseInput {
   sex_id: number | null;
   nationality_country_id: number | null;
   other_nationality: string | null;
-  primary_language_id: number | null;
+  /** Idioma: valor del diccionario + detalle (D-14: sin consentimiento sensible solo «no quiso responder») */
+  primary_language_item_id: string | null;
   other_language: string | null;
   phone_number: string | null;
   /** Obligatorio: quien captura lo elige, no hay valor por defecto */
@@ -456,7 +464,7 @@ export const api = {
       p_sex_id: i.sex_id,
       p_nationality_country_id: i.nationality_country_id,
       p_other_nationality: i.other_nationality,
-      p_primary_language_id: i.primary_language_id,
+      p_primary_language_item_id: i.primary_language_item_id,
       p_other_language: i.other_language,
       p_phone_number: i.phone_number,
       p_intake_window_type: i.intake_window_type,
@@ -484,7 +492,7 @@ export const api = {
       p_sex_id: i.sex_id,
       p_nationality_country_id: i.nationality_country_id,
       p_other_nationality: i.other_nationality,
-      p_primary_language_id: i.primary_language_id,
+      p_primary_language_item_id: i.primary_language_item_id,
       p_other_language: i.other_language,
       p_guardian_role: i.guardian_role,
       p_justification: i.justification,
@@ -636,8 +644,11 @@ export const api = {
   removePersonDocument: (documentId: string, reason: string) =>
     rpc('fn_remove_person_document', { p_document_id: documentId, p_reason: reason }),
 
-  setPersonReligion: (personId: string, religion: string, reason?: string) =>
-    rpc('fn_set_person_religion', { p_person_id: personId, p_religion: religion, p_reason: reason?.trim() || null }),
+  setPersonReligion: (personId: string, itemId: string | null, detail: string, reason?: string) =>
+    rpc('fn_set_person_religion', { p_person_id: personId, p_item_id: itemId, p_detail: detail.trim() || null, p_reason: reason?.trim() || null }),
+
+  setPersonLanguage: (personId: string, itemId: string | null, detail: string, reason?: string) =>
+    rpc('fn_set_person_language', { p_person_id: personId, p_item_id: itemId, p_detail: detail.trim() || null, p_reason: reason?.trim() || null }),
 
   setMarkerDetail: (caseId: string, markerCode: string, detail: string) =>
     rpc('fn_set_marker_detail', { p_case_id: caseId, p_marker_code: markerCode, p_detail: detail }),

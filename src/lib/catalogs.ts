@@ -33,7 +33,9 @@ export function countryLabel(id?: number | null, other?: string | null): string 
   return key ? t(key) : freeTextOrNull(other);
 }
 
-/** Idioma principal: no hay catálogo de idiomas en la base (id 1 es «otro»); se muestra el texto escrito. */
-export function languageLabel(_id?: number | null, other?: string | null): string | null {
-  return freeTextOrNull(other);
+/** Valor de un diccionario con su detalle: «Lengua indígena (Tzotzil)»; sin valor ni detalle, null («No registrado»). */
+export function itemLabel(items: { id: string; label_es: string }[], id?: string | null, detail?: string | null): string | null {
+  const label = id ? items.find((i) => i.id === id)?.label_es ?? null : null;
+  const d = freeTextOrNull(detail);
+  return label ? (d ? `${label} (${d})` : label) : d;
 }

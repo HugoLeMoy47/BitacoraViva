@@ -5,6 +5,7 @@ import { CaseWithDetails, VulnerabilityMarkerCode } from '../types/database';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { ConsentInput, SubfolioInput } from '../lib/data';
 import { DisabledReason, describedBy } from './DisabledReason';
+import { useCatalog } from '../lib/catalog';
 import { NnaAssentModal } from './NnaAssentModal';
 
 // BV-3.2 · Subfolio, como PÁGINA (no modal): son 12 campos y conviene ver el caso principal al lado.
@@ -44,6 +45,7 @@ interface Draft {
   sexId: number | '';
   nationality: string;
   language: string;
+  languageItemId?: string;
   relationship: Relationship | '';
   otherRelationship: string;
   markers: VulnerabilityMarkerCode[];
@@ -105,6 +107,9 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
   const [birthEstimated, setBirthEstimated] = useState(saved?.birthEstimated ?? false);
   const [sexId, setSexId] = useState<number | ''>(saved?.sexId ?? '');
   const [nationality, setNationality] = useState(saved?.nationality ?? '');
+  const { catalogItems } = useCatalog();
+  // Idioma: valor del diccionario + detalle; sin consentimiento sensible solo «la persona no quiso responder»
+  const [languageItemId, setLanguageItemId] = useState(saved?.languageItemId ?? '');
   const [language, setLanguage] = useState(saved?.language ?? '');
   const [relationship, setRelationship] = useState<Relationship | ''>(saved?.relationship ?? '');
   const [otherRelationship, setOtherRelationship] = useState(saved?.otherRelationship ?? '');
@@ -114,8 +119,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
   // Lo capturado se conserva en memoria; si hay algo escrito, el navegador pregunta antes de recargar o cerrar
   const dirty = !!(givenName || paternalName || maternalName || birthDate || otherRelationship || note || markers.length);
   useEffect(() => {
-    drafts.set(parent.id, { choices, childAssent, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, relationship, otherRelationship, markers, note });
-  }, [parent.id, choices, childAssent, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, relationship, otherRelationship, markers, note]);
+    drafts.set(parent.id, { choices, childAssent, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, languageItemId, relationship, otherRelationship, markers, note });
+  }, [parent.id, choices, childAssent, givenName, paternalName, maternalName, birthDate, birthEstimated, sexId, nationality, language, languageItemId, relationship, otherRelationship, markers, note]);
   useEffect(() => {
     if (!dirty) return;
     const guard = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -154,6 +159,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (reason) return;
+    const langItem = catalogItems.find((i) => i.id === languageItemId && i.catalog === 'language');
+    const effectiveLang = langItem && (sensitiveGranted || langItem.key === 'no_response') ? langItem : null;
     finish();
     onSubmit({
       parent_case_id: parent.id,
@@ -166,9 +173,8 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
       sex_id: sensitiveGranted && sexId !== '' ? sexId : null,
       nationality_country_id: sensitiveGranted && nationality ? (COUNTRY_ID[nationality] ?? 1) : null,
       other_nationality: sensitiveGranted && nationality ? nationality : null,
-      // Aún no hay catálogo de lenguas: se guarda lo que se escribió y el identificador queda vacío
-      primary_language_id: null,
-      other_language: sensitiveGranted && language.trim() ? language.trim() : null,
+      primary_language_item_id: effectiveLang?.id ?? null,
+      other_language: effectiveLang && effectiveLang.key !== 'no_response' && language.trim() ? language.trim() : null,
       guardian_role: guardianRole,
       justification: note.trim(),
       vulnerability_codes: sensitiveGranted ? markers : [],
@@ -285,17 +291,31 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
               </div>
               <div>
                 <label className={LABEL} htmlFor={`${uid}-lang`}>{t('intake.field_primary_language')}</label>
-                <input
+                <select
                   id={`${uid}-lang`}
-                  disabled={!sensitiveGranted}
-                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  autoComplete="off"
-                />
+                  className={INPUT}
+                  value={languageItemId}
+                  onChange={(e) => { setLanguageItemId(e.target.value); setLanguage(''); }}
+                >
+                  <option value="">{t('common.not_recorded')}</option>
+                  {catalogItems
+                    .filter((i) => i.catalog === 'language' && i.is_active && (sensitiveGranted || i.key === 'no_response'))
+                    .map((i) => <option key={i.id} value={i.id}>{i.label_es}</option>)}
+                </select>
+                {catalogItems.find((i) => i.id === languageItemId)?.key && catalogItems.find((i) => i.id === languageItemId)?.key !== 'no_response' && (
+                  <input
+                    aria-label={t('intake.language_detail')}
+                    className={`mt-2 ${INPUT}`}
+                    value={language}
+                    maxLength={120}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    placeholder={t('intake.language_detail')}
+                    autoComplete="off"
+                  />
+                )}
                 {!sensitiveGranted && (
                   <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
-                    {t('intake.consent.sensitive_disabled_notice')}
+                    {t('diccionarios.only_no_response')}
                   </span>
                 )}
               </div>
