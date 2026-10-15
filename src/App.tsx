@@ -1,3 +1,15 @@
+// App.tsx · el director de orquesta de la interfaz.
+//
+// Qué hace: (1) decide qué ve cada persona según su sesión y sus roles, (2) carga de una sola vez los datos de la
+// organización con `loadOrgData` (lo que RLS le permite leer), (3) enruta por el hash de la URL a la pantalla que toca y
+// (4) reúne los manejadores de escritura (`handle…`), que llaman a una función de la base y, pase lo que pase, vuelven a
+// leer los datos y avisan el resultado (`run`).
+//
+// Qué NO hace: no decide permisos (los decide la base; aquí solo se oculta lo que no se puede usar) ni guarda datos en el
+// navegador. Cada pantalla vive en `components/`; el acceso a datos, en `lib/data.ts`.
+//
+// Para agregar una pantalla: ruta en `lib/router.ts`, rol en `lib/navigation.ts`, etiqueta en `locales/es.json`
+// y su línea `current === '…'` más abajo.
 import React, { useCallback, useEffect, useState } from 'react';
 import { t } from './lib/i18n';
 import {

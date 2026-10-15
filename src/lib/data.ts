@@ -1,3 +1,15 @@
+// data.ts · la puerta entre la interfaz y la base de datos.
+//
+// Tres partes:
+//  1. `loadOrgData` · LEE todo lo que la persona puede ver (RLS decide qué filas llegan) y lo arma en un `OrgData`:
+//     expedientes con su persona, estatus, bitácora, consentimientos, fechas, familia, necesidades, diccionarios…
+//  2. `api` (también exportado como `dataApi`) · ESCRIBE. Cada método es el envoltorio de UNA función de la base (`fn_…`):
+//     la función valida rol y organización, escribe, deja auditoría y, si algo falla, lanza un error con código `BVnnn`
+//     que `errors.ts` traduce a un texto con el siguiente paso. Casi nunca se escribe directo en una tabla; las
+//     excepciones (los diccionarios) están autorizadas por RLS y auditadas.
+//  3. `configApi` y las `list…` · lo de la configuración de la organización (identidad, aviso de privacidad, consentimientos).
+//
+// Al agregar una escritura: primero la función y su prueba negativa en `supabase/`, luego su envoltorio aquí, luego la pantalla.
 import { supabase } from './supabase';
 import { DbError } from './errors';
 import {

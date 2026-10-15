@@ -1,5 +1,19 @@
+// CaseDetailView.tsx · el expediente de una persona. Es la pantalla más grande del producto; léela por pestañas.
+//
+//   axes             estatus en cinco ejes (etapa, acompañamiento, alojamiento, jurídico, registro) y su historia
+//   journal          bitácora del caso: filtros, fe de erratas, compartir con otra área (inmutable y privada por defecto)
+//   summary          ficha de la persona y del caso: identificación, documentos, idioma y religión, fechas, familia,
+//                    necesidades, contexto de ingreso, plan y datos calculados (cada dato sensible en su propio modal)
+//   vulnerabilities  marcadores de vulnerabilidad y su detalle
+//   subfolios        niñez y adolescencia acompañadas (folio hijo)
+//   tasks            tareas ligadas al caso (solo quien opera expedientes)
+//   privacy          consentimientos, derechos ARCO y anonimización (qué acciones se ofrecen depende del rol)
+//
+// Esta vista solo MUESTRA y dispara acciones: cada escritura llega por una `on…` desde `App.tsx` o por `dataApi`, y la base
+// la vuelve a validar. Los formularios largos viven aparte, como páginas (`NewJournalEntryPage`, `RectifyPersonPage`…);
+// los datos sensibles sueltos, en modales cortos (`SmallFieldModal`, `CatalogItemModal`) y en paneles (`Case…Panel`).
 import React, { useEffect, useState } from 'react';
-import { 
+import {
   ArrowLeft, 
   ShieldAlert, 
   Clock, 
