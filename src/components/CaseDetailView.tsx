@@ -56,6 +56,7 @@ import { useToast } from '../lib/toast';
 import { PersonDocumentsPanel } from './PersonDocumentsPanel';
 import { MunicipalityName } from './MunicipalityName';
 import { CaseDatesPanel } from './CaseDatesPanel';
+import { CaseFamilyPanel } from './CaseFamilyPanel';
 import { FlexibleDateInput } from './FlexibleDateInput';
 import { DatePrecision, startsInFuture, toStoredDate, todayLocalIso } from '../lib/flexDate';
 import { SmallFieldModal } from './SmallFieldModal';
@@ -725,6 +726,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           <PersonDocumentsPanel
             personId={caseData.titular_person_id}
             documents={caseData.documents ?? []}
+            canEdit={canEditExtra}
+            onChanged={onDataChanged ?? (async () => {})}
+          />
+
+          <CaseFamilyPanel
+            caseId={caseData.id}
+            family={caseData.family}
             canEdit={canEditExtra}
             onChanged={onDataChanged ?? (async () => {})}
           />

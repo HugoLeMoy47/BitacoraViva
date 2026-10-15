@@ -309,6 +309,45 @@ export interface Case {
   updated_at: string;
 }
 
+/** Tipo de familia (catálogo de la organización que editan dirección y Trabajo Social; solo informativo) */
+export interface FamilyType {
+  id: string;
+  organization_id: string;
+  key: string;
+  label_es: string;
+  legacy_code?: string | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+/** Familia del sistema de seguimiento paralelo: su folio se captura (no se genera) */
+export interface FamilyUnit {
+  id: string;
+  organization_id: string;
+  family_number: string;
+  family_type_id?: string | null;
+  created_at: string;
+}
+
+export interface FamilyMember {
+  id: string;
+  organization_id: string;
+  family_unit_id: string;
+  case_id: string;
+  member_order?: number | null;
+  created_at: string;
+  valid_to?: string | null;
+  change_reason?: string | null;
+}
+
+/** La familia vigente de una persona, con quienes la integran (resuelto al cargar) */
+export interface CaseFamilyView {
+  unit: FamilyUnit;
+  typeLabel: string | null;
+  order: number | null;
+  members: { caseId: string; caseNumber: string; personName: string; order: number | null }[];
+}
+
 export type CaseDateKind = 'nation_entry' | 'nation_exit' | 'shelter_entry' | 'shelter_exit';
 
 /** Fecha del caso con la precisión que se conoce; `valid_to` lleno = cerrada (corregida o quitada, con su motivo) */
@@ -477,6 +516,8 @@ export interface CaseWithDetails extends Case {
   arco_requests?: ArcoRequest[];
   documents?: PersonDocument[];
   dates?: CaseDate[];
+  /** Familia del sistema paralelo (E14 fase 3); vacío = «No registrado» */
+  family?: CaseFamilyView | null;
 }
 
 // ------------------------------------------------------------------------------

@@ -2317,6 +2317,173 @@ begin
         perform pg_temp.expect('F2b: el alojamiento sigue en «salida del albergue» tras ese rechazo', null, null, format(cur, f2), 'left_shelter');
     end;
 
+    -- ============================================================================================
+    -- ===== E14 fase 3: unidad familiar paralela (migración 20261017000001)
+    -- ===== Folio de familia del sistema de seguimiento paralelo (p. ej. REDODEM), tipo de familia (catálogo que editan
+    -- ===== dirección y Trabajo Social, solo informativo) y consecutivo de la persona dentro de la familia. No toca el
+    -- ===== folio de caso ni `parent_case_id`: el subfolio y la familia son cosas distintas.
+    -- ============================================================================================
+    declare
+        g1 constant text := pg_temp.id('5000', 50);
+        g2 constant text := pg_temp.id('5000', 51);
+        g3 constant text := pg_temp.id('5000', 52);
+        g4 constant text := pg_temp.id('5000', 53);
+        mk text := $q$select count(*)::text from (select public.fn_create_family_unit(%L, %L::uuid)) x$q$;
+        asg text := $q$select count(*)::text from (select public.fn_set_case_family(%L::uuid, %L::uuid, %s, %L)) x$q$;
+        rm text := $q$select count(*)::text from (select public.fn_set_case_family(%L::uuid, null, null, %L)) x$q$;
+        t_nuc text;   -- id del tipo «nuclear» de A
+        t_b text;     -- id de un tipo de la organización B (dirección de A no lo ve por RLS: se pasa como literal)
+        u1 text; u2 text; u_b text;
+    begin
+        -- Escenario: tipos de familia de A, personas y expedientes nuevos
+        begin
+            insert into public.family_type (organization_id, key, label_es, legacy_code, sort_order, is_active) values
+                (ORG_A::uuid, 'nuclear', 'Familia nuclear', 'FAM-NUCL', 1, true),
+                (ORG_A::uuid, 'single_parent', 'Familia monoparental', 'FAM-MNP', 2, true),
+                (ORG_A::uuid, 'unaccompanied_minor', 'Niñez y adolescencia no acompañada', 'NNA NO ACOMPAÑADX', 4, true),
+                (ORG_A::uuid, 'retired', 'Tipo retirado', null, 9, false);
+            insert into public.family_type (organization_id, key, label_es, sort_order) values (ORG_B::uuid, 'nuclear', 'Familia nuclear B', 1);
+        exception when others then
+            raise notice 'F3 escenario: sin tabla family_type todavía (%).', sqlerrm;
+        end;
+        insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date)
+        select pg_temp.id('4000', 50 + k)::uuid, ORG_A::uuid, 'Familia' || k, 'Paralela', '1990-01-01' from generate_series(0, 3) k;
+        insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type)
+        select pg_temp.id('5000', 50 + k)::uuid, ORG_A::uuid, 'TST-A-0G' || (1 + k), pg_temp.id('4000', 50 + k)::uuid,
+               'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002', 'fija'
+        from generate_series(0, 3) k;
+        begin
+            select id::text into t_nuc from public.family_type where organization_id = ORG_A::uuid and key = 'nuclear';
+            select id::text into t_b from public.family_type where organization_id = ORG_B::uuid;
+        exception when others then t_nuc := null; t_b := null;
+        end;
+
+        -- ----- Catálogo de tipos de familia: lo editan dirección y Trabajo Social
+        perform pg_temp.expect('F3 control positivo: Trabajo Social agrega un tipo de familia', CW, 'authenticated',
+            format($q$with i as (insert into public.family_type (organization_id, key, label_es, sort_order) values (%L, 'extended', 'Familia extensa', 6) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('F3 control positivo: dirección edita la etiqueta de un tipo', DIR, 'authenticated',
+            $q$with u as (update public.family_type set label_es = 'Familia nuclear (editada)' where key = 'nuclear' and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' returning 1) select count(*)::text from u$q$, '1');
+        perform pg_temp.expect('F3: el área jurídica no administra los tipos de familia', 'aaaaaaaa-3000-0000-0000-00000000000a', 'authenticated',
+            format($q$with i as (insert into public.family_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo', 'Otro', 7) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('F3: el rol de solo lectura no administra los tipos de familia', VW, 'authenticated',
+            format($q$with i as (insert into public.family_type (organization_id, key, label_es, sort_order) values (%L, 'otro_tipo2', 'Otro', 7) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('F3: no se agregan tipos a la organización B desde A', CW, 'authenticated',
+            format($q$with i as (insert into public.family_type (organization_id, key, label_es, sort_order) values (%L, 'ajeno', 'Ajeno', 7) returning 1) select count(*)::text from i$q$, ORG_B), 'ERR');
+        perform pg_temp.expect('F3: no se borra un tipo de familia (se desactiva)', DIR, 'authenticated',
+            $q$with d as (delete from public.family_type returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('F3: sin rol vigente no se ven los tipos de familia', NR, 'authenticated', 'select count(*)::text from public.family_type', '0');
+        perform pg_temp.expect('F3: otra organización no ve los tipos de A', DIRB2, 'authenticated',
+            format('select count(*)::text from public.family_type where organization_id = %L', ORG_A), '0');
+
+        -- ----- Crear la unidad familiar (el folio es del sistema paralelo: se captura, no se genera)
+        perform pg_temp.expect('F3 control positivo: ingreso crea la familia con su folio y tipo', INT, 'authenticated', format(mk, 'FAM-0001', t_nuc), '1');
+        perform pg_temp.expect('F3 control positivo: Trabajo Social crea una familia sin tipo (el tipo es opcional)', CW, 'authenticated', format(mk, 'FAM-0002', null), '1');
+        perform pg_temp.expect('F3: el rol de solo lectura no crea familias → BV120', VW, 'authenticated', format(mk, 'FAM-9', null), 'ERR:BV120');
+        perform pg_temp.expect('F3: el voluntariado no crea familias → BV120', VOL, 'authenticated', format(mk, 'FAM-9', null), 'ERR:BV120');
+        perform pg_temp.expect('F3: sin rol vigente no crea familias → BV120', NR, 'authenticated', format(mk, 'FAM-9', null), 'ERR:BV120');
+        perform pg_temp.expect('F3: anónimo no crea familias', null, 'anon', format(mk, 'FAM-9', null), 'ERR');
+        perform pg_temp.expect('F3: el folio de familia no se repite en la organización → BV330', DIR, 'authenticated', format(mk, 'FAM-0001', null), 'ERR:BV330');
+        perform pg_temp.expect('F3: ni con otra capitalización o espacios → BV330', DIR, 'authenticated', format(mk, '  fam-0001 ', null), 'ERR:BV330');
+        perform pg_temp.expect('F3: el folio de familia no puede ir vacío → BV320', DIR, 'authenticated', format(mk, '   ', null), 'ERR:BV320');
+        perform pg_temp.expect('F3: el folio de familia no puede ser larguísimo → BV321', DIR, 'authenticated', format(mk, repeat('9', 61), null), 'ERR:BV321');
+        perform pg_temp.expect('F3: un tipo de familia inexistente → BV218', DIR, 'authenticated', format(mk, 'FAM-0010', 'aaaaaaaa-f000-0000-0000-0000000000ff'), 'ERR:BV218');
+        perform pg_temp.expect('F3: un tipo de familia retirado → BV218', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_create_family_unit('FAM-0011', (select id from public.family_type where key = 'retired' and organization_id = %L))) x$q$, ORG_A), 'ERR:BV218');
+        perform pg_temp.expect('F3: un tipo de familia de otra organización → BV218', DIR, 'authenticated', format(mk, 'FAM-0012', t_b), 'ERR:BV218');
+        perform pg_temp.expect('F3: el mismo folio sí puede existir en otra organización', DIRB2, 'authenticated', format(mk, 'FAM-0001', null), '1');
+        begin
+            select id::text into u1 from public.family_unit where organization_id = ORG_A::uuid and family_number = 'FAM-0001';
+            select id::text into u2 from public.family_unit where organization_id = ORG_A::uuid and family_number = 'FAM-0002';
+            select id::text into u_b from public.family_unit where organization_id = ORG_B::uuid and family_number = 'FAM-0001';
+        exception when others then
+            raise notice 'F3: sin tabla family_unit todavía (%).', sqlerrm;
+        end;
+
+        -- ----- Asignar personas a la familia (cada una con su expediente) y su consecutivo
+        perform pg_temp.expect('F3 control positivo: ingreso asigna a la primera persona (consecutivo 1)', INT, 'authenticated', format(asg, g1, u1, '1', null), '1');
+        perform pg_temp.expect('F3 control positivo: Trabajo Social asigna a la segunda (consecutivo 2)', CW, 'authenticated', format(asg, g2, u1, '2', null), '1');
+        perform pg_temp.expect('F3: el consecutivo es opcional (la tercera persona entra sin él)', DIR, 'authenticated', format(asg, g3, u1, 'null', null), '1');
+        perform pg_temp.expect('F3: tres personas vigentes en la familia', null, null,
+            format($q$select count(*)::text from public.family_member where family_unit_id = %L::uuid and valid_to is null$q$, u1), '3');
+        perform pg_temp.expect('F3: el rol de solo lectura no asigna familias → BV120', VW, 'authenticated', format(asg, g4, u1, '4', null), 'ERR:BV120');
+        perform pg_temp.expect('F3: el voluntariado no asigna familias → BV120', VOL, 'authenticated', format(asg, g4, u1, '4', null), 'ERR:BV120');
+        perform pg_temp.expect('F3: otra organización no ve el expediente → BV201', DIRB2, 'authenticated', format(asg, g4, u_b, '4', null), 'ERR:BV201');
+        perform pg_temp.expect('F3: una familia de otra organización no se usa → BV219', DIR, 'authenticated', format(asg, g4, u_b, '4', null), 'ERR:BV219');
+        perform pg_temp.expect('F3: una familia que no existe → BV219', DIR, 'authenticated', format(asg, g4, 'aaaaaaaa-f000-0000-0000-0000000000fe', '4', null), 'ERR:BV219');
+        perform pg_temp.expect('F3: el consecutivo debe ser un número positivo → BV331', DIR, 'authenticated', format(asg, g4, u1, '0', null), 'ERR:BV331');
+        perform pg_temp.expect('F3: ni negativo → BV331', DIR, 'authenticated', format(asg, g4, u1, '-2', null), 'ERR:BV331');
+
+        -- ----- Lo corregido se cierra con motivo; nada se borra
+        perform pg_temp.expect('F3: mover a otra familia exige motivo → BV304', DIR, 'authenticated', format(asg, g1, u2, '1', null), 'ERR:BV304');
+        perform pg_temp.expect('F3 control positivo: con motivo se mueve a otra familia', DIR, 'authenticated', format(asg, g1, u2, '1', 'Estaba mal agrupada'), '1');
+        perform pg_temp.expect('F3: la pertenencia anterior quedó cerrada con su motivo (no se borró)', null, null,
+            format($q$select count(*)::text from public.family_member where case_id = %L::uuid and valid_to is not null and change_reason = 'Estaba mal agrupada'$q$, g1), '1');
+        perform pg_temp.expect('F3: solo hay una pertenencia vigente por persona', null, null,
+            format($q$select count(*)::text from public.family_member where case_id = %L::uuid and valid_to is null$q$, g1), '1');
+        perform pg_temp.expect('F3: repetir la misma familia y consecutivo no crea otro registro', DIR, 'authenticated', format(asg, g1, u2, '1', null), '1');
+        perform pg_temp.expect('F3: siguen siendo 2 registros de esa persona (uno cerrado y uno vigente)', null, null,
+            format($q$select count(*)::text from public.family_member where case_id = %L::uuid$q$, g1), '2');
+        perform pg_temp.expect('F3: cambiar solo el consecutivo también exige motivo → BV304', DIR, 'authenticated', format(asg, g1, u2, '3', null), 'ERR:BV304');
+        perform pg_temp.expect('F3 control positivo: con motivo se corrige el consecutivo', DIR, 'authenticated', format(asg, g1, u2, '3', 'El orden era otro'), '1');
+        perform pg_temp.expect('F3: quitar a la persona de la familia exige motivo → BV304', DIR, 'authenticated', format(rm, g1, null), 'ERR:BV304');
+        perform pg_temp.expect('F3 control positivo: con motivo se quita (se cierra) la pertenencia', DIR, 'authenticated', format(rm, g1, 'Dejó de pertenecer a esa familia'), '1');
+        perform pg_temp.expect('F3: quitada la persona ya no tiene familia vigente', null, null,
+            format($q$select count(*)::text from public.family_member where case_id = %L::uuid and valid_to is null$q$, g1), '0');
+        perform pg_temp.expect('F3: quitar a quien no tiene familia no hace nada', DIR, 'authenticated', format(rm, g1, null), '1');
+
+        -- ----- Crear la familia y asignar en un solo paso
+        perform pg_temp.expect('F3 control positivo: crear la familia y asignar a la persona en un solo paso', INT, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_family(%L::uuid, null, 1, null, 'FAM-0003', %L::uuid)) x$q$, g4, t_nuc), '1');
+        perform pg_temp.expect('F3: la familia nueva quedó con su folio, su tipo y la persona', null, null,
+            format($q$select count(*)::text from public.family_member m join public.family_unit f on f.id = m.family_unit_id
+                      where m.case_id = %L::uuid and m.valid_to is null and f.family_number = 'FAM-0003' and f.family_type_id = %L::uuid$q$, g4, t_nuc), '1');
+        perform pg_temp.expect('F3: crear una familia con un folio que ya existe → BV330', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_family(%L::uuid, null, 1, null, 'FAM-0003', null)) x$q$, g1), 'ERR:BV330');
+        perform pg_temp.expect('F3: indicar una familia existente y el folio de una nueva a la vez → BV332', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_family(%L::uuid, %L::uuid, 1, null, 'FAM-0099', null)) x$q$, g1, u1), 'ERR:BV332');
+        perform pg_temp.expect('F3: si la asignación falla, la familia nueva tampoco se crea (una sola operación)', null, null,
+            $q$select count(*)::text from public.family_unit where family_number = 'FAM-0099'$q$, '0');
+
+        -- ----- El tipo de familia es informativo: no se contradice con el marcador porque ni se compara
+        perform pg_temp.expect('F3: poner «niñez no acompañada» a una familia cuyos miembros no tienen ese marcador es válido (solo informa)', INT, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_family_type(%L::uuid, (select id from public.family_type where key = 'unaccompanied_minor' and organization_id = %L), null)) x$q$, u2, ORG_A), '1');
+        perform pg_temp.expect('F3: cambiar el tipo ya puesto exige motivo → BV304', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_family_type(%L::uuid, %L::uuid, null)) x$q$, u2, t_nuc), 'ERR:BV304');
+        perform pg_temp.expect('F3 control positivo: con motivo se cambia el tipo', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_family_type(%L::uuid, %L::uuid, 'Se aclaró la composición')) x$q$, u2, t_nuc), '1');
+        perform pg_temp.expect('F3: el rol de solo lectura no cambia el tipo → BV120', VW, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_family_type(%L::uuid, %L::uuid, 'x')) x$q$, u2, t_nuc), 'ERR:BV120');
+        perform pg_temp.expect('F3: un tipo inexistente al cambiar → BV218', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_family_type(%L::uuid, 'aaaaaaaa-f000-0000-0000-0000000000ff'::uuid, 'x')) x$q$, u2), 'ERR:BV218');
+
+        -- ----- Sin escritura directa, con visibilidad de roles operativos y auditoría sin valores
+        perform pg_temp.expect('F3: no se inserta una familia por la API directa', DIR, 'authenticated',
+            format($q$with i as (insert into public.family_unit (organization_id, family_number, created_by) values (%L, 'DIRECTA-1', %L) returning 1) select count(*)::text from i$q$, ORG_A, DIR), 'ERR');
+        perform pg_temp.expect('F3: no se edita una familia por la API directa', DIR, 'authenticated',
+            $q$with u as (update public.family_unit set family_number = 'EDITADA' returning 1) select count(*)::text from u$q$, 'ERR');
+        perform pg_temp.expect('F3: no se inserta una pertenencia por la API directa', DIR, 'authenticated',
+            format($q$with i as (insert into public.family_member (organization_id, family_unit_id, case_id, created_by) values (%L, %L::uuid, %L::uuid, %L) returning 1) select count(*)::text from i$q$, ORG_A, u1, g4, DIR), 'ERR');
+        perform pg_temp.expect('F3: no se borra una pertenencia por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.family_member returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('F3 control positivo: dirección ve las familias de su organización', DIR, 'authenticated', 'select count(*)::text from public.family_unit', '>0');
+        perform pg_temp.expect('F3 control positivo: quien atiende ve las pertenencias', CW, 'authenticated', 'select count(*)::text from public.family_member', '>0');
+        perform pg_temp.expect('F3: el rol de solo lectura no ve familias', VW, 'authenticated', 'select count(*)::text from public.family_unit', '0');
+        perform pg_temp.expect('F3: sin rol no se ven pertenencias', NR, 'authenticated', 'select count(*)::text from public.family_member', '0');
+        perform pg_temp.expect('F3: otra organización no ve las familias de A', DIRB2, 'authenticated',
+            format('select count(*)::text from public.family_unit where organization_id = %L', ORG_A), '0');
+        perform pg_temp.expect('F3: la auditoría deja eventos de las familias y las pertenencias', null, null,
+            $q$select count(*)::text from public.audit_event where table_name in ('family_unit', 'family_member') and created_at >= transaction_timestamp()$q$, '>0');
+        perform pg_temp.expect('F3: la auditoría guarda nombres de campos, no el folio de la familia', null, null,
+            $q$select count(*)::text from public.audit_event where table_name in ('family_unit', 'family_member') and created_at >= transaction_timestamp()
+               and (coalesce(new_values::text, '') like '%FAM-000%')$q$, '0');
+
+        -- ----- Derecho de acceso y anonimización
+        perform pg_temp.expect('F3: el extracto de acceso ARCO incluye la familia de la persona', DIR, 'authenticated',
+            format($q$select (jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'family') > 0)::text$q$, pg_temp.id('4000', 51)), 'true');
+        perform pg_temp.expect('F3 prep: la persona que se anonimiza pertenece a una familia', DIR, 'authenticated',
+            format(asg, 'aaaaaaaa-5000-0000-0000-000000000001', u1, '5', null), '1');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
@@ -2410,6 +2577,12 @@ begin
     -- ===== E14 fase 2: las fechas del caso son parte del esqueleto del folio y sobreviven a la anonimización
     perform pg_temp.expect('F2: tras anonimizar, las fechas del caso permanecen (esqueleto estadístico)', null, null,
         $q$select count(*)::text from public.case_date where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is null$q$, '1');
+
+    -- ===== E14 fase 3: al anonimizar, la persona deja la familia (el folio de familia puede identificar a sus parientes)
+    perform pg_temp.expect('F3: tras anonimizar, la persona ya no tiene familia vigente', null, null,
+        $q$select count(*)::text from public.family_member where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is null$q$, '0');
+    perform pg_temp.expect('F3: la pertenencia sigue como registro cerrado, con el motivo suprimido', null, null,
+        $q$select count(*)::text from public.family_member where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null$q$, '1');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

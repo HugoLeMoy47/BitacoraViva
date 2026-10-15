@@ -230,6 +230,17 @@ insert into public.entry_route (organization_id, code, label_es, sort_order) val
     ('00000000-0000-0000-0000-000000000001', 3, 'Terrestre', 3)
 on conflict (organization_id, code) do nothing;
 
+-- 5d. Tipos de familia (E14 fase 3): lecturas de la hoja de casos de CAFEMIN confirmadas por el Product Owner.
+-- Dirección y Trabajo Social los editan; solo informan.
+insert into public.family_type (organization_id, key, label_es, legacy_code, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'nuclear', 'Familia nuclear', 'FAM-NUCL', 1),
+    ('00000000-0000-0000-0000-000000000001', 'single_parent', 'Familia monoparental', 'FAM-MNP', 2),
+    ('00000000-0000-0000-0000-000000000001', 'single_person', 'Persona sola', 'PERS-SOLA', 3),
+    ('00000000-0000-0000-0000-000000000001', 'unaccompanied_minor', 'Niñez y adolescencia no acompañada', 'NNA NO ACOMPAÑADX', 4),
+    ('00000000-0000-0000-0000-000000000001', 'reconstituted', 'Familia reconstituida', 'FAM-REC', 5),
+    ('00000000-0000-0000-0000-000000000001', 'extended', 'Familia extensa', 'FAM-EXTENSA', 6)
+on conflict (organization_id, key) do nothing;
+
 -- ==============================================================================
 -- 6. Personas y Expedientes de Demostración (Épica E3: MAP-OIM v3)
 -- ==============================================================================
