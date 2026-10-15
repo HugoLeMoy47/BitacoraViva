@@ -142,6 +142,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
         occurred_at: entry.occurred_at,
         is_work_note: entry.is_work_note,
         area_id: entry.area_id || null,
+        service_line_item_id: entry.service_line_item_id ?? null,
       }),
       'toast.journal_created'
     );

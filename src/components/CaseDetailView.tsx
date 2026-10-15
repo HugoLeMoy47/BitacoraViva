@@ -36,6 +36,7 @@ import {
   VulnerabilityMarkerCode
 } from '../types/database';
 import { VULNERABILITY_CATALOG, countryLabel, itemLabel, freeTextOrNull } from '../lib/catalogs';
+import { warningOrdinals } from '../lib/journalTemplates';
 import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
@@ -194,6 +195,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   );
 
   const journalEntries = caseData.journal_entries || [];
+  const warningNumbers = warningOrdinals(journalEntries);
 
   const filteredJournalEntries = journalEntries.filter((entry) => {
     if (journalFilter === 'my_area') {
@@ -549,6 +551,26 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                         <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa-dark">
                           {t(`journal.types.${entry.entry_type_key}`)}
                         </span>
+                        {entry.entry_type_key === 'warning' && warningNumbers.has(entry.id) && (
+                          <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
+                            {warningNumbers.get(entry.id)! <= 3
+                              ? t(`journal.warning_badge_${warningNumbers.get(entry.id)}`)
+                              : t('journal.warning_badge_n').replace('{n}', String(warningNumbers.get(entry.id)))}
+                          </span>
+                        )}
+                        {entry.service_line_item_id && (
+                          <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                            {itemLabel(catalogItems, entry.service_line_item_id, null)}
+                          </span>
+                        )}
+                        {entry.source === 'import' && (
+                          <span
+                            title={t('journal.imported_author').replace('{author}', entry.source_author_label ?? '')}
+                            className="rounded-md bg-violet-100 px-2.5 py-1 text-xs font-bold text-violet-800"
+                          >
+                            {t('journal.imported_badge')}
+                          </span>
+                        )}
 
                         {entry.is_work_note && (
                           <span

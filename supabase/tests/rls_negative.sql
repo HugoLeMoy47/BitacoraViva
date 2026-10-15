@@ -2696,6 +2696,89 @@ begin
                and new_values->>'reason' = 'La persona precisó su plan' and created_at >= transaction_timestamp()$q$, 'true');
     end;
 
+    -- ============================================================================================
+    -- ===== E14 fase 4: bitácora por área (migración 20261020000001)
+    -- ===== Tipos de entrada nuevos (diagnóstico, ruta integral, reunión de casos, llamada de atención), línea de servicio
+    -- ===== (diccionario editable) y procedencia de lo importado. La bitácora sigue siendo inmutable.
+    -- ============================================================================================
+    declare
+        c_a constant text := 'aaaaaaaa-5000-0000-0000-000000000001';
+        ar_ts constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        ar_lg constant text := 'aaaaaaaa-1000-0000-0000-000000000002';
+        s_hosp constant text := 'aaaaaaaa-c000-0000-0000-000000000041';
+        s_psy  constant text := 'aaaaaaaa-c000-0000-0000-000000000042';
+        s_old  constant text := 'aaaaaaaa-c000-0000-0000-000000000043';
+        s_b    constant text := 'bbbbbbbb-c000-0000-0000-000000000004';
+        mk text := $q$select count(*)::text from (select public.fn_create_journal_entry(%L::uuid, %L, 'texto de prueba', now(), false, %L::uuid, %L::uuid)) x$q$;
+    begin
+        begin
+            insert into public.catalog_item (id, organization_id, catalog, key, label_es, is_active, is_system, sort_order) values
+                (s_hosp::uuid, ORG_A::uuid, 'service_line', 'hospitality', 'Hospitalidad (prueba)', true, false, 1),
+                (s_psy::uuid, ORG_A::uuid, 'service_line', 'psychology', 'Psicología (prueba)', true, false, 2),
+                (s_old::uuid, ORG_A::uuid, 'service_line', 'retired', 'Línea retirada', false, false, 3),
+                (s_b::uuid, ORG_B::uuid, 'service_line', 'hospitality', 'Hospitalidad B', true, false, 1);
+        exception when others then
+            raise notice 'F4 escenario: sin el diccionario de líneas de servicio todavía (%).', sqlerrm;
+        end;
+
+        -- ----- Tipos nuevos
+        perform pg_temp.expect('F4 control positivo: quien atiende asienta un diagnóstico de Trabajo Social', CW, 'authenticated',
+            format(mk, c_a, 'diagnosis', ar_ts, null), '1');
+        perform pg_temp.expect('F4: ruta integral de atención es un tipo válido', CW, 'authenticated',
+            format(mk, c_a, 'integral_route', ar_ts, null), '1');
+        perform pg_temp.expect('F4: reunión de casos es un tipo válido', CW, 'authenticated',
+            format(mk, c_a, 'case_meeting', ar_ts, null), '1');
+        perform pg_temp.expect('F4: llamada de atención es un tipo válido', CW, 'authenticated',
+            format(mk, c_a, 'warning', ar_ts, null), '1');
+        perform pg_temp.expect('F4: un tipo que no existe se rechaza', CW, 'authenticated',
+            format(mk, c_a, 'inventado', ar_ts, null), 'ERR');
+        perform pg_temp.expect('F4: el rol de solo lectura no asienta → BV101', VW, 'authenticated',
+            format(mk, c_a, 'diagnosis', ar_ts, null), 'ERR:BV101');
+        perform pg_temp.expect('F4: escribir a nombre de otra área sigue vedado → BV117', CW, 'authenticated',
+            format(mk, c_a, 'diagnosis', ar_lg, null), 'ERR:BV117');
+
+        -- ----- Línea de servicio (la «columna» de la hoja)
+        perform pg_temp.expect('F4 control positivo: se asienta con su línea de servicio', CW, 'authenticated',
+            format(mk, c_a, 'follow_up', ar_ts, s_hosp), '1');
+        perform pg_temp.expect('F4: la línea queda en la entrada', null, null,
+            format($q$select count(*)::text from public.journal_entry where case_id = %L::uuid and service_line_item_id = %L::uuid$q$, c_a, s_hosp), '1');
+        perform pg_temp.expect('F4: sin línea la entrada nace sin línea (no se supone una)', null, null,
+            format($q$select (count(*) > 0)::text from public.journal_entry where case_id = %L::uuid and entry_type_key = 'diagnosis' and service_line_item_id is null$q$, c_a), 'true');
+        perform pg_temp.expect('F4: una línea de otra organización no se usa → BV220', CW, 'authenticated',
+            format(mk, c_a, 'follow_up', ar_ts, s_b), 'ERR:BV220');
+        perform pg_temp.expect('F4: una línea retirada no se usa → BV220', CW, 'authenticated',
+            format(mk, c_a, 'follow_up', ar_ts, s_old), 'ERR:BV220');
+        perform pg_temp.expect('F4: un valor de otro diccionario no vale como línea → BV220', CW, 'authenticated',
+            format(mk, c_a, 'follow_up', ar_ts, 'aaaaaaaa-c000-0000-0000-000000000001'), 'ERR:BV220');
+        perform pg_temp.expect('F4: la línea de servicio queda en la auditoría', null, null,
+            format($q$select (count(*) > 0)::text from public.audit_event where table_name = 'journal_entry' and action = 'INSERT'
+               and new_values->>'service_line_item_id' = %L and created_at >= transaction_timestamp()$q$, s_hosp), 'true');
+
+        -- ----- Procedencia: lo que se escribe aquí es «app»; lo importado queda marcado y con su autoría original
+        perform pg_temp.expect('F4: lo asentado desde el sistema nace con procedencia «app»', null, null,
+            format($q$select count(*)::text from public.journal_entry where case_id = %L::uuid and source <> 'app'$q$, c_a), '0');
+        perform pg_temp.expect('F4: una entrada importada exige la autoría original', null, null,
+            format($q$insert into public.journal_entry (organization_id, case_id, area_id, author_user_id, entry_type_key, body, source)
+               values (%L::uuid, %L::uuid, %L::uuid, %L::uuid, 'note', 'importada', 'import')$q$, ORG_A, c_a, ar_ts, CW), 'ERR');
+        perform pg_temp.expect('F4 control positivo: una entrada importada con su autoría original', null, null,
+            format($q$with i as (insert into public.journal_entry (id, organization_id, case_id, area_id, author_user_id, entry_type_key, body, source, source_author_label)
+               values ('aaaaaaaa-6000-0000-0000-0000000000f4', %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'note', 'importada', 'import', 'T.S. Lucía (hoja de casos)') returning 1) select count(*)::text from i$q$,
+               ORG_A, c_a, ar_ts, CW), '1');
+        perform pg_temp.expect('F4: una entrada «app» no lleva autoría ajena', null, null,
+            format($q$insert into public.journal_entry (organization_id, case_id, area_id, author_user_id, entry_type_key, body, source_author_label)
+               values (%L::uuid, %L::uuid, %L::uuid, %L::uuid, 'note', 'x', 'alguien')$q$, ORG_A, c_a, ar_ts, CW), 'ERR');
+        perform pg_temp.expect('F4: la procedencia no se edita → BV611', null, null,
+            $q$update public.journal_entry set source = 'app', source_author_label = null where id = 'aaaaaaaa-6000-0000-0000-0000000000f4'$q$, 'ERR:BV611');
+        perform pg_temp.expect('F4: la línea de servicio no se edita → BV611', null, null,
+            format($q$update public.journal_entry set service_line_item_id = %L::uuid where case_id = %L::uuid and service_line_item_id is not null$q$, s_psy, c_a), 'ERR:BV611');
+        perform pg_temp.expect('F4: la procedencia tampoco se cambia por la API directa', CW, 'authenticated',
+            $q$with u as (update public.journal_entry set source = 'app' where id = 'aaaaaaaa-6000-0000-0000-0000000000f4' returning 1) select count(*)::text from u$q$, 'ERR|0');
+        perform pg_temp.expect('F4: la entrada importada se lee como cualquiera de su área', CW, 'authenticated',
+            $q$select count(*)::text from public.journal_entry where id = 'aaaaaaaa-6000-0000-0000-0000000000f4'$q$, '1');
+        perform pg_temp.expect('F4: la entrada importada de otra organización no se ve', DIRB2, 'authenticated',
+            $q$select count(*)::text from public.journal_entry where id = 'aaaaaaaa-6000-0000-0000-0000000000f4'$q$, '0');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');

@@ -6,6 +6,7 @@ import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
 import { formatDate, formatDateTime } from '../lib/format';
 import { DisabledReason, describedBy } from './DisabledReason';
+import { TEMPLATES, composeBody, hasTemplate, ordinalLabelKey } from '../lib/journalTemplates';
 
 // BV-4.1 · Nueva entrada de bitácora, como PÁGINA (no modal): es el flujo diario de quien trabaja con el sistema.
 // El texto va primero; los datos de la entrada (tipo, área, cuándo, nota protegida) después. Se conserva la vista
@@ -14,7 +15,9 @@ import { DisabledReason, describedBy } from './DisabledReason';
 
 const INPUT = 'w-full min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-turquesa focus:outline-none';
 const LABEL = 'block text-sm font-semibold text-gray-700 mb-1';
-const ENTRY_TYPES: JournalEntryType[] = ['follow_up', 'intake_interview', 'referral', 'home_visit', 'incident', 'note'];
+const ENTRY_TYPES: JournalEntryType[] = [
+  'follow_up', 'intake_interview', 'diagnosis', 'integral_route', 'case_meeting', 'warning', 'referral', 'home_visit', 'incident', 'note',
+];
 
 interface Draft {
   entryType: JournalEntryType;
@@ -22,6 +25,9 @@ interface Draft {
   occurredAt: string;
   isWorkNote: boolean;
   body: string;
+  serviceLineId: string;
+  sections: Record<string, string>;
+  referralKind: '' | 'general' | 'priority';
 }
 const drafts = new Map<string, Draft>();
 
@@ -38,7 +44,8 @@ interface NewJournalEntryPageProps {
 }
 
 export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseData, authorUserId, authorFullName, assignedAreaId, onBack, onCancel, onSubmit }) => {
-  const { areas: allAreas } = useCatalog();
+  const { areas: allAreas, catalogItems } = useCatalog();
+  const serviceLines = catalogItems.filter((i) => i.catalog === 'service_line' && i.is_active);
   const { user } = useSession();
   // Escribir a nombre de un área exige ser de esa área; Dirección, de cualquiera. Sin área asignada
   // (ingreso) solo coordinación. La base lo exige igual; aquí solo se ofrece lo que se puede hacer.
@@ -62,11 +69,26 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
     saved?.occurredAt ?? new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
   );
   const [isWorkNote, setIsWorkNote] = useState<boolean>(saved?.isWorkNote ?? false);
-  const [body, setBody] = useState<string>(saved?.body ?? '');
+  const [freeBody, setFreeBody] = useState<string>(saved?.body ?? '');
+  const [serviceLineId, setServiceLineId] = useState<string>(saved?.serviceLineId ?? '');
+  const [sections, setSections] = useState<Record<string, string>>(saved?.sections ?? {});
+  const [referralKind, setReferralKind] = useState<'' | 'general' | 'priority'>(saved?.referralKind ?? '');
+
+  // Diagnóstico y reunión de casos se redactan por secciones; el resultado es el texto de la entrada. Una sección vacía no se escribe.
+  const templated = hasTemplate(entryType);
+  const sectionTitle = (key: string) => {
+    const base = t(`journal.templates.${entryType}.${key}`);
+    return entryType === 'case_meeting' && key === 'referred' && referralKind
+      ? `${base} (${t(`journal.templates.referral_${referralKind}`)})`
+      : base;
+  };
+  const body = templated
+    ? composeBody(TEMPLATES[entryType].map((k) => ({ title: sectionTitle(k), text: sections[`${entryType}.${k}`] ?? '' })))
+    : freeBody;
 
   useEffect(() => {
-    drafts.set(caseData.id, { entryType, areaId, occurredAt, isWorkNote, body });
-  }, [caseData.id, entryType, areaId, occurredAt, isWorkNote, body]);
+    drafts.set(caseData.id, { entryType, areaId, occurredAt, isWorkNote, body: freeBody, serviceLineId, sections, referralKind });
+  }, [caseData.id, entryType, areaId, occurredAt, isWorkNote, freeBody, serviceLineId, sections, referralKind]);
   const dirty = body.trim().length > 0;
   useEffect(() => {
     if (!dirty) return;
@@ -81,6 +103,12 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
   // Las últimas entradas que esta persona ya puede ver en el caso: contexto para no repetir ni contradecir
   const recent = useMemo(
     () => [...(caseData.journal_entries ?? [])].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)).slice(0, 3),
+    [caseData.journal_entries]
+  );
+
+  // 1.ª, 2.ª… llamada de atención: se deriva de las que esta persona ya puede ver en el expediente
+  const nextWarning = useMemo(
+    () => (caseData.journal_entries ?? []).filter((e) => e.entry_type_key === 'warning').length + 1,
     [caseData.journal_entries]
   );
 
@@ -112,6 +140,7 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
       created_at: new Date().toISOString(),
       visibility: 'area_private',
       superseded_by_id: null,
+      service_line_item_id: serviceLineId || null,
     };
     finish();
     onSubmit(entry);
@@ -148,33 +177,85 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
         {step === 'compose' ? (
           <form onSubmit={toPreview} className="min-w-0 space-y-5">
             <div className="rounded-2xl border border-gray-200 bg-white p-5">
-              <label className="mb-1 block text-base font-bold text-carbon" htmlFor="bit-body">
-                {t('journal.new_modal.field_body')}
-              </label>
-              <textarea
-                id="bit-body"
-                name="bit-body"
-                autoComplete="off"
-                autoFocus
-                rows={9}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder={t('journal.new_modal.field_body_placeholder')}
-                className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa"
-              />
+              <label className={LABEL} htmlFor="bit-type">{t('journal.new_modal.field_type')}</label>
+              <select id="bit-type" name="bit-type" autoComplete="off" value={entryType} onChange={(e) => setEntryType(e.target.value as JournalEntryType)} className={INPUT}>
+                {ENTRY_TYPES.map((k) => (
+                  <option key={k} value={k}>{t(`journal.types.${k}`)}</option>
+                ))}
+              </select>
+              {entryType === 'warning' && (
+                <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-700">
+                  {t('journal.warning_next').replace('{ordinal}', t(ordinalLabelKey(nextWarning)))}
+                </p>
+              )}
             </div>
+
+            {templated ? (
+              <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
+                <p className="text-sm text-gray-600">{t('journal.templates.hint')}</p>
+                {TEMPLATES[entryType].map((k, i) => (
+                  <div key={`${entryType}.${k}`}>
+                    <label className="mb-1 block text-base font-bold text-carbon" htmlFor={`bit-sec-${k}`}>{sectionTitle(k)}</label>
+                    <textarea
+                      id={`bit-sec-${k}`}
+                      name={`bit-sec-${k}`}
+                      autoComplete="off"
+                      autoFocus={i === 0}
+                      rows={3}
+                      value={sections[`${entryType}.${k}`] ?? ''}
+                      onChange={(e) => setSections((s) => ({ ...s, [`${entryType}.${k}`]: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa"
+                    />
+                    {entryType === 'case_meeting' && k === 'referred' && (
+                      <fieldset className="mt-2">
+                        <legend className="text-sm font-semibold text-gray-700">{t('journal.templates.referral_kind')}</legend>
+                        <div className="mt-1 flex flex-wrap gap-4">
+                          {(['', 'general', 'priority'] as const).map((v) => (
+                            <label key={v || 'none'} className="flex min-h-11 items-center gap-2 text-sm text-carbon">
+                              <input type="radio" name="bit-referral-kind" checked={referralKind === v} onChange={() => setReferralKind(v)} />
+                              {v === '' ? t('journal.templates.referral_none') : t(`journal.templates.referral_${v}`)}
+                            </label>
+                          ))}
+                        </div>
+                      </fieldset>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-gray-200 bg-white p-5">
+                <label className="mb-1 block text-base font-bold text-carbon" htmlFor="bit-body">
+                  {t('journal.new_modal.field_body')}
+                </label>
+                <textarea
+                  id="bit-body"
+                  name="bit-body"
+                  autoComplete="off"
+                  autoFocus
+                  rows={9}
+                  value={freeBody}
+                  onChange={(e) => setFreeBody(e.target.value)}
+                  placeholder={t('journal.new_modal.field_body_placeholder')}
+                  className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa"
+                />
+              </div>
+            )}
 
             <fieldset className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5">
               <legend className="px-1 text-base font-bold text-carbon">{t('journal.new_page.details')}</legend>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className={LABEL} htmlFor="bit-type">{t('journal.new_modal.field_type')}</label>
-                  <select id="bit-type" name="bit-type" autoComplete="off" value={entryType} onChange={(e) => setEntryType(e.target.value as JournalEntryType)} className={INPUT}>
-                    {ENTRY_TYPES.map((k) => (
-                      <option key={k} value={k}>{t(`journal.types.${k}`)}</option>
-                    ))}
-                  </select>
-                </div>
+                {serviceLines.length > 0 && (
+                  <div>
+                    <label className={LABEL} htmlFor="bit-line">{t('journal.service_line.label')}</label>
+                    <select id="bit-line" name="bit-line" autoComplete="off" value={serviceLineId} onChange={(e) => setServiceLineId(e.target.value)} className={INPUT}>
+                      <option value="">{t('journal.service_line.none')}</option>
+                      {serviceLines.map((i) => (
+                        <option key={i.id} value={i.id}>{i.label_es}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-sm text-gray-600">{t('journal.service_line.help')}</p>
+                  </div>
+                )}
                 <div>
                   {areas.length > 1 ? (
                     <>
@@ -260,6 +341,11 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">{currentArea?.name}</span>
                   <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa-dark">{t(`journal.types.${entryType}`)}</span>
+                  {serviceLineId && (
+                    <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                      {serviceLines.find((i) => i.id === serviceLineId)?.label_es}
+                    </span>
+                  )}
                   {isWorkNote && (
                     <span className="flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
                       <Shield className="h-3 w-3" aria-hidden="true" />
