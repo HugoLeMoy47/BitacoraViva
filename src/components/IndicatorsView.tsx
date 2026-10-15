@@ -41,7 +41,8 @@ function bucketLabel(metric: string, bucket: string): string {
     case 'sex':
       return t(`indicators.sex.${bucket}`);
     case 'age_band':
-      return t('indicators.age_years').replace('{band}', bucket);
+      // El grupo trae el nombre que le puso la organización; sin grupos configurados llega «sin_dato»
+      return bucket === 'sin_dato' ? t('indicators.age_none') : bucket;
     case 'vulnerability':
       return VULNERABILITY_CATALOG[bucket as VulnerabilityMarkerCode]?.label || bucket;
     default:

@@ -326,6 +326,15 @@ export interface CatalogItem {
   sort_order: number;
 }
 
+/** Grupo por edad configurable (E14 fase 5): empieza en `min_age` y termina donde empieza el siguiente; solo por edad, sin sexo */
+export interface AgeBand {
+  id: string;
+  organization_id: string;
+  label_es: string;
+  min_age: number;
+  sort_order: number;
+}
+
 /** Tipo de familia (catálogo de la organización que editan dirección y Trabajo Social; solo informativo) */
 export interface FamilyType {
   id: string;

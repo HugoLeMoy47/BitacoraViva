@@ -2779,6 +2779,69 @@ begin
             $q$select count(*)::text from public.journal_entry where id = 'aaaaaaaa-6000-0000-0000-0000000000f4'$q$, '0');
     end;
 
+    -- ============================================================================================
+    -- ===== E14 fase 5: grupos por edad configurables (migración 20261021000001)
+    -- ===== El grupo por edad se calcula SOLO por edad (sin sexo, D-14). Las bandas las editan dirección y Trabajo Social
+    -- ===== (`can_manage_catalogs()`); cambiarlas cierra las anteriores con motivo, nada se borra. Los indicadores las usan.
+    -- ============================================================================================
+    declare
+        CW_LG constant text := 'aaaaaaaa-3000-0000-0000-00000000000a';  -- caseworker del área jurídica (no administra diccionarios)
+        three text := '[{"label":"Niñez","min_age":0},{"label":"Adolescencia","min_age":12},{"label":"Adultez","min_age":18}]';
+        setb text := $q$select count(*)::text from (select public.fn_set_age_bands(%L::jsonb, %L)) x$q$;
+        cur text := $q$select count(*)::text from public.age_band where organization_id = %L::uuid and valid_to is null$q$;
+    begin
+        perform pg_temp.expect('F5 control positivo: dirección define los grupos por edad', DIR, 'authenticated',
+            format(setb, three, null), '1');
+        perform pg_temp.expect('F5: quedaron tres grupos vigentes', null, null, format(cur, ORG_A), '3');
+        perform pg_temp.expect('F5: Trabajo Social también los edita (con motivo, porque ya hay)', CW, 'authenticated',
+            format(setb, '[{"label":"Niñez","min_age":0},{"label":"Personas adultas","min_age":18}]', 'Se simplifican los grupos'), '1');
+        perform pg_temp.expect('F5: el reemplazo deja solo los dos grupos nuevos vigentes', null, null, format(cur, ORG_A), '2');
+        perform pg_temp.expect('F5: lo anterior se cerró, no se borró (3 grupos cerrados con motivo)', null, null,
+            format($q$select count(*)::text from public.age_band where organization_id = %L::uuid and valid_to is not null and change_reason = 'Se simplifican los grupos'$q$, ORG_A), '3');
+        perform pg_temp.expect('F5: cambiar sin motivo no se puede → BV304', DIR, 'authenticated',
+            format(setb, three, null), 'ERR:BV304');
+        perform pg_temp.expect('F5: el área jurídica no administra los grupos → BV335', CW_LG, 'authenticated',
+            format(setb, three, 'x'), 'ERR:BV335');
+        perform pg_temp.expect('F5: el rol de solo lectura no los edita → BV335', VW, 'authenticated',
+            format(setb, three, 'x'), 'ERR:BV335');
+        perform pg_temp.expect('F5: el voluntariado no los edita → BV335', VOL, 'authenticated',
+            format(setb, three, 'x'), 'ERR:BV335');
+        perform pg_temp.expect('F5: el primer grupo debe empezar en 0 años → BV336', DIR, 'authenticated',
+            format(setb, '[{"label":"Niñez","min_age":3}]', 'x'), 'ERR:BV336');
+        perform pg_temp.expect('F5: las edades deben ir de menor a mayor, sin repetirse → BV336', DIR, 'authenticated',
+            format(setb, '[{"label":"A","min_age":0},{"label":"B","min_age":18},{"label":"C","min_age":12}]', 'x'), 'ERR:BV336');
+        perform pg_temp.expect('F5: dos grupos no empiezan en la misma edad → BV336', DIR, 'authenticated',
+            format(setb, '[{"label":"A","min_age":0},{"label":"B","min_age":0}]', 'x'), 'ERR:BV336');
+        perform pg_temp.expect('F5: el nombre del grupo es obligatorio → BV336', DIR, 'authenticated',
+            format(setb, '[{"label":"  ","min_age":0}]', 'x'), 'ERR:BV336');
+        perform pg_temp.expect('F5: los nombres no se repiten → BV336', DIR, 'authenticated',
+            format(setb, '[{"label":"A","min_age":0},{"label":"a","min_age":18}]', 'x'), 'ERR:BV336');
+        perform pg_temp.expect('F5: sin ningún grupo no se puede → BV336', DIR, 'authenticated',
+            format(setb, '[]', 'x'), 'ERR:BV336');
+        perform pg_temp.expect('F5: lo que no es una lista no se acepta → BV336', DIR, 'authenticated',
+            format(setb, '{"label":"A"}', 'x'), 'ERR:BV336');
+        perform pg_temp.expect('F5: los intentos rechazados no cambiaron nada (siguen los dos grupos)', null, null, format(cur, ORG_A), '2');
+        perform pg_temp.expect('F5: los grupos no se escriben por la API directa', CW, 'authenticated',
+            format($q$with i as (insert into public.age_band (organization_id, label_es, min_age, sort_order, created_by) values (%L::uuid, 'Directo', 99, 9, %L::uuid) returning 1) select count(*)::text from i$q$, ORG_A, CW), 'ERR');
+        perform pg_temp.expect('F5: ni se borran por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.age_band returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('F5: otra organización no ve los grupos de A', DIRB2, 'authenticated', 'select count(*)::text from public.age_band', '0');
+        perform pg_temp.expect('F5: el personal de A los lee (lo necesita la pantalla del caso)', VW, 'authenticated',
+            'select (count(*) > 0)::text from public.age_band', 'true');
+        perform pg_temp.expect('F5: el cambio de grupos queda en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where table_name = 'age_band' and created_at >= transaction_timestamp()$q$, 'true');
+
+        -- Indicadores: usan los grupos configurados, no rangos fijos
+        perform pg_temp.expect('F5: los indicadores agrupan por los grupos configurados', null, null,
+            format($q$select (count(*) > 0)::text from public.fn_metric_rows(%L::uuid, null, null) where metric = 'age_band' and bucket in ('Niñez', 'Personas adultas')$q$, ORG_A), 'true');
+        perform pg_temp.expect('F5: ya no salen los rangos fijos de antes', null, null,
+            format($q$select count(*)::text from public.fn_metric_rows(%L::uuid, null, null) where metric = 'age_band' and bucket in ('0-11', '12-17', '18-29', '30-44', '45+')$q$, ORG_A), '0');
+        perform pg_temp.expect('F5 (preparación): se quitan los grupos de A solo dentro de la transacción de prueba', null, null,
+            format($q$with d as (delete from public.age_band where organization_id = %L::uuid returning 1) select (count(*) > 0)::text from d$q$, ORG_A), 'true');
+        perform pg_temp.expect('F5: sin grupos configurados el indicador dice «sin dato» (no se supone ninguno)', null, null,
+            format($q$select (count(*) > 0)::text from public.fn_metric_rows(%L::uuid, null, null) where metric = 'age_band' and bucket = 'sin_dato'$q$, ORG_A), 'true');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');

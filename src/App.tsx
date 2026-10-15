@@ -232,7 +232,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const caseNumberOf = (id: string) => casesList.find((c) => c.id === id)?.case_number ?? null;
 
   return (
-    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, documentTypes: data.documentTypes, geoStates: data.geoStates, intakeChannels: data.intakeChannels, entryRoutes: data.entryRoutes, familyTypes: data.familyTypes, familyUnits: data.familyUnits, catalogItems: data.catalogItems, organizationName: organization?.legal_name ?? '', organizationInfo: { responsibleName: organization?.responsible_name ?? '', responsibleAddress: organization?.responsible_address ?? '', arcoContact: organization?.arco_contact ?? '' }, userNames: data.userNames }}>
+    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, documentTypes: data.documentTypes, geoStates: data.geoStates, intakeChannels: data.intakeChannels, entryRoutes: data.entryRoutes, familyTypes: data.familyTypes, familyUnits: data.familyUnits, catalogItems: data.catalogItems, ageBands: data.ageBands, organizationName: organization?.legal_name ?? '', organizationInfo: { responsibleName: organization?.responsible_name ?? '', responsibleAddress: organization?.responsible_address ?? '', arcoContact: organization?.arco_contact ?? '' }, userNames: data.userNames }}>
       {pending > 0 && (
         <div role="status" className="fixed left-1/2 top-16 z-[55] -translate-x-1/2 rounded-full bg-carbon px-4 py-1.5 text-sm font-semibold text-white shadow-lg">
           {t('toast.saving')}
