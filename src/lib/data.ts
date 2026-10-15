@@ -12,7 +12,11 @@ import {
   CaseVulnerabilityMarker,
   CaseWithDetails,
   Consent,
+  CaseFamilyView,
   DocumentType,
+  FamilyMember,
+  FamilyType,
+  FamilyUnit,
   GeoMunicipality,
   GeoState,
   IntakeOption,
@@ -53,6 +57,9 @@ export interface OrgData {
   geoStates: GeoState[];
   intakeChannels: IntakeOption[];
   entryRoutes: IntakeOption[];
+  /** Tipos de familia y familias del sistema paralelo (E14 fase 3) */
+  familyTypes: FamilyType[];
+  familyUnits: FamilyUnit[];
   auditEvents: AuditEvent[];
   authorityRequests: AuthorityRequest[];
   sharingEvents: SharingEvent[];
@@ -76,6 +83,8 @@ export const EMPTY_ORG_DATA: OrgData = {
   geoStates: [],
   intakeChannels: [],
   entryRoutes: [],
+  familyTypes: [],
+  familyUnits: [],
   auditEvents: [],
   authorityRequests: [],
   sharingEvents: [],
@@ -132,6 +141,9 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     intakeChannels,
     entryRoutes,
     caseDates,
+    familyTypes,
+    familyUnits,
+    familyMembers,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -164,6 +176,10 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     rows<IntakeOption>(supabase.from('entry_route').select('*').order('sort_order')),
     // RLS: solo roles que operan expedientes
     rows<CaseDate>(supabase.from('case_date').select('*').order('created_at')),
+    rows<FamilyType>(supabase.from('family_type').select('*').order('sort_order')),
+    // RLS: solo roles que operan expedientes
+    rows<FamilyUnit>(supabase.from('family_unit').select('*').order('family_number')),
+    rows<FamilyMember>(supabase.from('family_member').select('*').is('valid_to', null)),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -172,6 +188,24 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
   const personById = new Map(persons.map((p) => [p.id, p]));
   const caseById = new Map(cases.map((c) => [c.id, c]));
   const documentTypeById = new Map(documentTypes.map((d) => [d.id, d]));
+  // Familias: cada persona (por su expediente) tiene a lo sumo una pertenencia vigente
+  const familyTypeById = new Map(familyTypes.map((t) => [t.id, t]));
+  const familyUnitById = new Map(familyUnits.map((u) => [u.id, u]));
+  const membersByUnit = new Map<string, FamilyMember[]>();
+  for (const m of familyMembers) membersByUnit.set(m.family_unit_id, [...(membersByUnit.get(m.family_unit_id) ?? []), m]);
+  const memberByCase = new Map(familyMembers.map((m) => [m.case_id, m]));
+  const familyOf = (caseId: string): CaseFamilyView | null => {
+    const mine = memberByCase.get(caseId);
+    const unit = mine ? familyUnitById.get(mine.family_unit_id) : undefined;
+    if (!mine || !unit) return null;
+    const members = (membersByUnit.get(unit.id) ?? [])
+      .map((m) => {
+        const c = caseById.get(m.case_id);
+        return { caseId: m.case_id, caseNumber: c?.case_number ?? '', personName: fullName(c ? personById.get(c.titular_person_id) : null), order: m.member_order ?? null };
+      })
+      .sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9) || a.caseNumber.localeCompare(b.caseNumber));
+    return { unit, typeLabel: unit.family_type_id ? familyTypeById.get(unit.family_type_id)?.label_es ?? null : null, order: mine.member_order ?? null, members };
+  };
   const userName = (id?: string | null) => profiles.find((p) => p.id === id)?.full_name;
 
   const statusValues = { ...EMPTY_ORG_DATA.statusValues };
@@ -244,6 +278,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
           .filter((k) => k.person_id === c.titular_person_id)
           .map((k) => ({ ...k, granted_by_name: userName(k.granted_by_user_id) })),
         dates: caseDates.filter((d) => d.case_id === c.id),
+        family: familyOf(c.id),
         documents: personDocuments
           .filter((d) => d.person_id === c.titular_person_id)
           .map((d) => ({ ...d, type_label: documentTypeById.get(d.document_type_id)?.label_es ?? '—' })),
@@ -272,6 +307,8 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     geoStates,
     intakeChannels,
     entryRoutes,
+    familyTypes,
+    familyUnits,
     auditEvents: audit,
     authorityRequests: authority,
     sharingEvents,
@@ -548,6 +585,20 @@ export const api = {
 
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),
+
+  // Familia del sistema paralelo (E14 fase 3): asignar, mover, quitar o crear en el mismo paso
+  setCaseFamily: (caseId: string, familyUnitId: string | null, order: number | null, reason?: string, newNumber?: string, newTypeId?: string | null) =>
+    rpc<string | null>('fn_set_case_family', {
+      p_case_id: caseId,
+      p_family_unit_id: familyUnitId,
+      p_member_order: order,
+      p_reason: reason?.trim() || null,
+      p_new_family_number: newNumber?.trim() || null,
+      p_new_family_type_id: newTypeId ?? null,
+    }),
+
+  setFamilyType: (familyUnitId: string, typeId: string | null, reason?: string) =>
+    rpc('fn_set_family_type', { p_family_unit_id: familyUnitId, p_family_type_id: typeId, p_reason: reason?.trim() || null }),
 
   // Ingreso o egreso del albergue: el estatus de alojamiento y la fecha del movimiento, en una sola operación (E14 fase 2b)
   changeShelterStatus: (caseId: string, newValueCode: string, reason: string, date: string, precision: string) =>
