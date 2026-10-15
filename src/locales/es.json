@@ -367,6 +367,7 @@
       "audit_event": "Registro de auditoría",
       "authority_request": "Requerimiento de autoridad",
       "case": "Expediente",
+      "case_date": "Fecha del caso",
       "case_status": "Estatus del expediente",
       "case_task_kind": "Tipo de tarea ligada",
       "case_vulnerability_marker": "Marcador de vulnerabilidad",
@@ -1002,6 +1003,9 @@
       "bv322": "Falta indicar si la persona concedió o no cada consentimiento. Revisa las decisiones e inténtalo de nuevo.",
       "bv323": "Elige el tipo de ventanilla para abrir el expediente.",
       "bv324": "Escribe la fecha de nacimiento (aproximada si no se conoce) para abrir el expediente.",
+      "bv325": "Esa fecha no es válida: revisa el tipo, cuánto se sabe (día, mes o año) y el valor.",
+      "bv326": "La fecha no puede ser futura: solo se registra lo que ya pasó.",
+      "bv327": "Las fechas no cuadran: el ingreso no puede ser posterior al egreso, ni una fecha anterior al nacimiento de la persona.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
       "bv403": "Para una persona menor de 18 años, el consentimiento exige su asentimiento y la identidad de quien la representa.",
@@ -1552,5 +1556,33 @@
     "marker_detail_title": "Detalle del marcador",
     "marker_detail_label": "Detalle",
     "marker_detail_hint": "Aclara el marcador con tus palabras, por ejemplo qué tipo de situación es. Es un dato sensible. Dejarlo vacío lo quita."
+  },
+  "dates": {
+    "title": "Fechas del caso",
+    "subtitle": "Ingreso y egreso a la nación y al albergue. Si solo se conoce el mes o el año, se registra solo eso: el sistema no inventa el día.",
+    "kind": {
+      "nation_entry": "Ingreso a la nación",
+      "nation_exit": "Egreso de la nación",
+      "shelter_entry": "Ingreso al albergue",
+      "shelter_exit": "Egreso del albergue"
+    },
+    "precision_label": "Cuánto se sabe de la fecha",
+    "precision_day": "Día exacto",
+    "precision_month": "Solo el mes",
+    "precision_year": "Solo el año",
+    "year_placeholder": "Año (4 dígitos)",
+    "register": "Registrar fecha",
+    "change": "Cambiar",
+    "remove": "Quitar la fecha",
+    "history": "Historial de fechas",
+    "closed_because": "Se cerró porque:",
+    "legacy_note": "dato anterior",
+    "modal_hint": "Elige cuánto se sabe: día exacto, solo el mes o solo el año. Cambiar o quitar una fecha ya registrada pide el motivo; la anterior queda en el historial.",
+    "reason_missing_value": "Para guardar, escribe la fecha según lo que se sabe (día, mes o año).",
+    "reason_invalid": "Esa fecha no es válida. Revísala o déjala vacía.",
+    "reason_future": "La fecha no puede ser futura: solo se registra lo que ya pasó.",
+    "reason_remove": "Para quitar la fecha, escribe primero el motivo.",
+    "saved": "Fecha guardada.",
+    "removed": "Fecha quitada. Queda en el historial."
   }
 }

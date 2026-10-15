@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { DbError } from './errors';
 import {
   Area,
+  CaseDate,
   ArcoRequest,
   AuditEvent,
   AuditChainVerification,
@@ -130,6 +131,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     geoStates,
     intakeChannels,
     entryRoutes,
+    caseDates,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -160,6 +162,8 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     rows<GeoState>(supabase.from('geo_state').select('*').order('cve_ent')),
     rows<IntakeOption>(supabase.from('intake_channel').select('*').order('sort_order')),
     rows<IntakeOption>(supabase.from('entry_route').select('*').order('sort_order')),
+    // RLS: solo roles que operan expedientes
+    rows<CaseDate>(supabase.from('case_date').select('*').order('created_at')),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -239,6 +243,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
         consents: consents
           .filter((k) => k.person_id === c.titular_person_id)
           .map((k) => ({ ...k, granted_by_name: userName(k.granted_by_user_id) })),
+        dates: caseDates.filter((d) => d.case_id === c.id),
         documents: personDocuments
           .filter((d) => d.person_id === c.titular_person_id)
           .map((d) => ({ ...d, type_label: documentTypeById.get(d.document_type_id)?.label_es ?? '—' })),
@@ -340,6 +345,8 @@ export interface NewCaseInput {
   intake_channel_id: number | null;
   entry_route_id: number | null;
   entry_date_str: string | null;
+  /** Fechas del caso con su precisión (E14 fase 2); se registran junto con el alta */
+  dates: { kind: 'nation_entry' | 'nation_exit' | 'shelter_entry' | 'shelter_exit'; value: string; precision: 'day' | 'month' | 'year' }[];
   assigned_area_id: string | null;
   vulnerability_codes: string[];
   consents: ConsentInput[];
@@ -425,6 +432,7 @@ export const api = {
       p_assigned_area_id: i.assigned_area_id,
       p_vulnerability_codes: i.vulnerability_codes,
       p_consents: i.consents,
+      p_dates: i.dates,
     }),
 
   createSubfolio: (i: SubfolioInput) =>
@@ -540,6 +548,16 @@ export const api = {
 
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),
+
+  // Una fecha del caso: se corrige o se quita con motivo (E14 fase 2). Con valor vacío la quita.
+  setCaseDate: (caseId: string, kind: string, value: string | null, precision: string | null, reason?: string) =>
+    rpc<string | null>('fn_set_case_date', {
+      p_case_id: caseId,
+      p_kind: kind,
+      p_value: value,
+      p_precision: precision,
+      p_reason: reason?.trim() || null,
+    }),
 
   // Municipios de un estado (catálogo oficial del INEGI): se piden al elegir el estado, no todos de golpe
   listMunicipalities: (stateKey: string) =>

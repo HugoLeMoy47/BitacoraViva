@@ -309,6 +309,22 @@ export interface Case {
   updated_at: string;
 }
 
+export type CaseDateKind = 'nation_entry' | 'nation_exit' | 'shelter_entry' | 'shelter_exit';
+
+/** Fecha del caso con la precisión que se conoce; `valid_to` lleno = cerrada (corregida o quitada, con su motivo) */
+export interface CaseDate {
+  id: string;
+  organization_id: string;
+  case_id: string;
+  kind: CaseDateKind;
+  /** Inicio del periodo: con precisión de mes el día 1, con precisión de año el 1 de enero */
+  value: string;
+  precision: 'day' | 'month' | 'year';
+  created_at: string;
+  valid_to?: string | null;
+  change_reason?: string | null;
+}
+
 /** Estado oficial (INEGI): clave de 2 dígitos */
 export interface GeoState {
   cve_ent: string;
@@ -460,6 +476,7 @@ export interface CaseWithDetails extends Case {
   consents?: Consent[];
   arco_requests?: ArcoRequest[];
   documents?: PersonDocument[];
+  dates?: CaseDate[];
 }
 
 // ------------------------------------------------------------------------------

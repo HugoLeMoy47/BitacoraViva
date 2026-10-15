@@ -3,6 +3,8 @@ import { ArrowLeft, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle, Bo
 import { t } from '../lib/i18n';
 import { ConsentText, GeoMunicipality, PrivacyNotice, VulnerabilityMarkerCode } from '../types/database';
 import { friendlyError } from '../lib/errors';
+import { DatePrecision, startsInFuture, toStoredDate } from '../lib/flexDate';
+import { FlexibleDateInput } from './FlexibleDateInput';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
@@ -79,6 +81,11 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const [municipalityKey, setMunicipalityKey] = useState('');
   const [channelCode, setChannelCode] = useState('');
   const [routeCode, setRouteCode] = useState('');
+  // Fechas de ingreso (opcionales, con la precisión que se conozca)
+  const [nationPrecision, setNationPrecision] = useState<DatePrecision>('day');
+  const [nationRaw, setNationRaw] = useState('');
+  const [shelterPrecision, setShelterPrecision] = useState<DatePrecision>('day');
+  const [shelterRaw, setShelterRaw] = useState('');
   const [municipalities, setMunicipalities] = useState<GeoMunicipality[]>([]);
   const [municipalitiesError, setMunicipalitiesError] = useState<string | null>(null);
 
@@ -137,6 +144,15 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       ? 'intake.consent.unaccompanied_marker_needs_authority'
       : null;
 
+  // Fechas de ingreso: lo escrito debe servir y no ser futuro; vacío = «No registrado»
+  const dateProblem = (precision: DatePrecision, raw: string): string | null => {
+    const stored = toStoredDate(precision, raw);
+    if (raw.trim() !== '' && !stored) return t('dates.reason_invalid');
+    return stored && startsInFuture(stored) ? t('dates.reason_future') : null;
+  };
+  const nationProblem = dateProblem(nationPrecision, nationRaw);
+  const shelterProblem = dateProblem(shelterPrecision, shelterRaw);
+
   const toggleVulnerability = (code: VulnerabilityMarkerCode) => {
     setSelectedVulnerabilities((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
@@ -170,6 +186,12 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const handleFinish = () => {
     // Ningún dato se inventa: lo sensible solo viaja con consentimiento sensible; lo no resuelto va vacío
     const nationality = sensitiveGranted && nationalityCountry ? nationalityCountry : null;
+    const nationStored = toStoredDate(nationPrecision, nationRaw);
+    const shelterStored = toStoredDate(shelterPrecision, shelterRaw);
+    const dates: NewCaseInput['dates'] = [
+      ...(nationStored ? [{ kind: 'nation_entry' as const, value: nationStored, precision: nationPrecision }] : []),
+      ...(shelterStored ? [{ kind: 'shelter_entry' as const, value: shelterStored, precision: shelterPrecision }] : []),
+    ];
     const input: NewCaseInput = {
       given_name: givenName.trim(),
       paternal_family_name: paternalName.trim(),
@@ -191,6 +213,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       intake_channel_id: channelCode ? Number(channelCode) : null,
       entry_route_id: routeCode ? Number(routeCode) : null,
       entry_date_str: null,
+      dates,
       assigned_area_id: areas.find((a) => a.code === 'trabajo_social')?.id ?? null,
       vulnerability_codes: sensitiveGranted ? selectedVulnerabilities : [],
       consents: buildConsents(),
@@ -220,6 +243,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
     }
     if (step === 1) {
       if (!windowType) return t('intake.reason.window_type');
+      if (nationProblem) return nationProblem;
+      if (shelterProblem) return shelterProblem;
     }
     if (step === 2) {
       if (!givenName.trim()) return t('intake.reason.given_name');
@@ -529,6 +554,25 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                     {entryRoutes.filter((r) => r.is_active).map((r) => <option key={r.id} value={r.code}>{r.label_es}</option>)}
                   </select>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FlexibleDateInput
+                  id="newcas-nation"
+                  label={t('dates.kind.nation_entry')}
+                  precision={nationPrecision}
+                  value={nationRaw}
+                  onChange={(p, v) => { setNationPrecision(p); setNationRaw(v); }}
+                  problem={nationProblem}
+                />
+                <FlexibleDateInput
+                  id="newcas-shelter"
+                  label={t('dates.kind.shelter_entry')}
+                  precision={shelterPrecision}
+                  value={shelterRaw}
+                  onChange={(p, v) => { setShelterPrecision(p); setShelterRaw(v); }}
+                  problem={shelterProblem}
+                />
               </div>
             </div>
           )}
