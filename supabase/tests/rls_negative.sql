@@ -1686,11 +1686,11 @@ begin
             $q$select count(*)::text from public."case" where parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1'
                and closed_at is null and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, '>0');
         perform pg_temp.expect('BV-3.2 (D-14): con consentimiento sensible el subfolio guarda sexo, nacionalidad y lengua capturados', INT, 'authenticated',
-            replace(replace(sub, 'false,null,null,null,null,null,', 'false,1,93,''Honduras'',1,''Español'','),
+            replace(replace(sub, 'false,null,null,null,null,null,', 'false,1,93,''Honduras'',null,null,'),
                     '"is_minor_assent":true}]', '"is_minor_assent":true},{"consent_type":"sensitive_data","status":"granted","is_minor_assent":true}]'), '1');
         perform pg_temp.expect('BV-3.2: la persona del subfolio conserva la nacionalidad y el idioma capturados', null, null,
             $q$select count(*)::text from public.person p join public."case" k on k.titular_person_id = p.id
-               where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and p.other_nationality = 'Honduras' and p.other_language = 'Español'$q$, '>0');
+               where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and p.other_nationality = 'Honduras'$q$, '>0');
         perform pg_temp.expect('BV-3.2: se prepara un caso padre cerrado', null, null,
             pg_temp.q($q$with c as (insert into public."case" (id, organization_id, case_number, titular_person_id, closed_at, intake_window_type)
                                     values ('aaaaaaaa-5000-0000-0000-0000000000c1', {ORGA}, 'TST-A-CERRADO', 'aaaaaaaa-4000-0000-0000-000000000001', now(), 'fija') returning 1)
@@ -1883,35 +1883,111 @@ begin
     perform pg_temp.expect('E14: sin rol no se ve el catálogo de tipos', NR, 'authenticated',
         'select count(*)::text from public.document_type', '0');
 
-    -- ----- Religión: dato sensible, solo con consentimiento sensible vigente
-    perform pg_temp.expect('E14 control positivo: ingreso registra la religión con consentimiento sensible', INT, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión de prueba')) x$q$, pg_temp.id('4000', 32)), '1');
-    perform pg_temp.expect('E14: sin consentimiento sensible no se registra la religión → BV408', INT, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión de prueba')) x$q$, pg_temp.id('4000', 33)), 'ERR:BV408');
-    perform pg_temp.expect('E14: con el consentimiento sensible revocado tampoco → BV408', INT, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión de prueba')) x$q$, pg_temp.id('4000', 34)), 'ERR:BV408');
-    perform pg_temp.expect('E14: quien atiende el caso no registra la religión → BV121', CW, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV121');
-    perform pg_temp.expect('E14: el rol de solo lectura no registra la religión → BV121', VW, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV121');
-    perform pg_temp.expect('E14: dirección de otra organización no la registra → BV201', DIRB2, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV201');
-    perform pg_temp.expect('E14: una persona anonimizada no admite religión → BV507', DIR, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Otra')) x$q$, pg_temp.id('4000', 35)), 'ERR:BV507');
-    perform pg_temp.expect('E14: cambiar la religión ya registrada exige motivo → BV304', INT, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión distinta')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV304');
-    perform pg_temp.expect('E14 control positivo: con motivo se cambia la religión', INT, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'Religión distinta', 'La persona la corrigió')) x$q$, pg_temp.id('4000', 32)), '1');
-    perform pg_temp.expect('E14: borrar la religión ya registrada también exige motivo → BV304', INT, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, '  ')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV304');
-    perform pg_temp.expect('E14: la religión es un texto acotado → BV321', INT, 'authenticated',
-        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, repeat('r', 121), 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV321');
-    perform pg_temp.expect('E14: la religión quedó guardada', null, null,
-        format('select religion from public.person where id = %L::uuid', pg_temp.id('4000', 32)), 'Religión distinta');
-    perform pg_temp.expect('E14: la religión no aparece en el log de auditoría', null, null,
+    -- ----- Diccionarios editables (E14 fase 4a): idioma y religión; la religión es un valor del diccionario + detalle
+    begin
+        insert into public.catalog_item (id, organization_id, catalog, key, label_es, is_active, is_system, sort_order) values
+            ('aaaaaaaa-c000-0000-0000-000000000001', ORG_A::uuid, 'religion', 'catholic', 'Católico (prueba)', true, false, 1),
+            ('aaaaaaaa-c000-0000-0000-000000000002', ORG_A::uuid, 'religion', 'other', 'Otro (prueba)', true, false, 2),
+            ('aaaaaaaa-c000-0000-0000-000000000003', ORG_A::uuid, 'religion', 'no_response', 'La persona no quiso responder', true, true, 99),
+            ('aaaaaaaa-c000-0000-0000-000000000004', ORG_A::uuid, 'religion', 'retired', 'Valor retirado', false, false, 5),
+            ('aaaaaaaa-c000-0000-0000-000000000011', ORG_A::uuid, 'language', 'spanish', 'Español (prueba)', true, false, 1),
+            ('aaaaaaaa-c000-0000-0000-000000000012', ORG_A::uuid, 'language', 'indigenous', 'Lengua indígena (prueba)', true, false, 2),
+            ('aaaaaaaa-c000-0000-0000-000000000013', ORG_A::uuid, 'language', 'no_response', 'La persona no quiso responder', true, true, 99),
+            ('bbbbbbbb-c000-0000-0000-000000000001', ORG_B::uuid, 'religion', 'catholic', 'Católico B', true, false, 1);
+    exception when others then
+        raise notice 'F4a escenario: sin tabla catalog_item todavía (%).', sqlerrm;
+    end;
+
+    -- ----- Religión: dato sensible, solo con consentimiento sensible vigente («no quiso responder» no es dato sensible)
+    perform pg_temp.expect('F4a control positivo: ingreso registra la religión (valor del diccionario) con consentimiento sensible', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000001'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), '1');
+    perform pg_temp.expect('F4a: sin consentimiento sensible no se registra una religión → BV408', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000001'::uuid, null, null)) x$q$, pg_temp.id('4000', 33)), 'ERR:BV408');
+    perform pg_temp.expect('F4a: con el consentimiento sensible revocado tampoco → BV408', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000001'::uuid, null, null)) x$q$, pg_temp.id('4000', 34)), 'ERR:BV408');
+    perform pg_temp.expect('F4a control positivo: «la persona no quiso responder» se registra sin consentimiento sensible (no es un dato)', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000003'::uuid, null, null)) x$q$, pg_temp.id('4000', 33)), '1');
+    perform pg_temp.expect('F4a: quien atiende el caso no registra la religión → BV121', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000001'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV121');
+    perform pg_temp.expect('F4a: el rol de solo lectura no registra la religión → BV121', VW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000001'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV121');
+    perform pg_temp.expect('F4a: dirección de otra organización no la registra → BV201', DIRB2, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'bbbbbbbb-c000-0000-0000-000000000001'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV201');
+    perform pg_temp.expect('F4a: una persona anonimizada no admite religión → BV507', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000001'::uuid, null, null)) x$q$, pg_temp.id('4000', 35)), 'ERR:BV507');
+    perform pg_temp.expect('F4a: un valor de otra organización no se usa → BV220', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'bbbbbbbb-c000-0000-0000-000000000001'::uuid, null, 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV220');
+    perform pg_temp.expect('F4a: un valor retirado del diccionario no se usa → BV220', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000004'::uuid, null, 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV220');
+    perform pg_temp.expect('F4a: un valor de otro diccionario (idioma) no vale como religión → BV220', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV220');
+    perform pg_temp.expect('F4a: cambiar la religión ya registrada exige motivo → BV304', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000002'::uuid, 'Detalle de prueba', null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV304');
+    perform pg_temp.expect('F4a control positivo: con motivo se cambia la religión y se agrega su detalle', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000002'::uuid, 'Detalle de prueba', 'La persona lo precisó')) x$q$, pg_temp.id('4000', 32)), '1');
+    perform pg_temp.expect('F4a: quitar la religión ya registrada también exige motivo → BV304', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, null, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV304');
+    perform pg_temp.expect('F4a: el detalle es un texto acotado → BV321', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000002'::uuid, repeat('r', 121), 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV321');
+    perform pg_temp.expect('F4a: un detalle sin valor del diccionario no se acepta → BV333', INT, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, null, 'Solo detalle', 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV333');
+    perform pg_temp.expect('F4a: la religión quedó guardada como valor del diccionario', null, null,
+        format('select religion_item_id::text from public.person where id = %L::uuid', pg_temp.id('4000', 32)), 'aaaaaaaa-c000-0000-0000-000000000002');
+    perform pg_temp.expect('F4a: y su detalle', null, null,
+        format('select religion_detail from public.person where id = %L::uuid', pg_temp.id('4000', 32)), 'Detalle de prueba');
+    perform pg_temp.expect('F4a: el detalle de la religión no aparece en el log de auditoría', null, null,
         $q$select count(*)::text from public.audit_event where created_at >= transaction_timestamp()
-           and (coalesce(new_values::text, '') ilike '%Religión de prueba%' or coalesce(new_values::text, '') ilike '%Religión distinta%'
-                or coalesce(old_values::text, '') ilike '%Religión de prueba%')$q$, '0');
+           and (coalesce(new_values::text, '') ilike '%Detalle de prueba%' or coalesce(old_values::text, '') ilike '%Detalle de prueba%')$q$, '0');
+
+    -- ----- Idioma: valor del diccionario + detalle; dato sensible (D-14), «no quiso responder» no lo es
+    perform pg_temp.expect('F4a control positivo: quien atiende registra el idioma con consentimiento sensible', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000012'::uuid, 'Tzotzil', null)) x$q$, pg_temp.id('4000', 32)), '1');
+    perform pg_temp.expect('F4a: sin consentimiento sensible no se registra un idioma → BV408', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, null)) x$q$, pg_temp.id('4000', 34)), 'ERR:BV408');
+    perform pg_temp.expect('F4a control positivo: «la persona no quiso responder» en idioma sin consentimiento sensible', CW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000013'::uuid, null, null)) x$q$, pg_temp.id('4000', 34)), '1');
+    perform pg_temp.expect('F4a: el rol de solo lectura no registra el idioma → BV120', VW, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV120');
+    perform pg_temp.expect('F4a: el voluntariado no registra el idioma → BV120', VOL, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV120');
+    perform pg_temp.expect('F4a: dirección de otra organización no lo registra → BV201', DIRB2, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV201');
+    perform pg_temp.expect('F4a: una persona anonimizada no admite idioma → BV507', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, null)) x$q$, pg_temp.id('4000', 35)), 'ERR:BV507');
+    perform pg_temp.expect('F4a: un valor de religión no vale como idioma → BV220', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000001'::uuid, null, 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV220');
+    perform pg_temp.expect('F4a: cambiar el idioma ya registrado exige motivo → BV304', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, null)) x$q$, pg_temp.id('4000', 32)), 'ERR:BV304');
+    perform pg_temp.expect('F4a control positivo: con motivo se cambia el idioma', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000011'::uuid, null, 'Era otro')) x$q$, pg_temp.id('4000', 32)), '1');
+    perform pg_temp.expect('F4a: el idioma quedó guardado como valor del diccionario', null, null,
+        format('select primary_language_item_id::text from public.person where id = %L::uuid', pg_temp.id('4000', 32)), 'aaaaaaaa-c000-0000-0000-000000000011');
+    perform pg_temp.expect('F4a: el detalle del idioma es un texto acotado → BV321', DIR, 'authenticated',
+        format($q$select count(*)::text from (select public.fn_set_person_language(%L::uuid, 'aaaaaaaa-c000-0000-0000-000000000012'::uuid, repeat('l', 121), 'x')) x$q$, pg_temp.id('4000', 32)), 'ERR:BV321');
+
+    -- ----- El diccionario lo administran dirección y Trabajo Social; los valores del sistema no se retiran
+    perform pg_temp.expect('F4a control positivo: Trabajo Social agrega un valor a un diccionario', CW, 'authenticated',
+        format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L, 'religion', 'nuevo_valor', 'Valor nuevo', 8) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+    perform pg_temp.expect('F4a: el área jurídica no administra los diccionarios', 'aaaaaaaa-3000-0000-0000-00000000000a', 'authenticated',
+        format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L, 'religion', 'otro_valor', 'Otro', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('F4a: no se inventan diccionarios nuevos desde la API', DIR, 'authenticated',
+        format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L, 'inventado', 'x', 'X', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+    perform pg_temp.expect('F4a: dirección no escribe en los diccionarios de otra organización', DIR, 'authenticated',
+        format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L, 'religion', 'ajeno', 'Ajeno', 9) returning 1) select count(*)::text from i$q$, ORG_B), 'ERR');
+    perform pg_temp.expect('F4a control positivo: se desactiva un valor (no se borra)', DIR, 'authenticated',
+        $q$with u as (update public.catalog_item set is_active = false where id = 'aaaaaaaa-c000-0000-0000-000000000001' returning 1) select count(*)::text from u$q$, '1');
+    perform pg_temp.expect('F4a: no se borra un valor de diccionario', DIR, 'authenticated',
+        $q$with d as (delete from public.catalog_item returning 1) select count(*)::text from d$q$, 'ERR');
+    perform pg_temp.expect('F4a: el valor del sistema «no quiso responder» no se desactiva → BV614', DIR, 'authenticated',
+        $q$with u as (update public.catalog_item set is_active = false where id = 'aaaaaaaa-c000-0000-0000-000000000003' returning 1) select count(*)::text from u$q$, 'ERR:BV614');
+    perform pg_temp.expect('F4a: ni cambia de clave → BV614', DIR, 'authenticated',
+        $q$with u as (update public.catalog_item set key = 'otra_clave' where id = 'aaaaaaaa-c000-0000-0000-000000000003' returning 1) select count(*)::text from u$q$, 'ERR:BV614');
+    perform pg_temp.expect('F4a control positivo: sí se le puede editar la etiqueta', DIR, 'authenticated',
+        $q$with u as (update public.catalog_item set label_es = 'No quiso responder' where id = 'aaaaaaaa-c000-0000-0000-000000000003' returning 1) select count(*)::text from u$q$, '1');
+    perform pg_temp.expect('F4a: el rol de solo lectura ve los diccionarios', VW, 'authenticated', 'select (count(*) > 0)::text from public.catalog_item', 'true');
+    perform pg_temp.expect('F4a: sin rol no se ven los diccionarios', NR, 'authenticated', 'select count(*)::text from public.catalog_item', '0');
+    perform pg_temp.expect('F4a: otra organización no ve los diccionarios de A', DIRB2, 'authenticated',
+        format('select count(*)::text from public.catalog_item where organization_id = %L', ORG_A), '0');
 
     -- ----- Detalle de los marcadores de vulnerabilidad
     perform pg_temp.expect('E14 control positivo: quien atiende detalla un marcador existente', CW, 'authenticated',
@@ -1957,8 +2033,10 @@ begin
     -- ----- El extracto de acceso ARCO incluye lo nuevo (derecho de acceso)
     perform pg_temp.expect('E14: el extracto ARCO incluye los documentos de la persona', DIR, 'authenticated',
         format($q$select jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'documents')::text$q$, pg_temp.id('4000', 32)), '>0');
-    perform pg_temp.expect('E14: el extracto ARCO incluye la religión', DIR, 'authenticated',
-        format($q$select public.fn_generate_arco_access_extract(%L::uuid)->'person'->>'religion'$q$, pg_temp.id('4000', 32)), 'Religión distinta');
+    perform pg_temp.expect('F4a: el extracto ARCO incluye la religión (valor y detalle)', DIR, 'authenticated',
+        format($q$select (public.fn_generate_arco_access_extract(%L::uuid)->'person'->>'religion') || '/' || (public.fn_generate_arco_access_extract(%L::uuid)->'person'->>'religion_detail')$q$, pg_temp.id('4000', 32), pg_temp.id('4000', 32)), 'Otro (prueba)/Detalle de prueba');
+    perform pg_temp.expect('F4a: el extracto ARCO incluye el idioma', DIR, 'authenticated',
+        format($q$select public.fn_generate_arco_access_extract(%L::uuid)->'person'->>'language'$q$, pg_temp.id('4000', 32)), 'Español (prueba)');
     perform pg_temp.expect('E14: el extracto ARCO incluye el detalle de los marcadores', DIR, 'authenticated',
         format($q$select jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'vulnerability_markers')::text$q$, pg_temp.id('4000', 32)), '>0');
 
@@ -1966,7 +2044,9 @@ begin
     perform pg_temp.expect('E14 prep: documento de la persona que se anonimiza', DIR, 'authenticated',
         format($q$select count(*)::text from (select public.fn_set_person_document('aaaaaaaa-4000-0000-0000-000000000001'::uuid, %L::uuid, 'CURP-PARA-BORRAR-1')) x$q$, pg_temp.id('d000', 1)), '1');
     perform pg_temp.expect('E14 prep: religión de la persona que se anonimiza', DIR, 'authenticated',
-        $q$select count(*)::text from (select public.fn_set_person_religion('aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'RELIGION-PARA-BORRAR')) x$q$, '1');
+        $q$select count(*)::text from (select public.fn_set_person_religion('aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'aaaaaaaa-c000-0000-0000-000000000002'::uuid, 'RELIGION-PARA-BORRAR', null)) x$q$, '1');
+    perform pg_temp.expect('F4a prep: idioma de la persona que se anonimiza', DIR, 'authenticated',
+        $q$select count(*)::text from (select public.fn_set_person_language('aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'aaaaaaaa-c000-0000-0000-000000000012'::uuid, 'IDIOMA-PARA-BORRAR', null)) x$q$, '1');
     perform pg_temp.expect('E14 prep: detalle de marcador de la persona que se anonimiza', DIR, 'authenticated',
         $q$select count(*)::text from (select public.fn_set_marker_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid, 'disability', 'DETALLE-PARA-BORRAR')) x$q$, '1');
 
@@ -2039,11 +2119,17 @@ begin
         perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta el nombre de la nacionalidad → BV402', INT, 'authenticated',
             replace(new_case, b6, 'false,null,null,''Honduras'',null,null,null,''fija'''), 'ERR:BV402');
         perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta la lengua → BV402', INT, 'authenticated',
-            replace(new_case, b6, 'false,null,null,null,1,null,null,''fija'''), 'ERR:BV402');
+            replace(new_case, b6, 'false,null,null,null,''aaaaaaaa-c000-0000-0000-000000000011''::uuid,null,null,''fija'''), 'ERR:BV402');
         perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta el teléfono → BV402', INT, 'authenticated',
             replace(new_case, b6, 'false,null,null,null,null,null,''5512345678'',''fija'''), 'ERR:BV402');
         perform pg_temp.expect('1b (D-14) control positivo: con consentimiento sensible sí se aceptan sexo, nacionalidad, lengua y teléfono', INT, 'authenticated',
-            replace(replace(new_case, b6, 'false,1,93,''Honduras'',1,''Español'',''5512345678'',''fija'''), sens, sens_new), '1');
+            replace(replace(new_case, b6, 'false,1,93,''Honduras'',''aaaaaaaa-c000-0000-0000-000000000011''::uuid,''Detalle del idioma'',''5512345678'',''fija'''), sens, sens_new), '1');
+        perform pg_temp.expect('F4a control positivo: «la persona no quiso responder» en el idioma del alta no exige consentimiento sensible', INT, 'authenticated',
+            replace(new_case, b6, 'false,null,null,null,''aaaaaaaa-c000-0000-0000-000000000013''::uuid,null,null,''fija'''), '1');
+        perform pg_temp.expect('F4a: el alta con un valor de idioma de otro diccionario → BV220', INT, 'authenticated',
+            replace(replace(new_case, b6, 'false,1,93,''Honduras'',''aaaaaaaa-c000-0000-0000-000000000001''::uuid,null,null,''fija'''), sens, sens_new), 'ERR:BV220');
+        perform pg_temp.expect('F4a: el detalle del idioma sin valor del diccionario → BV333', INT, 'authenticated',
+            replace(replace(new_case, b6, 'false,1,93,''Honduras'',null,''Solo detalle'',null,''fija'''), sens, sens_new), 'ERR:BV333');
         perform pg_temp.expect('1b (D-14): con el consentimiento sensible RETIRADO tampoco se aceptan → BV402', INT, 'authenticated',
             replace(replace(new_case, b6, 'false,1,null,null,null,null,null,''fija'''), sens,
                     '"consent_type":"general_care","status":"granted"},{"consent_type":"sensitive_data","status":"revoked"}]'), 'ERR:BV402');
@@ -2568,7 +2654,8 @@ begin
     perform pg_temp.expect('E14 control positivo: el documento sigue como registro cerrado, sin número', null, null,
         $q$select count(*)::text from public.person_document where person_id = 'aaaaaaaa-4000-0000-0000-000000000001' and valid_to is not null$q$, '>0');
     perform pg_temp.expect('E14: tras anonimizar, la religión desaparece', null, null,
-        $q$select coalesce(religion, 'NULO') from public.person where id = 'aaaaaaaa-4000-0000-0000-000000000001'$q$, 'NULO');
+        $q$select coalesce(religion_item_id::text, 'NULO') || '/' || coalesce(religion_detail, 'NULO') || '/' || coalesce(primary_language_item_id::text, 'NULO') || '/' || coalesce(other_language, 'NULO')
+           from public.person where id = 'aaaaaaaa-4000-0000-0000-000000000001'$q$, 'NULO/NULO/NULO/NULO');
     perform pg_temp.expect('E14: tras anonimizar, el detalle del marcador desaparece', null, null,
         $q$select count(*)::text from public.case_vulnerability_marker where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and notes is not null$q$, '0');
     perform pg_temp.expect('E14: el esqueleto sigue: el marcador permanece, sin detalle', null, null,

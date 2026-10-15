@@ -270,8 +270,10 @@ export interface Person {
   address_line?: string | null;
   neighborhood?: string | null;
   postal_code?: string | null;
-  /** Dato sensible (D-14): solo con consentimiento sensible vigente */
-  religion?: string | null;
+  /** Datos sensibles (D-14): valor del diccionario + detalle; solo con consentimiento sensible vigente */
+  religion_item_id?: string | null;
+  religion_detail?: string | null;
+  primary_language_item_id?: string | null;
   is_anonymized: boolean;
   anonymized_at?: string | null;
   anonymized_by?: string | null;
@@ -307,6 +309,19 @@ export interface Case {
   legacy_reference?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Valor de un diccionario editable (idioma, religión…); `no_response` = «La persona no quiso responder» (del sistema) */
+export interface CatalogItem {
+  id: string;
+  organization_id: string;
+  catalog: 'language' | 'religion';
+  key: string;
+  label_es: string;
+  legacy_code?: string | null;
+  is_active: boolean;
+  is_system: boolean;
+  sort_order: number;
 }
 
 /** Tipo de familia (catálogo de la organización que editan dirección y Trabajo Social; solo informativo) */

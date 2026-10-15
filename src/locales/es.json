@@ -337,7 +337,8 @@
       "municipality_needs_state": "Elige primero el estado.",
       "channel": "Canal de procedencia",
       "route": "Vía de ingreso a México"
-    }
+    },
+    "language_detail": "Detalle del idioma (opcional)"
   },
   "audit": {
     "restricted_title": "Acceso restringido a Dirección",
@@ -371,6 +372,7 @@
       "case_status": "Estatus del expediente",
       "case_task_kind": "Tipo de tarea ligada",
       "case_vulnerability_marker": "Marcador de vulnerabilidad",
+      "catalog_item": "Valor de diccionario",
       "consent": "Consentimiento",
       "consent_text": "Texto de consentimiento",
       "document_type": "Tipo de documento",
@@ -984,6 +986,7 @@
       "bv217": "Esa vía de ingreso no está disponible. Elige otra o pide a dirección que la agregue.",
       "bv218": "Ese tipo de familia no está disponible. Elige otro de la lista o pide a dirección o a Trabajo Social que lo agregue.",
       "bv219": "No encontramos esa familia. Actualiza la pantalla e inténtalo de nuevo.",
+      "bv220": "Ese valor no está disponible en el diccionario. Elige otro de la lista o pide a dirección o a Trabajo Social que lo agregue.",
       "bv301": "El periodo no es válido: la fecha inicial es posterior a la final.",
       "bv302": "Indica el motivo de la anonimización: es obligatorio.",
       "bv303": "Indica el motivo de la oposición: es obligatorio.",
@@ -1016,6 +1019,7 @@
       "bv330": "Ya existe una familia con ese folio. Búscala en la lista para asignarla en vez de crear otra.",
       "bv331": "El consecutivo debe ser un número entero positivo, o déjalo vacío.",
       "bv332": "Elige una familia que ya existe o escribe el folio de una nueva, no las dos cosas.",
+      "bv333": "El detalle necesita un valor del diccionario que lo explique. Elige uno primero.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
       "bv403": "Para una persona menor de 18 años, el consentimiento exige su asentimiento y la identidad de quien la representa.",
@@ -1046,6 +1050,7 @@
       "bv611": "El contenido de una entrada no se edita. Usa una aclaración.",
       "bv612": "Las versiones publicadas no se editan ni se eliminan.",
       "bv613": "Una versión publicada no se edita: se publica una nueva.",
+      "bv614": "Ese valor es del sistema: no se puede retirar ni cambiar su clave (su etiqueta sí se puede editar).",
       "bv701": "Ocurrió un error interno de la aplicación. Avisa a quien administra el sistema.",
       "bv702": "No se pudo determinar tu área para esta entrada. Pide a Dirección que revise tus áreas."
     }
@@ -1633,5 +1638,14 @@
     "saved": "Familia guardada.",
     "removed": "La persona salió de la familia. Queda en el historial.",
     "type_saved": "Tipo de familia guardado."
+  },
+  "diccionarios": {
+    "field_value": "Valor del diccionario",
+    "field_detail": "Detalle (opcional)",
+    "only_no_response": "Sin consentimiento sensible vigente solo se puede registrar que la persona no quiso responder.",
+    "language_title": "Idioma de la persona",
+    "language_hint": "Elige el idioma del diccionario y, si hace falta, precísalo (por ejemplo, qué lengua indígena). Es un dato sensible.",
+    "language_register": "Registrar idioma",
+    "religion_hint": "Elige la religión del diccionario y, si hace falta, precísala. Es un dato sensible: se registra solo si la persona quiere compartirlo."
   }
 }

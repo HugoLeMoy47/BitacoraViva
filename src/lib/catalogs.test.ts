@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { t } from './i18n';
-import { countryLabel, languageLabel, freeTextOrNull } from './catalogs';
+import { countryLabel, itemLabel, freeTextOrNull } from './catalogs';
 
 // Resumen del expediente: el dato que falta NO se rellena con un valor inventado; devuelve null
 // para que la pantalla muestre `cases.not_specified`.
@@ -20,13 +20,22 @@ describe('countryLabel', () => {
   });
 });
 
-describe('languageLabel', () => {
-  it('muestra el texto escrito', () => {
-    expect(languageLabel(1, 'Criollo')).toBe('Criollo');
+describe('itemLabel: un valor del diccionario con su detalle', () => {
+  const items = [
+    { id: 'a', label_es: 'Lengua indígena' },
+    { id: 'b', label_es: 'Español' },
+  ];
+  it('muestra el valor y, si lo hay, su detalle', () => {
+    expect(itemLabel(items, 'a', 'Tzotzil')).toBe('Lengua indígena (Tzotzil)');
+    expect(itemLabel(items, 'b', null)).toBe('Español');
   });
-  it('no inventa «Español» cuando falta', () => {
-    expect(languageLabel(1, null)).toBeNull();
-    expect(languageLabel(1, '')).toBeNull();
+  it('sin valor ni detalle es null: la pantalla dice «No registrado» y no inventa un idioma', () => {
+    expect(itemLabel(items, null, null)).toBeNull();
+    expect(itemLabel(items, undefined, '')).toBeNull();
+  });
+  it('un valor que ya no está en el diccionario no se inventa; queda solo el detalle si lo hay', () => {
+    expect(itemLabel(items, 'zzz', null)).toBeNull();
+    expect(itemLabel(items, 'zzz', 'Tzotzil')).toBe('Tzotzil');
   });
 });
 

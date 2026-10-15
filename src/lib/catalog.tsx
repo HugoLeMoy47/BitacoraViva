@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { Area, DocumentType, FamilyType, FamilyUnit, GeoState, IntakeOption, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
+import { Area, CatalogItem, DocumentType, FamilyType, FamilyUnit, GeoState, IntakeOption, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
 
 // Catálogos de la organización (áreas, ejes y valores de estatus) cargados desde la base.
 export interface Catalog {
@@ -15,6 +15,8 @@ export interface Catalog {
   /** Tipos de familia y familias del sistema paralelo */
   familyTypes: FamilyType[];
   familyUnits: FamilyUnit[];
+  /** Diccionarios editables: idioma, religión */
+  catalogItems: CatalogItem[];
   organizationName: string;
   /** Datos del responsable declarados por la asociación (aviso de privacidad y extracto ARCO) */
   organizationInfo: { responsibleName: string; responsibleAddress: string; arcoContact: string };
@@ -33,6 +35,7 @@ const EMPTY: Catalog = {
   entryRoutes: [],
   familyTypes: [],
   familyUnits: [],
+  catalogItems: [],
   statusValues: {
     legal_status: [],
     engagement_status: [],

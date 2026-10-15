@@ -35,7 +35,7 @@ import {
   ArcoRequest,
   VulnerabilityMarkerCode
 } from '../types/database';
-import { VULNERABILITY_CATALOG, countryLabel, languageLabel, freeTextOrNull } from '../lib/catalogs';
+import { VULNERABILITY_CATALOG, countryLabel, itemLabel, freeTextOrNull } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
 import { ClarificationNoteModal } from './ClarificationNoteModal';
@@ -60,6 +60,7 @@ import { CaseFamilyPanel } from './CaseFamilyPanel';
 import { FlexibleDateInput } from './FlexibleDateInput';
 import { DatePrecision, startsInFuture, toStoredDate, todayLocalIso } from '../lib/flexDate';
 import { SmallFieldModal } from './SmallFieldModal';
+import { CatalogItemModal } from './CatalogItemModal';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -125,10 +126,10 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onDataChanged,
 }) => {
   const toast = useToast();
-  const { statusAxes, statusValues, organizationName, organizationInfo, geoStates, intakeChannels, entryRoutes } = useCatalog();
+  const { statusAxes, statusValues, organizationName, organizationInfo, geoStates, intakeChannels, entryRoutes, catalogItems } = useCatalog();
   const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>(initialTab ?? 'axes');
   // E14 fase 1: datos cortos que se editan en un modal de un solo campo
-  const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
+  const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'language' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
   // Ingreso y egreso del albergue llevan la fecha del movimiento: por defecto hoy, y se puede cambiar (E14 fase 2b)
   const [movementPrecision, setMovementPrecision] = useState<DatePrecision>('day');
@@ -698,8 +699,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div>
                 <span className="text-gray-500 block">{t('cases.field_language')}</span>
                 <span className="font-semibold text-carbon text-sm">
-                  {languageLabel(caseData.person.primary_language_id, caseData.person.other_language) ?? t('cases.not_specified')}
+                  {itemLabel(catalogItems, caseData.person.primary_language_item_id, caseData.person.other_language) ?? t('cases.not_specified')}
                 </span>
+                {canEditExtra && (
+                  <button type="button" onClick={() => setField({ kind: 'language' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                    {caseData.person.primary_language_item_id || caseData.person.other_language ? t('case_extra.change') : t('diccionarios.language_register')}
+                  </button>
+                )}
+                {canEditExtra && !sensitiveOk && <p className="mt-1 text-sm text-gray-700">{t('diccionarios.only_no_response')}</p>}
               </div>
               <div>
                 <span className="text-gray-500 block">{t('cases.field_phone')}</span>
@@ -710,15 +717,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div>
                 <span className="text-gray-500 block">{t('case_extra.religion_label')}</span>
                 <span className="font-semibold text-carbon text-sm">
-                  {caseData.person.religion || t('case_extra.religion_none')}
+                  {itemLabel(catalogItems, caseData.person.religion_item_id, caseData.person.religion_detail) ?? t('case_extra.religion_none')}
                 </span>
-                {canRectify && canEditExtra && (sensitiveOk ? (
+                {canRectify && canEditExtra && (
                   <button type="button" onClick={() => setField({ kind: 'religion' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
-                    {caseData.person.religion ? t('case_extra.change') : t('case_extra.religion_register')}
+                    {caseData.person.religion_item_id || caseData.person.religion_detail ? t('case_extra.change') : t('case_extra.religion_register')}
                   </button>
-                ) : (
-                  <p className="mt-1 text-sm text-gray-700">{t('case_extra.needs_sensitive_consent')}</p>
-                ))}
+                )}
+                {canRectify && canEditExtra && !sensitiveOk && <p className="mt-1 text-sm text-gray-700">{t('diccionarios.only_no_response')}</p>}
               </div>
             </div>
           </div>
@@ -1351,12 +1357,29 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         </ModalShell>
       )}
 
-      {/* E14 fase 1: religión, referencia heredada y detalle de un marcador (un campo cada uno) */}
-      {field && onDataChanged && (() => {
+      {/* E14 fase 4a: religión e idioma son un valor del diccionario con su detalle */}
+      {(field?.kind === 'religion' || field?.kind === 'language') && onDataChanged && (
+        <CatalogItemModal
+          title={field.kind === 'religion' ? t('case_extra.religion_title') : t('diccionarios.language_title')}
+          hint={field.kind === 'religion' ? t('diccionarios.religion_hint') : t('diccionarios.language_hint')}
+          items={catalogItems.filter((i) => i.catalog === field.kind)}
+          sensitiveOk={sensitiveOk}
+          initialItemId={field.kind === 'religion' ? caseData.person.religion_item_id ?? null : caseData.person.primary_language_item_id ?? null}
+          initialDetail={(field.kind === 'religion' ? caseData.person.religion_detail : caseData.person.other_language) ?? ''}
+          onSubmit={async (itemId, detail, reason) => {
+            if (field.kind === 'religion') await dataApi.setPersonReligion(caseData.titular_person_id, itemId, detail, reason);
+            else await dataApi.setPersonLanguage(caseData.titular_person_id, itemId, detail, reason);
+            toast.success(t('case_extra.saved'));
+            await onDataChanged();
+          }}
+          onClose={() => setField(null)}
+        />
+      )}
+
+      {/* E14 fase 1: referencia heredada y detalle de un marcador (un campo cada uno) */}
+      {field && field.kind !== 'religion' && field.kind !== 'language' && onDataChanged && (() => {
         const markerNotes = field.kind === 'marker' ? caseData.vulnerabilities.find((v) => v.marker_code === field.code)?.notes ?? '' : '';
-        const cfg = field.kind === 'religion'
-          ? { title: t('case_extra.religion_title'), hint: t('case_extra.religion_hint'), label: t('case_extra.religion_label'), initial: caseData.person.religion ?? '', max: 120, multiline: false }
-          : field.kind === 'legacy'
+        const cfg = field.kind === 'legacy'
             ? { title: t('case_extra.legacy_title'), hint: t('case_extra.legacy_hint'), label: t('case_extra.legacy_label'), initial: caseData.legacy_reference ?? '', max: 120, multiline: false }
             : { title: t('case_extra.marker_detail_title'), hint: t('case_extra.marker_detail_hint'), label: t('case_extra.marker_detail_label'), initial: markerNotes, max: 500, multiline: true };
         return (
@@ -1370,8 +1393,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             reasonWhenChanged={field.kind !== 'marker' && cfg.initial !== ''}
             allowClear
             onSubmit={async (value, reason) => {
-              if (field.kind === 'religion') await dataApi.setPersonReligion(caseData.titular_person_id, value, reason);
-              else if (field.kind === 'legacy') await dataApi.setCaseLegacyReference(caseData.id, value, reason);
+              if (field.kind === 'legacy') await dataApi.setCaseLegacyReference(caseData.id, value, reason);
               else await dataApi.setMarkerDetail(caseData.id, field.code, value);
               toast.success(t('case_extra.saved'));
               await onDataChanged();

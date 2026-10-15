@@ -52,7 +52,7 @@ interface NewCasePageProps {
 export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreated, authorFullName }) => {
   const [step, setStep] = useState<Step>(0);
   const { isDemo } = useEnvironment();
-  const { areas, geoStates, intakeChannels, entryRoutes } = useCatalog();
+  const { areas, geoStates, intakeChannels, entryRoutes, catalogItems } = useCatalog();
 
   // Paso 0: aviso de privacidad y consentimiento. Ninguna opción viene marcada.
   const [notice, setNotice] = useState<PrivacyNotice | null>(null);
@@ -98,6 +98,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const [birthDateEstimated, setBirthDateEstimated] = useState(false);
   const [sexId, setSexId] = useState<number | ''>('');
   const [nationalityCountry, setNationalityCountry] = useState('');
+  // Idioma: valor del diccionario + detalle; sin consentimiento sensible solo «la persona no quiso responder»
+  const [languageItemId, setLanguageItemId] = useState('');
   const [primaryLanguage, setPrimaryLanguage] = useState('');
   const [phone, setPhone] = useState('');
 
@@ -186,6 +188,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const handleFinish = () => {
     // Ningún dato se inventa: lo sensible solo viaja con consentimiento sensible; lo no resuelto va vacío
     const nationality = sensitiveGranted && nationalityCountry ? nationalityCountry : null;
+    const langItem = catalogItems.find((i) => i.id === languageItemId && i.catalog === 'language');
+    const effectiveLang = langItem && (sensitiveGranted || langItem.key === 'no_response') ? langItem : null;
     const nationStored = toStoredDate(nationPrecision, nationRaw);
     const shelterStored = toStoredDate(shelterPrecision, shelterRaw);
     const dates: NewCaseInput['dates'] = [
@@ -202,9 +206,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       sex_id: sensitiveGranted && sexId !== '' ? sexId : null,
       nationality_country_id: nationality ? (COUNTRY_ID[nationality] ?? 1) : null,
       other_nationality: nationality,
-      // Aún no hay catálogo de lenguas: se guarda lo que se escribió y el identificador queda vacío
-      primary_language_id: null,
-      other_language: sensitiveGranted && primaryLanguage.trim() ? primaryLanguage.trim() : null,
+      primary_language_item_id: effectiveLang?.id ?? null,
+      other_language: effectiveLang && effectiveLang.key !== 'no_response' && primaryLanguage.trim() ? primaryLanguage.trim() : null,
       phone_number: sensitiveGranted && phone.trim() ? phone.trim() : null,
       intake_window_type: windowType as 'fija' | 'movil' | 'transaccional',
       travels_with_family: travelsWithFamily === '' ? null : travelsWithFamily === 'yes',
@@ -708,17 +711,29 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-11">{t('intake.field_primary_language')}</label>
-                  <input id="newcas-11" name="newcas-11" autoComplete="off"
-                    disabled={!sensitiveGranted}
-                    type="text"
-                    value={primaryLanguage}
-                    onChange={(e) => setPrimaryLanguage(e.target.value)}
-                    placeholder={t('intake.ph_language')}
-                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  />
+                  <select id="newcas-11" name="newcas-11" autoComplete="off"
+                    value={languageItemId}
+                    onChange={(e) => { setLanguageItemId(e.target.value); setPrimaryLanguage(''); }}
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                  >
+                    <option value="">{t('common.not_recorded')}</option>
+                    {catalogItems
+                      .filter((i) => i.catalog === 'language' && i.is_active && (sensitiveGranted || i.key === 'no_response'))
+                      .map((i) => <option key={i.id} value={i.id}>{i.label_es}</option>)}
+                  </select>
+                  {catalogItems.find((i) => i.id === languageItemId)?.key && catalogItems.find((i) => i.id === languageItemId)?.key !== 'no_response' && (
+                    <input id="newcas-11d" name="newcas-11d" autoComplete="off" aria-label={t('intake.language_detail')}
+                      type="text"
+                      value={primaryLanguage}
+                      maxLength={120}
+                      onChange={(e) => setPrimaryLanguage(e.target.value)}
+                      placeholder={t('intake.language_detail')}
+                      className="mt-2 w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa"
+                    />
+                  )}
                   {!sensitiveGranted && (
                     <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
-                      {t('intake.consent.sensitive_disabled_notice')}
+                      {t('diccionarios.only_no_response')}
                     </span>
                   )}
                 </div>
