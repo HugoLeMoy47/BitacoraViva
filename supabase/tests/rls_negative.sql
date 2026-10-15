@@ -92,9 +92,9 @@ insert into public.person (id, organization_id, given_name, paternal_family_name
     ('aaaaaaaa-4000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Ana', 'PruebaA', '1990-01-01'),
     ('bbbbbbbb-4000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'Beto', 'PruebaB', '1990-01-01');
 
-insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id) values
-    ('aaaaaaaa-5000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'TST-A-0001', 'aaaaaaaa-4000-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002'),
-    ('bbbbbbbb-5000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'TST-B-0001', 'bbbbbbbb-4000-0000-0000-000000000001', 'bbbbbbbb-3000-0000-0000-000000000001', 'bbbbbbbb-3000-0000-0000-000000000001');
+insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type) values
+    ('aaaaaaaa-5000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'TST-A-0001', 'aaaaaaaa-4000-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002', 'fija'),
+    ('bbbbbbbb-5000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-00000000000b', 'TST-B-0001', 'bbbbbbbb-4000-0000-0000-000000000001', 'bbbbbbbb-3000-0000-0000-000000000001', 'bbbbbbbb-3000-0000-0000-000000000001', 'fija');
 
 insert into public.journal_entry (id, organization_id, case_id, area_id, author_user_id, entry_type_key, body, is_work_note, visibility) values
     ('aaaaaaaa-6000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-5000-0000-0000-000000000001', 'aaaaaaaa-1000-0000-0000-000000000001', 'aaaaaaaa-3000-0000-0000-000000000002', 'note', 'Entrada A privada', false, 'area_private'),
@@ -273,8 +273,8 @@ declare
     ORG_B constant text := 'bbbbbbbb-0000-0000-0000-00000000000b';
     t text;
     new_case text := $nc$select count(*)::text from (select public.fn_create_case_with_person(
-        'Nuevo','Caso',null,null,date '2000-01-01',false,1,93,'Honduras',1,null,null,'fija',false,9,1,1,3,null,
-        'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], '[{"consent_type":"general_care"}]'::jsonb)) x$nc$;
+        'Nuevo','Caso',null,null,date '2000-01-01',false,null,null,null,null,null,null,'fija',false,null,null,null,null,null,
+        'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], '[{"consent_type":"general_care","status":"granted"}]'::jsonb)) x$nc$;
     report text;
 begin
     -- ===== Aislamiento por organización (BV-1.1): ni una fila de otra organización
@@ -328,21 +328,21 @@ begin
     perform pg_temp.expect('control positivo: intake sí abre casos', INT, 'authenticated', new_case, '1');
     -- Paso cero: la base impone el consentimiento (BV-5.1, P-06, Ethos C2)
     perform pg_temp.expect('sin consentimiento general no se abre expediente', INT, 'authenticated',
-        replace(new_case, '''[{"consent_type":"general_care"}]''', '''[]'''), 'ERR');
+        replace(new_case, '''[{"consent_type":"general_care","status":"granted"}]''', '''[]'''), 'ERR');
     perform pg_temp.expect('P-06: sin consentimiento sensible no hay marcadores de vulnerabilidad', INT, 'authenticated',
         replace(new_case, 'array[]::text[]', 'array[''victim_of_violence'']'), 'ERR');
     perform pg_temp.expect('control positivo: con consentimiento sensible sí hay marcadores', INT, 'authenticated',
         replace(replace(new_case, 'array[]::text[]', 'array[''victim_of_violence'']'),
-                '''[{"consent_type":"general_care"}]''', '''[{"consent_type":"general_care"},{"consent_type":"sensitive_data"}]'''), '1');
+                '''[{"consent_type":"general_care","status":"granted"}]''', '''[{"consent_type":"general_care","status":"granted"},{"consent_type":"sensitive_data","status":"granted"}]'''), '1');
     perform pg_temp.expect('persona menor de 18 sin asentimiento ni representante no se abre', INT, 'authenticated',
         replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), 'ERR');
     perform pg_temp.expect('control positivo: menor con asentimiento y representante', INT, 'authenticated',
-        replace(replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), '''[{"consent_type":"general_care"}]''',
-                '''[{"consent_type":"general_care","is_minor_assent":true,"legal_guardian_name":"Madre"}]'''), '1');
+        replace(replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), '''[{"consent_type":"general_care","status":"granted"}]''',
+                '''[{"consent_type":"general_care","status":"granted","is_minor_assent":true,"legal_guardian_name":"Madre"}]'''), '1');
     perform pg_temp.expect('niñez no acompañada sin autoridad ni oficio no se abre', INT, 'authenticated',
         replace(replace(replace(new_case, 'date ''2000-01-01''', 'current_date - 3000'), 'array[]::text[]', 'array[''unaccompanied_child'']'),
-                '''[{"consent_type":"general_care"}]''',
-                '''[{"consent_type":"general_care","is_minor_assent":true,"legal_guardian_name":"Tutor"},{"consent_type":"sensitive_data"}]'''), 'ERR');
+                '''[{"consent_type":"general_care","status":"granted"}]''',
+                '''[{"consent_type":"general_care","status":"granted","is_minor_assent":true,"legal_guardian_name":"Tutor"},{"consent_type":"sensitive_data","status":"granted"}]'''), 'ERR');
     foreach t in array array[CW, INT, VW, NR, TM, VOL] loop
         perform pg_temp.expect('solo dirección lee auditoría (' || right(t, 1) || ')', t, 'authenticated', 'select count(*)::text from public.audit_event', '0');
     end loop;
@@ -357,7 +357,7 @@ begin
     perform pg_temp.expect('caseworker no emite extracto ARCO', CW, 'authenticated',
         'select public.fn_generate_arco_access_extract(''aaaaaaaa-4000-0000-0000-000000000001''::uuid)::text', 'ERR');
     perform pg_temp.expect('caseworker no rectifica datos de la persona', CW, 'authenticated',
-        'select count(*)::text from (select public.fn_rectify_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid,''A'',''B'',null,null,date ''1990-01-01'',false,1,1,null,null,''x'')) x', 'ERR');
+        'select count(*)::text from (select public.fn_rectify_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid,''A'',''B'',null,null,date ''1990-01-01'',false,null,null,null,null,''x'')) x', 'ERR');
     perform pg_temp.expect('control positivo: director acusa recibo', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_acknowledge_sharing(''aaaaaaaa-7000-0000-0000-000000000001''::uuid)) x', '1');
     perform pg_temp.expect('control positivo: director emite extracto ARCO', DIR, 'authenticated',
@@ -366,7 +366,7 @@ begin
     -- ===== Funciones que se saltan RLS (security definer): cada una repite la regla de acceso.
     -- Escribir exige sesión, rol operativo y que el registro sea de la propia organización.
     foreach t in array array[
-        'select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''general_care'')::text',
+        'select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''general_care'', ''granted'')::text',
         'select public.fn_create_journal_entry(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''note'', ''x'', now(), false, ''aaaaaaaa-1000-0000-0000-000000000001''::uuid)::text',
         'select public.fn_create_clarification_note(''aaaaaaaa-6000-0000-0000-000000000001''::uuid, ''x'')::text',
         'select public.fn_share_journal_entry(''aaaaaaaa-6000-0000-0000-000000000001''::uuid, ''aaaaaaaa-1000-0000-0000-000000000002''::uuid, ''x'')::text',
@@ -382,7 +382,7 @@ begin
     end loop;
 
     perform pg_temp.expect('control positivo: intake registra consentimiento', INT, 'authenticated',
-        'select count(*)::text from (select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''internal_sharing'')) x', '1');
+        'select count(*)::text from (select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''internal_sharing'', ''granted'')) x', '1');
     perform pg_temp.expect('control positivo: caseworker escribe en bitácora', CW, 'authenticated',
         'select count(*)::text from (select public.fn_create_journal_entry(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''note'', ''x'', now(), false, ''aaaaaaaa-1000-0000-0000-000000000001''::uuid)) x', '1');
 
@@ -1126,7 +1126,7 @@ begin
             'select count(*)::text from public.case_status'
         ];
         w_cw text := 'select count(*)::text from (select public.fn_create_journal_entry(''aaaaaaaa-5000-0000-0000-000000000001''::uuid, ''note'', ''desactivada'', now(), false, ''aaaaaaaa-1000-0000-0000-000000000001''::uuid)) x';
-        w_int text := 'select count(*)::text from (select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''internal_sharing'')) x';
+        w_int text := 'select count(*)::text from (select public.fn_register_consent(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''internal_sharing'', ''granted'')) x';
         w_dir text := 'select jsonb_array_length(public.fn_generate_arco_access_extract(''aaaaaaaa-4000-0000-0000-000000000001''::uuid)->''cases'')::text';
         w_met text := 'select jsonb_array_length(public.fn_aggregate_metrics()->''rows'')::text';
         r text;
@@ -1265,9 +1265,9 @@ begin
             (pg_temp.id('4000', 6)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Eta', 'Rectificable', '1985-03-04'),
             (pg_temp.id('4000', 7)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Theta', 'Opositora', '1985-03-04'),
             (pg_temp.id('4000', 2)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Iota', 'Estatus', '1985-03-04');
-        insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id)
+        insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type)
         select pg_temp.id('5000', k)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'TST-A-000' || k,
-               pg_temp.id('4000', 2)::uuid, 'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002'
+               pg_temp.id('4000', 2)::uuid, 'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002', 'fija'
         from generate_series(2, 4) k;
 
         -- Bitácora: 3, 15, 16, 17 y 19 son notas de trabajo protegidas; el resto, entradas ordinarias del área TS
@@ -1283,7 +1283,7 @@ begin
         perform pg_temp.expect('C-1: director de B no emite el extracto ARCO de una persona de A', DIRB, 'authenticated',
             format('select public.fn_generate_arco_access_extract(%L::uuid)::text', PERS_A), 'ERR');
         perform pg_temp.expect('C-1: director de B no rectifica a una persona de A', DIRB, 'authenticated',
-            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''X'',''Y'',null,null,date ''1990-01-01'',false,1,1,null,null,''x'')) x', pg_temp.id('4000', 6)), 'ERR');
+            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''X'',''Y'',null,null,date ''1990-01-01'',false,null,null,null,null,''x'')) x', pg_temp.id('4000', 6)), 'ERR');
         perform pg_temp.expect('C-1: director de B no registra oposición de una persona de A', DIRB, 'authenticated',
             format('select count(*)::text from (select public.fn_apply_opposition(%L::uuid, ''x'')) x', pg_temp.id('4000', 7)), 'ERR');
         perform pg_temp.expect('C-1: director de B no acusa recibo de una compartición de A', DIRB, 'authenticated',
@@ -1291,9 +1291,9 @@ begin
         perform pg_temp.expect('C-1 control positivo: director de B registra oposición en su propia organización', DIRB, 'authenticated',
             format('select count(*)::text from (select public.fn_apply_opposition(%L::uuid, ''x'')) x', PERS_B), '1');
         perform pg_temp.expect('C-1 control positivo: director de A rectifica a su persona', DIR, 'authenticated',
-            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''Ana'',''PruebaA'',null,null,date ''1990-05-17'',false,1,1,null,null,''Corrección de prueba'')) x', PERS_A), '1');
+            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''Ana'',''PruebaA'',null,null,date ''1990-05-17'',false,null,null,null,null,''Corrección de prueba'')) x', PERS_A), '1');
         perform pg_temp.expect('C-1 control positivo: director de A rectifica a otra persona suya', DIR, 'authenticated',
-            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''Eta'',''Rectificable'',null,null,date ''1985-03-04'',false,1,1,null,null,''x'')) x', pg_temp.id('4000', 6)), '1');
+            format('select count(*)::text from (select public.fn_rectify_person(%L::uuid,''Eta'',''Rectificable'',null,null,date ''1985-03-04'',false,null,null,null,null,''x'')) x', pg_temp.id('4000', 6)), '1');
 
         -- ----- C-2: el log guarda nombres de campos, nunca valores personales (decisión del PO, 11 oct 2026)
         perform pg_temp.expect('C-2: el evento de rectificación no guarda nombres ni fechas', DIR, 'authenticated',
@@ -1493,14 +1493,14 @@ begin
         perform pg_temp.expect('A-1: el área asignada debe ser de la propia organización', INT, 'authenticated',
             replace(new_case, 'aaaaaaaa-1000-0000-0000-000000000001', 'bbbbbbbb-1000-0000-0000-000000000001'), 'ERR');
         perform pg_temp.expect('A-1: la función interna del alta no es ejecutable por los roles de aplicación', INT, 'authenticated',
-            $q$select count(*)::text from (select public.fn_create_case_with_person_impl('X','Y',null,null,date '2000-01-01',false,1,93,'H',1,null,null,'fija',false,9,1,1,3,null,
-               'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], '[{"consent_type":"general_care"}]'::jsonb)) x$q$, 'ERR');
+            $q$select count(*)::text from (select public.fn_create_case_with_person_impl('X','Y',null,null,date '2000-01-01',false,null,null,null,null,null,null,'fija',false,null,null,null,null,null,
+               'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], '[{"consent_type":"general_care","status":"granted"}]'::jsonb)) x$q$, 'ERR');
     end;
 
     -- ============================================================================================
     -- ===== M-2 / R-19: indicadores sin re-identificación por resta (migración 20261011000004)
     -- ===== Escenario: 13 casos nuevos. intake_window_type: movil 7 · transaccional 6.
-    -- ===== sexo: 1 → (existentes + 4) · 2 → 6 · 3 → 3 (una sola celda menor a 5)
+    -- ===== sexo: sin dato → (existentes + 4) · 2 → 6 · 3 → 3 (una sola celda menor a 5)
     -- ============================================================================================
     declare
         mk text := $q$select coalesce(r->>%L, 'NULL') from jsonb_array_elements(public.fn_aggregate_metrics()->'rows') r
@@ -1510,7 +1510,7 @@ begin
         for i in 1..13 loop
             insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date, sex_id)
             values (pg_temp.id('4100', i)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'Indicador' || i, 'Prueba', '1990-06-15',
-                    case when i <= 4 then 1 when i <= 7 then 3 else 2 end);
+                    case when i <= 4 then null when i <= 7 then 3 else 2 end);
             insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type)
             values (pg_temp.id('5100', i)::uuid, 'aaaaaaaa-0000-0000-0000-00000000000a', 'TST-A-M' || i, pg_temp.id('4100', i)::uuid,
                     'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002',
@@ -1552,7 +1552,7 @@ begin
         perform pg_temp.expect('M-2: la protección por complemento también rige para Dirección', DIR, 'authenticated',
             format(mk, 'hidden_reason', 'sex', '2'), 'complement');
         perform pg_temp.expect('M-2 control positivo: la celda mayor sigue visible', VW, 'authenticated',
-            format(mk, 'suppressed', 'sex', '1'), 'false');
+            format(mk, 'suppressed', 'sex', 'sin_dato'), 'false');
         perform pg_temp.expect('M-2 control positivo: una partición sin celdas pequeñas no oculta nada', VW, 'authenticated',
             format(mk, 'suppressed', 'intake_window_type', 'movil'), 'false');
         perform pg_temp.expect('M-2: restar las celdas visibles del total ya no revela la celda oculta', DIR, 'authenticated',
@@ -1629,13 +1629,13 @@ begin
     -- ===== BV-3.2: subfolio de niñez y adolescencia acompañadas (migración 20261012000001)
     declare
         sub text := $sf$select count(*)::text from (select public.fn_create_subfolio(
-            'aaaaaaaa-5000-0000-0000-0000000000d1'::uuid, 'Niño','HijoA',null,null,(current_date - interval '8 years')::date,false,1,93,'Honduras',1,'Español',
+            'aaaaaaaa-5000-0000-0000-0000000000d1'::uuid, 'Niño','HijoA',null,null,(current_date - interval '8 years')::date,false,null,null,null,null,null,
             'madre','Viaja con su madre; se abre su expediente propio.', array[]::text[],
-            '[{"consent_type":"general_care","status":"granted"}]'::jsonb)) x$sf$;
+            '[{"consent_type":"general_care","status":"granted","is_minor_assent":true}]'::jsonb)) x$sf$;
     begin
         perform pg_temp.expect('BV-3.2: se prepara un caso padre abierto y principal', null, null,
-            pg_temp.q($q$with c as (insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id)
-                                    values ('aaaaaaaa-5000-0000-0000-0000000000d1', {ORGA}, 'TST-A-0099', 'aaaaaaaa-4000-0000-0000-000000000001', {INT}, {CW}) returning 1)
+            pg_temp.q($q$with c as (insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type)
+                                    values ('aaaaaaaa-5000-0000-0000-0000000000d1', {ORGA}, 'TST-A-0099', 'aaaaaaaa-4000-0000-0000-000000000001', {INT}, {CW}, 'fija') returning 1)
                          select count(*)::text from c$q$), '1');
         perform pg_temp.expect('BV-3.2 control positivo: ingreso crea el subfolio', INT, 'authenticated', sub, '1');
         perform pg_temp.expect('BV-3.2: el primer subfolio toma el folio del caso padre con -S1', null, null,
@@ -1659,11 +1659,11 @@ begin
         perform pg_temp.expect('BV-3.2: el parentesco de quien representa es obligatorio', INT, 'authenticated',
             replace(sub, '''madre''', ''''''), 'ERR:BV311');
         perform pg_temp.expect('BV-3.2: sin consentimiento general no se abre el subfolio', INT, 'authenticated',
-            replace(sub, '"consent_type":"general_care","status":"granted"', '"consent_type":"general_care","status":"denied"'), 'ERR:BV401');
+            replace(sub, '"consent_type":"general_care","status":"granted"', '"consent_type":"general_care","status":"revoked"'), 'ERR:BV401');
         perform pg_temp.expect('BV-3.2 (P-06): sin consentimiento de datos sensibles no se afirman marcadores', INT, 'authenticated',
             replace(sub, 'array[]::text[]', 'array[''disability'']::text[]'), 'ERR:BV402');
         perform pg_temp.expect('BV-3.2: el subfolio es de niñez acompañada; el marcador de no acompañada se rechaza', INT, 'authenticated',
-            replace(replace(sub, 'array[]::text[]', 'array[''unaccompanied_child'']::text[]'), '"status":"granted"}]', '"status":"granted"},{"consent_type":"sensitive_data","status":"granted"}]'), 'ERR:BV407');
+            replace(replace(sub, 'array[]::text[]', 'array[''unaccompanied_child'']::text[]'), '"is_minor_assent":true}]', '"is_minor_assent":true},{"consent_type":"sensitive_data","status":"granted","is_minor_assent":true}]'), 'ERR:BV407');
         perform pg_temp.expect('BV-3.2: el caso padre no cambia por crear subfolios', null, null,
             $q$select count(*)::text from public."case" where id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and parent_case_id is null and closed_at is null$q$, '1');
         perform pg_temp.expect('BV-3.2: quien representa se toma del caso padre, no de lo que envía el cliente', null, null,
@@ -1671,7 +1671,7 @@ begin
                where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and c.legal_guardian_name = 'Ana PruebaA'
                  and c.legal_guardian_role = 'madre' and c.is_minor_assent$q$, '>0');
         perform pg_temp.expect('BV-3.2: aunque el cliente mande otro nombre de representante, se guarda el del caso padre', INT, 'authenticated',
-            replace(sub, '"status":"granted"}]', '"status":"granted","legal_guardian_name":"Persona Ajena"}]'), '1');
+            replace(sub, '"is_minor_assent":true}]', '"is_minor_assent":true,"legal_guardian_name":"Persona Ajena"}]'), '1');
         perform pg_temp.expect('BV-3.2: ningún consentimiento del subfolio quedó con un representante distinto al del caso padre', null, null,
             $q$select count(*)::text from public.consent c join public."case" k on k.id = c.case_id
                where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and c.legal_guardian_name <> 'Ana PruebaA'$q$, '0');
@@ -1685,12 +1685,15 @@ begin
         perform pg_temp.expect('BV-3.2: el subfolio nace abierto, en la organización del caso padre', null, null,
             $q$select count(*)::text from public."case" where parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1'
                and closed_at is null and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$, '>0');
+        perform pg_temp.expect('BV-3.2 (D-14): con consentimiento sensible el subfolio guarda sexo, nacionalidad y lengua capturados', INT, 'authenticated',
+            replace(replace(sub, 'false,null,null,null,null,null,', 'false,1,93,''Honduras'',1,''Español'','),
+                    '"is_minor_assent":true}]', '"is_minor_assent":true},{"consent_type":"sensitive_data","status":"granted","is_minor_assent":true}]'), '1');
         perform pg_temp.expect('BV-3.2: la persona del subfolio conserva la nacionalidad y el idioma capturados', null, null,
             $q$select count(*)::text from public.person p join public."case" k on k.titular_person_id = p.id
                where k.parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1' and p.other_nationality = 'Honduras' and p.other_language = 'Español'$q$, '>0');
         perform pg_temp.expect('BV-3.2: se prepara un caso padre cerrado', null, null,
-            pg_temp.q($q$with c as (insert into public."case" (id, organization_id, case_number, titular_person_id, closed_at)
-                                    values ('aaaaaaaa-5000-0000-0000-0000000000c1', {ORGA}, 'TST-A-CERRADO', 'aaaaaaaa-4000-0000-0000-000000000001', now()) returning 1)
+            pg_temp.q($q$with c as (insert into public."case" (id, organization_id, case_number, titular_person_id, closed_at, intake_window_type)
+                                    values ('aaaaaaaa-5000-0000-0000-0000000000c1', {ORGA}, 'TST-A-CERRADO', 'aaaaaaaa-4000-0000-0000-000000000001', now(), 'fija') returning 1)
                          select count(*)::text from c$q$), '1');
         perform pg_temp.expect('BV-3.2: a un caso padre cerrado no se le cuelgan subfolios', INT, 'authenticated',
             replace(sub, 'aaaaaaaa-5000-0000-0000-0000000000d1', 'aaaaaaaa-5000-0000-0000-0000000000c1'), 'ERR:BV506');
@@ -1717,7 +1720,7 @@ begin
     -- Códigos concretos: el mismo error llega con el mismo código, venga del rol, del dato o de la protección
     perform pg_temp.expect('E13: abrir un expediente sin ser de ingreso ni dirección → BV113', CW, 'authenticated', new_case, 'ERR:BV113');
     perform pg_temp.expect('E13: sin consentimiento general no se abre el expediente → BV401', DIR, 'authenticated',
-        replace(new_case, '[{"consent_type":"general_care"}]', '[]'), 'ERR:BV401');
+        replace(new_case, '[{"consent_type":"general_care","status":"granted"}]', '[]'), 'ERR:BV401');
     perform pg_temp.expect('E13: marcadores sin consentimiento de datos sensibles → BV402', DIR, 'authenticated',
         replace(new_case, 'array[]::text[]', 'array[''disability'']::text[]'), 'ERR:BV402');
     perform pg_temp.expect('E13: anonimizar sin ser dirección → BV104', INT, 'authenticated',
@@ -1741,9 +1744,9 @@ begin
         (pg_temp.id('4000', 34)::uuid, ORG_A::uuid, 'Mu', 'Revocada', '1985-03-04');
     insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date, is_anonymized) values
         (pg_temp.id('4000', 35)::uuid, ORG_A::uuid, 'PERSONA ANONIMIZADA', 'SUPRIMIDO', '1985-01-01', true);
-    insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id)
+    insert into public."case" (id, organization_id, case_number, titular_person_id, opened_by, assigned_user_id, intake_window_type)
     select pg_temp.id('5000', 32 + k)::uuid, ORG_A::uuid, 'TST-A-0E' || (1 + k), pg_temp.id('4000', 32 + k)::uuid,
-           'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002'
+           'aaaaaaaa-3000-0000-0000-000000000003', 'aaaaaaaa-3000-0000-0000-000000000002', 'fija'
     from generate_series(0, 2) k;
     insert into public.consent (organization_id, person_id, case_id, consent_type, status, granted_by_user_id)
     select ORG_A::uuid, pg_temp.id('4000', 32 + k)::uuid, pg_temp.id('5000', 32 + k)::uuid, 'general_care', 'granted', 'aaaaaaaa-3000-0000-0000-000000000003'
@@ -1966,6 +1969,156 @@ begin
         $q$select count(*)::text from (select public.fn_set_person_religion('aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'RELIGION-PARA-BORRAR')) x$q$, '1');
     perform pg_temp.expect('E14 prep: detalle de marcador de la persona que se anonimiza', DIR, 'authenticated',
         $q$select count(*)::text from (select public.fn_set_marker_detail('aaaaaaaa-5000-0000-0000-000000000001'::uuid, 'disability', 'DETALLE-PARA-BORRAR')) x$q$, '1');
+
+    -- ============================================================================================
+    -- ===== E14 fase 1b: cero valores supuestos y bloqueo de campos sensibles (migraciones 20261015000002/3)
+    -- ===== Obligatorio no resuelto → la base detiene; opcional no resuelto → vacío, nunca un valor puesto por el sistema.
+    -- ============================================================================================
+    declare
+        b6 constant text := 'false,null,null,null,null,null,null,''fija''';           -- sexo, nacionalidad, otra nacionalidad, lengua, otra lengua, teléfono
+        ctx constant text := '''fija'',false,null,null,null,null,null,';              -- ventanilla, viaja, estado, municipio, canal, vía, fecha de ingreso
+        sens text := '"consent_type":"general_care","status":"granted"}]';
+        sens_new text := '"consent_type":"general_care","status":"granted"},{"consent_type":"sensitive_data","status":"granted"}]';
+        subf text := $sf$select count(*)::text from (select public.fn_create_subfolio(
+            'aaaaaaaa-5000-0000-0000-0000000000d1'::uuid, 'Niña','HijaB',null,null,(current_date - interval '6 years')::date,false,null,null,null,null,null,
+            'madre','Viaja con su madre; se abre su expediente propio.', array[]::text[],
+            '[{"consent_type":"general_care","status":"granted","is_minor_assent":true}]'::jsonb)) x$sf$;
+    begin
+        -- Catálogos de ingreso de la organización A (el escenario de la prueba no pasa por la migración)
+        insert into public.intake_channel (organization_id, code, label_es) values (ORG_A::uuid, 1, 'Empresa'), (ORG_A::uuid, 5, 'Ventanilla');
+        insert into public.entry_route (organization_id, code, label_es) values (ORG_A::uuid, 1, 'Aérea'), (ORG_A::uuid, 3, 'Terrestre');
+
+        -- ----- La estructura: nada de valores por defecto en datos de personas ni de casos
+        perform pg_temp.expect('1b: sexo, nacionalidad, lengua y «se considera migrante» no tienen valor por defecto ni son obligatorios', null, null,
+            $q$select count(*)::text from information_schema.columns where table_schema = 'public' and table_name = 'person'
+               and column_name in ('sex_id', 'nationality_country_id', 'primary_language_id', 'is_self_identified_migrant')
+               and (column_default is not null or is_nullable = 'NO')$q$, '0');
+        perform pg_temp.expect('1b: estado, canal, vía de ingreso y «viaja con familia» no tienen valor por defecto ni son obligatorios', null, null,
+            $q$select count(*)::text from information_schema.columns where table_schema = 'public' and table_name = 'case'
+               and column_name in ('intake_state_id', 'intake_municipality_key', 'intake_channel_id', 'entry_route_id', 'travels_with_family')
+               and (column_default is not null or is_nullable = 'NO')$q$, '0');
+        perform pg_temp.expect('1b: el tipo de ventanilla es obligatorio y sin valor por defecto', null, null,
+            $q$select count(*)::text from information_schema.columns where table_schema = 'public' and table_name = 'case'
+               and column_name = 'intake_window_type' and column_default is null and is_nullable = 'NO'$q$, '1');
+        perform pg_temp.expect('1b: el estado de un consentimiento no tiene valor por defecto', null, null,
+            $q$select count(*)::text from information_schema.columns where table_schema = 'public' and table_name = 'consent'
+               and column_name = 'status' and column_default is null$q$, '1');
+        perform pg_temp.expect('1b: ninguna columna de dato de persona o de caso trae valor por defecto (salvo las técnicas)', null, null,
+            $q$select count(*)::text from information_schema.columns
+               where table_schema = 'public' and table_name in ('person', 'case', 'consent', 'case_vulnerability_marker', 'person_document')
+                 and column_default is not null
+                 and column_name not in ('id', 'created_at', 'updated_at', 'opened_at', 'intake_date', 'granted_at', 'affirmed_at',
+                                         'birth_date_is_estimated', 'is_anonymized', 'occupations', 'is_minor_assent')$q$, '0');
+        perform pg_temp.expect('1b: una persona sin esos datos queda con ellos vacíos, no inventados', null, null,
+            format($q$select (sex_id is null and nationality_country_id is null and primary_language_id is null and is_self_identified_migrant is null)::text
+                      from public.person where id = %L::uuid$q$, pg_temp.id('4000', 33)), 'true');
+        perform pg_temp.expect('1b: un expediente sin contexto de ingreso queda con él vacío, no inventado', null, null,
+            $q$select (intake_state_id is null and intake_municipality_key is null and intake_channel_id is null and entry_route_id is null and travels_with_family is null)::text
+               from public."case" where case_number = 'TST-A-0E2'$q$, 'true');
+        perform pg_temp.expect('1b: el sexo vacío cuenta como «sin dato» en los indicadores', null, null,
+            format($q$select count(*)::text from public.fn_metric_rows(%L::uuid, null, null) where metric = 'sex' and bucket = 'sin_dato'$q$, ORG_A), '>0');
+
+        -- ----- Alta: obligatorio no resuelto → la base detiene
+        perform pg_temp.expect('1b control positivo: el alta sin datos opcionales se abre y no inventa nada', INT, 'authenticated', new_case, '1');
+        perform pg_temp.expect('1b: sin tipo de ventanilla no se abre el expediente → BV323', INT, 'authenticated',
+            replace(new_case, '''fija''', 'null'), 'ERR:BV323');
+        perform pg_temp.expect('1b: sin fecha de nacimiento no se abre el expediente → BV324', INT, 'authenticated',
+            replace(new_case, 'date ''2000-01-01''', 'null::date'), 'ERR:BV324');
+        perform pg_temp.expect('1b: un consentimiento sin estado ya no se guarda como concedido → BV322', INT, 'authenticated',
+            replace(new_case, '"consent_type":"general_care","status":"granted"', '"consent_type":"general_care"'), 'ERR:BV322');
+        perform pg_temp.expect('1b: un consentimiento con un estado inventado tampoco → BV322', INT, 'authenticated',
+            replace(new_case, '"status":"granted"', '"status":"quizas"'), 'ERR:BV322');
+        perform pg_temp.expect('1b: registrar un consentimiento sin indicar su estado → BV322', INT, 'authenticated',
+            $q$select public.fn_register_consent('aaaaaaaa-4000-0000-0000-000000000001'::uuid, 'internal_sharing')::text$q$, 'ERR:BV322');
+
+        -- ----- Alta: campos sensibles solo con consentimiento sensible
+        perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta el sexo → BV402', INT, 'authenticated',
+            replace(new_case, b6, 'false,1,null,null,null,null,null,''fija'''), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta la nacionalidad → BV402', INT, 'authenticated',
+            replace(new_case, b6, 'false,null,93,null,null,null,null,''fija'''), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta el nombre de la nacionalidad → BV402', INT, 'authenticated',
+            replace(new_case, b6, 'false,null,null,''Honduras'',null,null,null,''fija'''), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta la lengua → BV402', INT, 'authenticated',
+            replace(new_case, b6, 'false,null,null,null,1,null,null,''fija'''), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14): sin consentimiento sensible no se acepta el teléfono → BV402', INT, 'authenticated',
+            replace(new_case, b6, 'false,null,null,null,null,null,''5512345678'',''fija'''), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14) control positivo: con consentimiento sensible sí se aceptan sexo, nacionalidad, lengua y teléfono', INT, 'authenticated',
+            replace(replace(new_case, b6, 'false,1,93,''Honduras'',1,''Español'',''5512345678'',''fija'''), sens, sens_new), '1');
+        perform pg_temp.expect('1b (D-14): con el consentimiento sensible RETIRADO tampoco se aceptan → BV402', INT, 'authenticated',
+            replace(replace(new_case, b6, 'false,1,null,null,null,null,null,''fija'''), sens,
+                    '"consent_type":"general_care","status":"granted"},{"consent_type":"sensitive_data","status":"revoked"}]'), 'ERR:BV402');
+
+        -- ----- Alta: contexto de ingreso real (catálogos oficiales y de la organización)
+        perform pg_temp.expect('1b control positivo: estado, municipio, canal y vía válidos', INT, 'authenticated',
+            replace(new_case, ctx, '''fija'',false,9,''09015'',1,3,null,'), '1');
+        perform pg_temp.expect('1b: un estado que no existe → BV214', INT, 'authenticated',
+            replace(new_case, ctx, '''fija'',false,99,null,null,null,null,'), 'ERR:BV214');
+        perform pg_temp.expect('1b: un municipio que no existe → BV215', INT, 'authenticated',
+            replace(new_case, ctx, '''fija'',false,null,''99999'',null,null,null,'), 'ERR:BV215');
+        perform pg_temp.expect('1b: un municipio de otro estado → BV215', INT, 'authenticated',
+            replace(new_case, ctx, '''fija'',false,9,''15015'',null,null,null,'), 'ERR:BV215');
+        perform pg_temp.expect('1b: un canal que no existe en la organización → BV216', INT, 'authenticated',
+            replace(new_case, ctx, '''fija'',false,null,null,99,null,null,'), 'ERR:BV216');
+        perform pg_temp.expect('1b: una vía de ingreso que no existe en la organización → BV217', INT, 'authenticated',
+            replace(new_case, ctx, '''fija'',false,null,null,null,99,null,'), 'ERR:BV217');
+        perform pg_temp.expect('1b: el contexto de ingreso queda guardado tal como se capturó', null, null,
+            $q$select count(*)::text from public."case" where intake_state_id = 9 and intake_municipality_key = '09015' and intake_channel_id = 1 and entry_route_id = 3$q$, '>0');
+
+        -- ----- Rectificar: el valor sensible solo cambia con consentimiento sensible (y solo si CAMBIA)
+        update public.person set sex_id = 2 where id = pg_temp.id('4000', 33)::uuid;
+        perform pg_temp.expect('1b (D-14): rectificar sin tocar el sexo ya guardado no exige consentimiento nuevo', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_rectify_person(%L::uuid,'Lambda','SinSensible',null,null,date '1985-03-04',false,2,null,null,null,'Corrección de nombre')) x$q$, pg_temp.id('4000', 33)), '1');
+        perform pg_temp.expect('1b (D-14): cambiar el sexo sin consentimiento sensible → BV402', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_rectify_person(%L::uuid,'Lambda','SinSensible',null,null,date '1985-03-04',false,1,null,null,null,'Cambio')) x$q$, pg_temp.id('4000', 33)), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14): agregar un teléfono sin consentimiento sensible → BV402', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_rectify_person(%L::uuid,'Lambda','SinSensible',null,null,date '1985-03-04',false,2,null,'5512345678',null,'Teléfono')) x$q$, pg_temp.id('4000', 33)), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14): agregar un correo sin consentimiento sensible → BV402', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_rectify_person(%L::uuid,'Lambda','SinSensible',null,null,date '1985-03-04',false,2,null,null,'a@b.invalid','Correo')) x$q$, pg_temp.id('4000', 33)), 'ERR:BV402');
+        perform pg_temp.expect('1b (D-14): con el consentimiento sensible vigente sí se puede agregar el sexo', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_rectify_person(%L::uuid,'Kappa','Documentada',null,null,date '1985-03-04',false,2,null,'5512345678',null,'Datos que la persona dio')) x$q$, pg_temp.id('4000', 32)), '1');
+
+        -- ----- Subfolio: sin supuestos y con el asentimiento que se capturó
+        perform pg_temp.expect('1b control positivo: el subfolio sin datos opcionales se abre', INT, 'authenticated', subf, '1');
+        perform pg_temp.expect('1b (D-14): el sexo del subfolio sin consentimiento sensible → BV402', INT, 'authenticated',
+            replace(subf, 'false,null,null,null,null,null,', 'false,1,null,null,null,null,'), 'ERR:BV402');
+        perform pg_temp.expect('1b: sin asentimiento de la niña o el niño no se abre el subfolio → BV403', INT, 'authenticated',
+            replace(subf, '"is_minor_assent":true', '"is_minor_assent":false'), 'ERR:BV403');
+        perform pg_temp.expect('1b: si no se indica el asentimiento tampoco se da por hecho → BV403', INT, 'authenticated',
+            replace(subf, ',"is_minor_assent":true', ''), 'ERR:BV403');
+        perform pg_temp.expect('1b: un consentimiento del subfolio sin estado → BV322', INT, 'authenticated',
+            replace(subf, '"status":"granted",', ''), 'ERR:BV322');
+        perform pg_temp.expect('1b: el asentimiento de cada consentimiento es el que se capturó (no se fuerza a «sí»)', INT, 'authenticated',
+            replace(subf, '"is_minor_assent":true}]', '"is_minor_assent":true},{"consent_type":"secondary_use_research","status":"granted","is_minor_assent":false}]'), '1');
+        perform pg_temp.expect('1b: el consentimiento sin asentimiento quedó registrado sin asentimiento', null, null,
+            $q$select count(*)::text from public.consent where consent_type = 'secondary_use_research' and is_minor_assent = false
+               and case_id in (select id from public."case" where parent_case_id = 'aaaaaaaa-5000-0000-0000-0000000000d1')$q$, '>0');
+
+        -- ----- Catálogos: de la organización (los administran dirección y Trabajo Social) y oficiales (de nadie)
+        perform pg_temp.expect('1b control positivo: Trabajo Social agrega un canal de procedencia', CW, 'authenticated',
+            format($q$with i as (insert into public.intake_channel (organization_id, code, label_es) values (%L, 7, 'Canal nuevo') returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('1b: el área jurídica no administra los canales', 'aaaaaaaa-3000-0000-0000-00000000000a', 'authenticated',
+            format($q$with i as (insert into public.intake_channel (organization_id, code, label_es) values (%L, 8, 'Otro') returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('1b control positivo: dirección agrega una vía de ingreso', DIR, 'authenticated',
+            format($q$with i as (insert into public.entry_route (organization_id, code, label_es) values (%L, 4, 'Vía nueva') returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('1b: el rol de solo lectura no administra las vías', VW, 'authenticated',
+            format($q$with i as (insert into public.entry_route (organization_id, code, label_es) values (%L, 5, 'Otra') returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('1b: no se borra un canal (se desactiva)', DIR, 'authenticated',
+            $q$with d as (delete from public.intake_channel returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('1b: dirección de otra organización no ve los canales de A', DIRB2, 'authenticated',
+            format('select count(*)::text from public.intake_channel where organization_id = %L', ORG_A), '0');
+        perform pg_temp.expect('1b control positivo: dirección lee los 32 estados oficiales', DIR, 'authenticated',
+            'select count(*)::text from public.geo_state', '32');
+        perform pg_temp.expect('1b control positivo: dirección lee los municipios oficiales', DIR, 'authenticated',
+            'select (count(*) > 2000)::text from public.geo_municipality', 'true');
+        perform pg_temp.expect('1b: nadie edita los estados oficiales, ni dirección', DIR, 'authenticated',
+            $q$with u as (update public.geo_state set name = 'X' returning 1) select count(*)::text from u$q$, 'ERR');
+        perform pg_temp.expect('1b: nadie agrega municipios, ni dirección', DIR, 'authenticated',
+            $q$with i as (insert into public.geo_municipality (cvegeo, cve_ent, cve_mun, name) values ('99999', '09', '999', 'X') returning 1) select count(*)::text from i$q$, 'ERR');
+        perform pg_temp.expect('1b: sin rol vigente no se leen los municipios', NR, 'authenticated',
+            'select count(*)::text from public.geo_municipality', '0');
+        perform pg_temp.expect('1b: el catálogo oficial no se lee sin sesión', null, 'anon',
+            'select count(*)::text from public.geo_state', 'ERR');
+    end;
 
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',

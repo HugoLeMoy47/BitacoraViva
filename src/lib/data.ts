@@ -12,6 +12,9 @@ import {
   CaseWithDetails,
   Consent,
   DocumentType,
+  GeoMunicipality,
+  GeoState,
+  IntakeOption,
   JournalEntry,
   Organization,
   Person,
@@ -45,6 +48,10 @@ export interface OrgData {
   cases: CaseWithDetails[];
   /** Tipos de documento de la organización (catálogo que administra dirección) */
   documentTypes: DocumentType[];
+  /** Estados oficiales (INEGI) y catálogos de ingreso de la organización */
+  geoStates: GeoState[];
+  intakeChannels: IntakeOption[];
+  entryRoutes: IntakeOption[];
   auditEvents: AuditEvent[];
   authorityRequests: AuthorityRequest[];
   sharingEvents: SharingEvent[];
@@ -65,6 +72,9 @@ export const EMPTY_ORG_DATA: OrgData = {
   },
   cases: [],
   documentTypes: [],
+  geoStates: [],
+  intakeChannels: [],
+  entryRoutes: [],
   auditEvents: [],
   authorityRequests: [],
   sharingEvents: [],
@@ -117,6 +127,9 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     authority,
     documentTypes,
     personDocuments,
+    geoStates,
+    intakeChannels,
+    entryRoutes,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -144,6 +157,9 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     rows<DocumentType>(supabase.from('document_type').select('*').order('sort_order')),
     // RLS: solo roles que operan expedientes; el rol de solo lectura recibe vacío
     rows<PersonDocument>(supabase.from('person_document').select('*').order('created_at')),
+    rows<GeoState>(supabase.from('geo_state').select('*').order('cve_ent')),
+    rows<IntakeOption>(supabase.from('intake_channel').select('*').order('sort_order')),
+    rows<IntakeOption>(supabase.from('entry_route').select('*').order('sort_order')),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -248,6 +264,9 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     statusValues,
     cases: detailed,
     documentTypes,
+    geoStates,
+    intakeChannels,
+    entryRoutes,
     auditEvents: audit,
     authorityRequests: authority,
     sharingEvents,
@@ -285,10 +304,11 @@ export interface SubfolioInput {
   preferred_name: string | null;
   birth_date: string;
   birth_date_is_estimated: boolean;
-  sex_id: number;
-  nationality_country_id: number;
+  // Datos sensibles (D-14): vacíos si no hay consentimiento sensible
+  sex_id: number | null;
+  nationality_country_id: number | null;
   other_nationality: string | null;
-  primary_language_id: number;
+  primary_language_id: number | null;
   other_language: string | null;
   guardian_role: string;
   justification: string;
@@ -303,18 +323,22 @@ export interface NewCaseInput {
   preferred_name: string | null;
   birth_date: string;
   birth_date_is_estimated: boolean;
-  sex_id: number;
-  nationality_country_id: number;
+  // Datos sensibles (D-14): solo con consentimiento sensible; sin él van vacíos, nunca un valor supuesto
+  sex_id: number | null;
+  nationality_country_id: number | null;
   other_nationality: string | null;
-  primary_language_id: number;
+  primary_language_id: number | null;
   other_language: string | null;
   phone_number: string | null;
+  /** Obligatorio: quien captura lo elige, no hay valor por defecto */
   intake_window_type: 'fija' | 'movil' | 'transaccional';
-  travels_with_family: boolean;
-  intake_state_id: number;
-  intake_municipality_id: number;
-  intake_channel_id: number;
-  entry_route_id: number;
+  // Contexto de ingreso: opcional; vacío = «No registrado»
+  travels_with_family: boolean | null;
+  intake_state_id: number | null;
+  /** Clave del INEGI (5 dígitos) */
+  intake_municipality_key: string | null;
+  intake_channel_id: number | null;
+  entry_route_id: number | null;
   entry_date_str: string | null;
   assigned_area_id: string | null;
   vulnerability_codes: string[];
@@ -394,7 +418,7 @@ export const api = {
       p_intake_window_type: i.intake_window_type,
       p_travels_with_family: i.travels_with_family,
       p_intake_state_id: i.intake_state_id,
-      p_intake_municipality_id: i.intake_municipality_id,
+      p_intake_municipality_key: i.intake_municipality_key,
       p_intake_channel_id: i.intake_channel_id,
       p_entry_route_id: i.entry_route_id,
       p_entry_date_str: i.entry_date_str,
@@ -516,6 +540,10 @@ export const api = {
 
   generateArcoAccessExtract: (personId: string) =>
     rpc<Record<string, unknown>>('fn_generate_arco_access_extract', { p_person_id: personId }),
+
+  // Municipios de un estado (catálogo oficial del INEGI): se piden al elegir el estado, no todos de golpe
+  listMunicipalities: (stateKey: string) =>
+    rows<GeoMunicipality>(supabase.from('geo_municipality').select('*').eq('cve_ent', stateKey).order('name')),
 
   // E14 fase 1: documentos, religión, detalle de marcadores y referencia heredada
   setPersonDocument: (personId: string, documentTypeId: string, documentNumber: string, reason?: string) =>

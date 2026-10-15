@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { Area, DocumentType, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
+import { Area, DocumentType, GeoState, IntakeOption, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
 
 // Catálogos de la organización (áreas, ejes y valores de estatus) cargados desde la base.
 export interface Catalog {
@@ -8,6 +8,10 @@ export interface Catalog {
   statusValues: Record<StatusAxisCode, StatusValue[]>;
   /** Tipos de documento que dirección administra */
   documentTypes: DocumentType[];
+  /** Estados oficiales (INEGI) y catálogos de ingreso: estado, canal y vía de ingreso del alta */
+  geoStates: GeoState[];
+  intakeChannels: IntakeOption[];
+  entryRoutes: IntakeOption[];
   organizationName: string;
   /** Datos del responsable declarados por la asociación (aviso de privacidad y extracto ARCO) */
   organizationInfo: { responsibleName: string; responsibleAddress: string; arcoContact: string };
@@ -21,6 +25,9 @@ const EMPTY: Catalog = {
   areas: [],
   statusAxes: [],
   documentTypes: [],
+  geoStates: [],
+  intakeChannels: [],
+  entryRoutes: [],
   statusValues: {
     legal_status: [],
     engagement_status: [],

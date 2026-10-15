@@ -2,7 +2,7 @@ import React, { useDeferredValue, useMemo, useState } from 'react';
 import { ChevronRight, Search } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails } from '../types/database';
-import { VULNERABILITY_CATALOG } from '../lib/catalogs';
+import { VULNERABILITY_CATALOG, countryLabel, languageLabel } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
 import { hrefFor } from '../lib/router';
 
@@ -199,7 +199,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
                     <span className="text-xs text-gray-600">{c.statuses.case_stage.label}</span>
                   </p>
                   <p className="mt-1 text-xs text-gray-600">
-                    {c.person.other_nationality || '—'} · {c.person.other_language || 'Español'}
+                    {countryLabel(c.person.nationality_country_id, c.person.other_nationality) ?? t('common.not_recorded')} · {languageLabel(c.person.primary_language_id, c.person.other_language) ?? t('common.not_recorded')}
                   </p>
                   {c.vulnerabilities.length > 0 && <div className="mt-2"><Markers c={c} /></div>}
                 </a>
@@ -232,8 +232,8 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
                       {c.person.preferred_name && <div className="text-xs italic text-turquesa-dark">“{c.person.preferred_name}”</div>}
                     </td>
                     <td className="hidden px-5 py-3 align-top text-gray-700 lg:table-cell">
-                      <div>{c.person.other_nationality || '—'}</div>
-                      <div className="text-xs text-gray-600">{c.person.other_language || 'Español'}</div>
+                      <div>{countryLabel(c.person.nationality_country_id, c.person.other_nationality) ?? t('common.not_recorded')}</div>
+                      <div className="text-xs text-gray-600">{languageLabel(c.person.primary_language_id, c.person.other_language) ?? t('common.not_recorded')}</div>
                     </td>
                     <td className="px-5 py-3 align-top">
                       <span className="inline-block rounded-full border border-turquesa/30 bg-claro px-2.5 py-0.5 text-xs font-bold text-turquesa-dark">

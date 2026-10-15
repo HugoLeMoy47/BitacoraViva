@@ -109,9 +109,12 @@ async function tarea1(page) {
     await k.click(d.getByText('No otorga', { exact: true }).nth(2), 'No otorga (uso secundario)');
     await k.shot(`t1-paso0-${page.viewportSize().width}.png`);
     await k.click(d.getByRole('button', { name: /Siguiente/ }), 'Siguiente (consentimiento)');
+    // El tipo de ventanilla es obligatorio y no viene elegido: lo elige quien captura
+    await k.click(d.getByRole('button', { name: /Ventanilla fija/ }), 'Ventanilla fija');
     await k.click(d.getByRole('button', { name: /Siguiente/ }), 'Siguiente (contexto)');
     await k.type(d.getByLabel(/Nombres/), 'Prueba', 'Nombres');
     await k.type(d.getByLabel(/Primer apellido/i), 'PrimerUso', 'Primer apellido');
+    await k.type(d.getByLabel(/Fecha de nacimiento/), '1990-05-17', 'Fecha de nacimiento');
     await k.shot(`t1-paso2-${page.viewportSize().width}.png`);
     await k.click(d.getByRole('button', { name: /Siguiente/ }), 'Siguiente (persona)');
     await k.shot(`t1-paso4-${page.viewportSize().width}.png`);
@@ -178,6 +181,9 @@ async function tarea4(page) {
     await k.type(root.getByLabel(/Nombres/), 'Prueba', 'Nombres');
     await k.type(root.getByLabel(/Primer apellido/i), 'PrimerUso', 'Primer apellido');
     await k.type(root.locator('input[type=date]'), '2018-05-10', 'Fecha de nacimiento');
+    // Sin valores supuestos: el vínculo y el asentimiento los decide quien captura
+    await root.getByLabel(/Vínculo|Parentesco/i).first().selectOption('mother');
+    await k.click(root.getByRole('checkbox', { name: /asentimiento/i }), 'Asentimiento de la niña o el niño');
     await k.type(root.getByLabel(/Nota de justificación/i), 'Prueba de primer uso: subfolio abierto en el recorrido automatizado.', 'Nota de justificación');
     await k.shot(`t4-formulario-${page.viewportSize().width}.png`);
     await k.click(root.getByRole('button', { name: /Crear subfolio/i }), 'Crear subfolio');

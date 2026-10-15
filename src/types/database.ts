@@ -251,15 +251,16 @@ export interface Person {
   preferred_name?: string | null;
   birth_date: string;
   birth_date_is_estimated: boolean;
-  sex_id: number;
+  // Sin valor por defecto (E14 fase 1b): vacío = «No registrado»
+  sex_id?: number | null;
   other_sex?: string | null;
-  nationality_country_id: number;
+  nationality_country_id?: number | null;
   other_nationality?: string | null;
   origin_department_id?: number | null;
-  is_self_identified_migrant: boolean;
+  is_self_identified_migrant?: boolean | null;
   migration_profile_id?: number | null;
   other_profile?: string | null;
-  primary_language_id: number;
+  primary_language_id?: number | null;
   other_language?: string | null;
   education_level_id?: number | null;
   marital_status_id?: number | null;
@@ -285,14 +286,16 @@ export interface Case {
   parent_case_id?: string | null;
   previous_case_id?: string | null;
   titular_person_id: string;
-  intake_state_id: number;
-  intake_municipality_id: number;
-  intake_channel_id: number;
+  // Contexto de ingreso: sin valor por defecto; vacío = «No registrado»
+  intake_state_id?: number | null;
+  /** Clave del INEGI (5 dígitos) */
+  intake_municipality_key?: string | null;
+  intake_channel_id?: number | null;
   intake_window_type: 'fija' | 'movil' | 'transaccional';
   intake_date: string;
-  entry_route_id: number;
+  entry_route_id?: number | null;
   entry_date_str?: string | null;
-  travels_with_family: boolean;
+  travels_with_family?: boolean | null;
   opened_at: string;
   opened_by: string;
   closed_at?: string | null;
@@ -304,6 +307,31 @@ export interface Case {
   legacy_reference?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Estado oficial (INEGI): clave de 2 dígitos */
+export interface GeoState {
+  cve_ent: string;
+  name: string;
+  abbreviation?: string | null;
+}
+
+/** Municipio oficial (INEGI): clave de 5 dígitos (estado + municipio) */
+export interface GeoMunicipality {
+  cvegeo: string;
+  cve_ent: string;
+  cve_mun: string;
+  name: string;
+}
+
+/** Opción de un catálogo de ingreso de la organización (canal de procedencia, vía de ingreso) */
+export interface IntakeOption {
+  id: string;
+  organization_id: string;
+  code: number;
+  label_es: string;
+  is_active: boolean;
+  sort_order: number;
 }
 
 /** Tipo de documento de la persona (catálogo de la organización, lo administra dirección) */

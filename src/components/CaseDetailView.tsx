@@ -54,6 +54,7 @@ import { dataApi } from '../lib/data';
 import { hasCurrentSensitiveConsent } from '../lib/privacy';
 import { useToast } from '../lib/toast';
 import { PersonDocumentsPanel } from './PersonDocumentsPanel';
+import { MunicipalityName } from './MunicipalityName';
 import { SmallFieldModal } from './SmallFieldModal';
 
 interface CaseDetailViewProps {
@@ -118,7 +119,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   onDataChanged,
 }) => {
   const toast = useToast();
-  const { statusAxes, statusValues, organizationName, organizationInfo } = useCatalog();
+  const { statusAxes, statusValues, organizationName, organizationInfo, geoStates, intakeChannels, entryRoutes } = useCatalog();
   const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>(initialTab ?? 'axes');
   // E14 fase 1: datos cortos que se editan en un modal de un solo campo
   const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
@@ -251,7 +252,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             {caseData.case_number}
           </span>
           <span className="whitespace-nowrap text-xs bg-claro text-turquesa-dark px-2.5 py-1 rounded-full font-bold">
-            {caseData.statuses.engagement_status?.label || 'Primer Contacto'}
+            {caseData.statuses.engagement_status?.label || t('common.not_recorded')}
           </span>
         </div>
       </div>
@@ -724,7 +725,31 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               <div>
                 <span className="text-gray-500 block">{t('cases.field_family_travel')}</span>
                 <span className="font-semibold text-carbon text-sm">
-                  {caseData.travels_with_family ? t('common.yes') : t('common.no')}
+                  {caseData.travels_with_family == null ? t('common.not_recorded') : caseData.travels_with_family ? t('common.yes') : t('common.no')}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block">{t('cases.field_state')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {geoStates.find((s) => Number(s.cve_ent) === caseData.intake_state_id)?.name ?? t('common.not_recorded')}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block">{t('cases.field_municipality')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  <MunicipalityName municipalityKey={caseData.intake_municipality_key} />
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block">{t('cases.field_channel')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {intakeChannels.find((c) => c.code === caseData.intake_channel_id)?.label_es ?? t('common.not_recorded')}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block">{t('cases.field_route')}</span>
+                <span className="font-semibold text-carbon text-sm">
+                  {entryRoutes.find((r) => r.code === caseData.entry_route_id)?.label_es ?? t('common.not_recorded')}
                 </span>
               </div>
               <div>
