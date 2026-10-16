@@ -97,3 +97,4 @@ Una línea por migración. «E#» es la épica del backlog; «E14» es el empalm
 - **Nada se borra:** los datos se *cierran* con motivo (`valid_to`, `closed_by`, `change_reason`) o se anonimizan. Ningún rol de aplicación tiene `DELETE` sobre tablas de negocio.
 - **Toda escritura deja auditoría** por disparador (`fn_audit_trigger_fields` registra *qué campos* cambiaron, nunca los valores).
 - **Nombres:** tablas, columnas y funciones en inglés `snake_case`, tomados del glosario; textos visibles en español.
+- **Funciones de borde:** la única es `supabase/functions/invite-user` (ADR-0010): usa la llave de servicio solo para invitar por correo; la regla vive en la base. Ver su `README.md`.
