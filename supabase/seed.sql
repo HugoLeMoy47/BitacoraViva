@@ -263,6 +263,15 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
 on conflict (organization_id, catalog, key) do nothing;
 
+-- 5l. Papel en la familia (E15 fase 4): los cuatro papeles de la regla de orden de la matriz de Trabajo Social; dirección y
+-- Trabajo Social los editan. Un papel agregado cuenta como «otro» al sugerir el orden.
+insert into public.catalog_item (organization_id, catalog, key, label_es, is_system, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'family_role', 'mother', 'Madre', false, 1),
+    ('00000000-0000-0000-0000-000000000001', 'family_role', 'father_partner', 'Padre o pareja', false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'family_role', 'child', 'Hija o hijo', false, 3),
+    ('00000000-0000-0000-0000-000000000001', 'family_role', 'other', 'Otro', false, 4)
+on conflict (organization_id, catalog, key) do nothing;
+
 -- 5k. Registro de origen (E15 fase 3): lo que no se repite de KOBO / REDODEM, como preguntas de la ficha social, y la línea de servicio
 -- «Servicio social». Solo informativo (informes por origen: deuda D-23).
 insert into public.social_question (organization_id, key, label_es, section, answer_type, has_detail, is_sensitive, sort_order) values

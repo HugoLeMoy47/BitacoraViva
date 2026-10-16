@@ -15,7 +15,7 @@ import { DisabledReason, describedBy } from './DisabledReason';
 // renombran y se retiran valores; retirar NO borra: el valor deja de ofrecerse, pero lo ya registrado lo conserva.
 // Los grupos por edad se reemplazan completos y lo anterior se cierra con motivo.
 type TabId = CatalogItem['catalog'] | 'age_bands' | 'social_questions';
-const TABS: TabId[] = ['service_line', 'specific_need', 'education_level', 'marital_status', 'occupation', 'department', 'language', 'religion', 'age_bands', 'social_questions'];
+const TABS: TabId[] = ['service_line', 'specific_need', 'education_level', 'marital_status', 'occupation', 'department', 'family_role', 'language', 'religion', 'age_bands', 'social_questions'];
 // Países de la lista de nacionalidades (id de MAP-OIM); el grupo «otro» (1) sirve a los demás países
 const DEPARTMENT_COUNTRIES: { id: number; labelKey: string }[] = [
   { id: 93, labelKey: 'intake.countries.honduras' },

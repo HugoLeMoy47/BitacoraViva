@@ -3206,6 +3206,77 @@ begin
             format($q$select count(*)::text from public.catalog_item where organization_id = %L::uuid and catalog = 'service_line' and key = 'social_service'$q$, DEMO_ORG), '1');
     end;
 
+    -- ============================================================================================
+    -- ===== E15 fase 4: papel en la familia (migración 20261024000001)
+    -- ===== El orden de la matriz (madre, padre o pareja, hijos de mayor a menor, otros) necesita saber el papel de cada
+    -- ===== persona en la familia. El papel es un diccionario editable; se registra dentro de una familia y se corrige con motivo.
+    -- ===== El orden sugerido se calcula en la interfaz; aquí se prueba el dato y sus reglas.
+    -- ============================================================================================
+    declare
+        C_F1 constant text := pg_temp.id('5000', 32);
+        C_F2 constant text := pg_temp.id('5000', 33);
+        C_ALONE constant text := pg_temp.id('5000', 34);
+        r_mother constant text := 'aaaaaaaa-c200-0000-0000-000000000001';
+        r_child  constant text := 'aaaaaaaa-c200-0000-0000-000000000002';
+        r_off    constant text := 'aaaaaaaa-c200-0000-0000-000000000003';
+        r_other_catalog constant text := 'aaaaaaaa-c000-0000-0000-000000000001';
+        r_b      constant text := 'bbbbbbbb-c200-0000-0000-000000000001';
+        setrole text := $q$select count(*)::text from (select public.fn_set_family_member_role(%L::uuid, %L::uuid, %L)) x$q$;
+    begin
+        begin
+            insert into public.catalog_item (id, organization_id, catalog, key, label_es, is_active, is_system, sort_order) values
+                (r_mother::uuid, ORG_A::uuid, 'family_role', 'mother', 'Madre (prueba)', true, false, 1),
+                (r_child::uuid, ORG_A::uuid, 'family_role', 'child', 'Hija o hijo (prueba)', true, false, 3),
+                (r_off::uuid, ORG_A::uuid, 'family_role', 'retired', 'Papel retirado', false, false, 9),
+                (r_b::uuid, ORG_B::uuid, 'family_role', 'mother', 'Madre B', true, false, 1);
+        exception when others then
+            raise notice 'E15f4 escenario: sin el diccionario de papeles todavía (%).', sqlerrm;
+        end;
+        -- La familia de prueba: dos personas en la misma familia nueva
+        perform pg_temp.expect('E15f4 prep: se crea una familia con la primera persona', CW, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_family(%L::uuid, null, 1, null, 'FAM-E15F4-1')) x$q$, C_F1), '1');
+        perform pg_temp.expect('E15f4 prep: la segunda persona se asigna a esa familia', CW, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_set_case_family(%L::uuid, (select family_unit_id from public.family_member where case_id = %L::uuid and valid_to is null), 2, null)) x$q$, C_F2, C_F1), '1');
+
+        perform pg_temp.expect('E15f4 control positivo: se registra el papel dentro de la familia', CW, 'authenticated',
+            format(setrole, C_F1, r_mother, null), '1');
+        perform pg_temp.expect('E15f4: quedó guardado en la pertenencia vigente', null, null,
+            format($q$select count(*)::text from public.family_member where case_id = %L::uuid and valid_to is null and family_role_item_id = %L::uuid$q$, C_F1, r_mother), '1');
+        perform pg_temp.expect('E15f4: cambiar el papel sin motivo no se puede → BV304', CW, 'authenticated',
+            format(setrole, C_F1, r_child, null), 'ERR:BV304');
+        perform pg_temp.expect('E15f4: con motivo se cambia', CW, 'authenticated',
+            format(setrole, C_F1, r_child, 'Era su hija, no su madre'), '1');
+        perform pg_temp.expect('E15f4: el cambio deja su motivo en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where action = 'RECTIFICATION' and table_name = 'family_member'
+               and new_values->>'reason' = 'Era su hija, no su madre' and created_at >= transaction_timestamp()$q$, 'true');
+        perform pg_temp.expect('E15f4: se puede quitar con motivo', CW, 'authenticated',
+            format(setrole, C_F1, null, 'Se capturó por error'), '1');
+        perform pg_temp.expect('E15f4: sin papel registrado el campo queda vacío («No registrado»)', null, null,
+            format($q$select count(*)::text from public.family_member where case_id = %L::uuid and valid_to is null and family_role_item_id is null$q$, C_F1), '1');
+        perform pg_temp.expect('E15f4: una persona sin familia no tiene papel que registrar → BV342', CW, 'authenticated',
+            format(setrole, C_ALONE, r_mother, null), 'ERR:BV342');
+        perform pg_temp.expect('E15f4: un papel de otra organización no se usa → BV220', CW, 'authenticated',
+            format(setrole, C_F2, r_b, 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15f4: un papel retirado no se usa → BV220', CW, 'authenticated',
+            format(setrole, C_F2, r_off, 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15f4: un valor de otro diccionario no vale como papel → BV220', CW, 'authenticated',
+            format(setrole, C_F2, r_other_catalog, 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15f4: el rol de solo lectura no registra el papel → BV120', VW, 'authenticated',
+            format(setrole, C_F2, r_mother, 'x'), 'ERR:BV120');
+        perform pg_temp.expect('E15f4: el voluntariado no registra el papel → BV120', VOL, 'authenticated',
+            format(setrole, C_F2, r_mother, 'x'), 'ERR:BV120');
+        perform pg_temp.expect('E15f4: otra organización no ve el expediente → BV201', DIRB2, 'authenticated',
+            format(setrole, C_F2, r_b, 'x'), 'ERR:BV201');
+        perform pg_temp.expect('E15f4: el papel no se escribe por la API directa', CW, 'authenticated',
+            format($q$with u as (update public.family_member set family_role_item_id = %L::uuid where case_id = %L::uuid returning 1) select count(*)::text from u$q$, r_mother, C_F2), 'ERR');
+        perform pg_temp.expect('E15f4: Trabajo Social agrega un papel al diccionario', CW, 'authenticated',
+            format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L::uuid, 'family_role', 'abuela', 'Abuela', 6) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('E15f4: los cuatro papeles de la matriz se siembran (madre, padre o pareja, hija o hijo, otro)', null, null,
+            $q$select count(*)::text from public.catalog_item where organization_id = '00000000-0000-0000-0000-000000000001' and catalog = 'family_role' and key in ('mother','father_partner','child','other')$q$, '4');
+        perform pg_temp.expect('E15f4: el extracto de acceso ARCO incluye el papel en la familia', DIR, 'authenticated',
+            format($q$select (bool_or(f ? 'family_role'))::text from jsonb_array_elements(public.fn_generate_arco_access_extract(%L::uuid)->'family') f$q$, pg_temp.id('4000', 32)), 'true');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');

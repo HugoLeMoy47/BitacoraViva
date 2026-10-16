@@ -324,7 +324,7 @@ export interface Case {
 export interface CatalogItem {
   id: string;
   organization_id: string;
-  catalog: 'language' | 'religion' | 'specific_need' | 'service_line' | 'education_level' | 'marital_status' | 'occupation' | 'department';
+  catalog: 'language' | 'religion' | 'specific_need' | 'service_line' | 'education_level' | 'marital_status' | 'occupation' | 'department' | 'family_role';
   /** Solo el departamento: país (de la lista de nacionalidades) al que pertenece; null en los demás y en «no quiso responder» */
   country_id?: number | null;
   key: string;
@@ -397,6 +397,8 @@ export interface FamilyMember {
   family_unit_id: string;
   case_id: string;
   member_order?: number | null;
+  /** Papel de la persona en la familia (diccionario `family_role`, E15 fase 4); vacío = «No registrado» */
+  family_role_item_id?: string | null;
   created_at: string;
   valid_to?: string | null;
   change_reason?: string | null;
@@ -407,7 +409,9 @@ export interface CaseFamilyView {
   unit: FamilyUnit;
   typeLabel: string | null;
   order: number | null;
-  members: { caseId: string; caseNumber: string; personName: string; order: number | null }[];
+  /** Papel de esta persona en la familia (valor del diccionario `family_role`) */
+  roleItemId: string | null;
+  members: { caseId: string; caseNumber: string; personName: string; order: number | null; roleItemId: string | null; birthDate: string | null }[];
 }
 
 export type CaseDateKind = 'nation_entry' | 'nation_exit' | 'shelter_entry' | 'shelter_exit';
