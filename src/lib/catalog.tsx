@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { AgeBand, Area, CatalogItem, DocumentType, FamilyType, FamilyUnit, GeoState, IntakeOption, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
+import { AgeBand, SocialQuestion, Area, CatalogItem, DocumentType, FamilyType, FamilyUnit, GeoState, IntakeOption, StatusAxis, StatusAxisCode, StatusValue } from '../types/database';
 
 // Catálogos de la organización (áreas, ejes y valores de estatus) cargados desde la base.
 export interface Catalog {
@@ -19,6 +19,8 @@ export interface Catalog {
   catalogItems: CatalogItem[];
   /** Grupos por edad vigentes */
   ageBands: AgeBand[];
+  /** Preguntas de la ficha social */
+  socialQuestions: SocialQuestion[];
   organizationName: string;
   /** Datos del responsable declarados por la asociación (aviso de privacidad y extracto ARCO) */
   organizationInfo: { responsibleName: string; responsibleAddress: string; arcoContact: string };
@@ -39,6 +41,7 @@ const EMPTY: Catalog = {
   familyUnits: [],
   catalogItems: [],
   ageBands: [],
+  socialQuestions: [],
   statusValues: {
     legal_status: [],
     engagement_status: [],
