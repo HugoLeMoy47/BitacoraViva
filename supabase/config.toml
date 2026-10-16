@@ -27,3 +27,6 @@ enable_signup = false
 
 [analytics]
 enabled = false
+
+[functions.invite-user]
+verify_jwt = true
