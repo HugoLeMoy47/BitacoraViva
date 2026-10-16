@@ -13,7 +13,7 @@ import { DisabledReason, describedBy } from './DisabledReason';
 // administran dirección y Trabajo Social en «Diccionarios». Cada respuesta es informativa (el marcador de vulnerabilidad manda)
 // y versionada: cambiar o quitar una respuesta ya registrada pide motivo y la anterior queda en el historial.
 // Lo que hay que CONTAR (relatos, hechos, terceros) no va aquí: va a la bitácora de Trabajo Social.
-const SECTIONS: SocialQuestion['section'][] = ['migration', 'sensitive'];
+const SECTIONS: SocialQuestion['section'][] = ['migration', 'sensitive', 'origin'];
 const CONTROL = 'w-full min-h-11 rounded-lg border border-gray-300 bg-white p-2.5 text-sm focus:border-turquesa focus:outline-none';
 const BTN = 'inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50';
 
@@ -109,6 +109,7 @@ const SectionBlock: React.FC<{
       {section === 'sensitive' && (
         <p className="mt-1 text-sm text-gray-700">{sensitiveOk ? t('social.sensitive_note') : t('social.sensitive_blocked')}</p>
       )}
+      {section === 'origin' && <p className="mt-1 text-sm text-gray-700">{t('social.origin_note')}</p>}
 
       {!editing ? (
         <dl className="mt-3 grid grid-cols-1 gap-3 text-xs md:grid-cols-2">

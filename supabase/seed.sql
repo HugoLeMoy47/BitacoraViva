@@ -263,6 +263,17 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
 on conflict (organization_id, catalog, key) do nothing;
 
+-- 5k. Registro de origen (E15 fase 3): lo que no se repite de KOBO / REDODEM, como preguntas de la ficha social, y la línea de servicio
+-- «Servicio social». Solo informativo (informes por origen: deuda D-23).
+insert into public.social_question (organization_id, key, label_es, section, answer_type, has_detail, is_sensitive, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'origin_population_type', 'Tipo de población (registro de origen)', 'origin', 'text', false, true, 1),
+    ('00000000-0000-0000-0000-000000000001', 'origin_registered_on', 'Fecha de registro de origen (REDODEM)', 'origin', 'date', false, false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'origin_registered_by', 'Quién hizo el registro de origen', 'origin', 'text', false, false, 3)
+on conflict (organization_id, key) do nothing;
+insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'service_line', 'social_service', 'Servicio social', 'SERVICIO SOCIAL', false, 12)
+on conflict (organization_id, catalog, key) do nothing;
+
 -- 5j. Preguntas de la ficha social (E15 fase 2): contexto migratorio y situaciones sensibles de la matriz de Trabajo Social
 -- (sin violencias, pospuestas). Dirección y Trabajo Social las administran en «Diccionarios».
 insert into public.social_question (organization_id, key, label_es, section, answer_type, has_detail, is_sensitive, sort_order)

@@ -157,7 +157,7 @@ const ItemsEditor: React.FC<{ catalog: CatalogItem['catalog']; onChanged: () => 
 
 // ------------------------------------------------------------------ Preguntas de la ficha social (E15 fase 2)
 const QUESTION_TYPES: SocialQuestion['answer_type'][] = ['yes_no', 'number', 'text', 'date'];
-const QUESTION_SECTIONS: SocialQuestion['section'][] = ['migration', 'sensitive'];
+const QUESTION_SECTIONS: SocialQuestion['section'][] = ['migration', 'sensitive', 'origin'];
 
 const SocialQuestionsEditor: React.FC<{ onChanged: () => Promise<void> }> = ({ onChanged }) => {
   const { socialQuestions } = useCatalog();
