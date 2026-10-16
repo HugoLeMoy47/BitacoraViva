@@ -20,8 +20,10 @@ export interface SessionUser {
   userRole: UserRole;
   /** Áreas a las que pertenece la persona por sus roles vigentes (compartimentación, Ethos C2) */
   areaIds: string[];
-  /** Códigos de esas áreas (p. ej. `trabajo_social`): deciden qué pantallas ve quien tiene un rol operativo */
+  /** Códigos de esas áreas (p. ej. `trabajo_social`) */
   areaCodes: string[];
+  /** Capacidades de la cuenta (E16 fase B): deciden qué pantallas de administración se ofrecen; la base las vuelve a exigir */
+  capabilities: string[];
   assignedAreaId?: string;
   assignedAreaCode?: string;
   assignedAreaName?: string;
@@ -62,7 +64,7 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
     ROLE_PRIORITY.map((r) => roles.find((x) => x.role_name === r)).find(Boolean) || roles[0];
 
   const allAreaIds = Array.from(new Set(roles.map((r) => r.area_id).filter((a): a is string => !!a)));
-  const [areaRes, orgRes, areasRes] = await Promise.all([
+  const [areaRes, orgRes, areasRes, capsRes] = await Promise.all([
     userRole.area_id
       ? supabase.from('area').select('id, code, name').eq('id', userRole.area_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -74,6 +76,7 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
     allAreaIds.length > 0
       ? supabase.from('area').select('code').in('id', allAreaIds)
       : Promise.resolve({ data: [] as { code: string }[] }),
+    supabase.rpc('fn_my_capabilities'),
   ]);
 
   const area = areaRes.data;
@@ -86,6 +89,7 @@ async function loadSessionUser(userId: string): Promise<SessionUser | null> {
     userRole,
     areaIds: allAreaIds,
     areaCodes: ((areasRes.data ?? []) as { code: string }[]).map((a) => a.code),
+    capabilities: (capsRes.data ?? []) as string[],
     assignedAreaId: area?.id,
     assignedAreaCode: area?.code,
     assignedAreaName: area?.name,

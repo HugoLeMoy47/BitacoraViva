@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canManageTeam, groupTeam, TeamProfile, TeamRole } from './team';
-import { allowedRoutes } from './navigation';
+import { groupTeam, TeamProfile, TeamRole } from './team';
 
 const p = (id: string, full_name: string, active = true): TeamProfile => ({ id, full_name, email: `${id}@x.org`, active });
 const r = (id: string, user_id: string, role_name: string, area_id: string | null, granted_at: string, revoked_at: string | null = null): TeamRole => ({
@@ -35,18 +34,5 @@ describe('equipo: personas con sus roles', () => {
     const beto = team.find((t) => t.profile.id === 'u3')!;
     expect(beto.active).toEqual([]);
     expect(beto.history).toEqual([]);
-  });
-});
-
-describe('quién gestiona el equipo y quién ve la pantalla', () => {
-  it('por ahora, solo la dirección', () => {
-    expect(canManageTeam(['director'])).toBe(true);
-    expect(canManageTeam(['caseworker', 'intake_officer'])).toBe(false);
-    expect(canManageTeam(['viewer'])).toBe(false);
-  });
-  it('la pantalla «Equipo y permisos» solo la ve la dirección', () => {
-    expect(allowedRoutes(['director'], false)).toContain('team');
-    expect(allowedRoutes(['caseworker'], false, true)).not.toContain('team');
-    expect(allowedRoutes(['viewer'], false)).not.toContain('team');
   });
 });

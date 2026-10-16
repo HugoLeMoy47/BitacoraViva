@@ -87,6 +87,15 @@ insert into public.user_role (user_id, role_name, area_id, granted_by, granted_a
     ('bbbbbbbb-3000-0000-0000-000000000001', 'director', null, 'bbbbbbbb-3000-0000-0000-000000000001', now()),
     ('bbbbbbbb-3000-0000-0000-000000000002', 'volunteer', null, 'bbbbbbbb-3000-0000-0000-000000000001', now());
 
+-- Permisos por omisión de cada organización de prueba (lo que las organizaciones reales traen de la migración o del alta)
+do $$
+begin
+    perform public.fn_seed_default_capabilities('aaaaaaaa-0000-0000-0000-00000000000a'::uuid);
+    perform public.fn_seed_default_capabilities('bbbbbbbb-0000-0000-0000-00000000000b'::uuid);
+exception when others then
+    raise notice 'E16B escenario: sin los permisos por omisión todavía (%).', sqlerrm;
+end $$;
+
 -- Personas, casos, bitácora, compartición y consentimientos
 insert into public.person (id, organization_id, given_name, paternal_family_name, birth_date) values
     ('aaaaaaaa-4000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-00000000000a', 'Ana', 'PruebaA', '1990-01-01'),
@@ -3398,6 +3407,126 @@ begin
         perform pg_temp.expect('E16A: la pantalla sabe si se puede gestionar el equipo (caseworker: no)', CW, 'authenticated', 'select public.can_manage_team()::text', 'false');
         perform pg_temp.expect('E16A: los cambios de roles quedan en la auditoría', null, null,
             $q$select (count(*) > 0)::text from public.audit_event where table_name = 'user_role' and created_at >= transaction_timestamp()$q$, 'true');
+    end;
+
+    -- ============================================================================================
+    -- ===== E16 fase B: permisos como datos (migración 20261026000001)
+    -- ===== Quién puede qué es un dato que configura la dirección: capacidades concedidas a un ROL o a un ÁREA (para quien
+    -- ===== tiene un rol operativo en ella). Se migran cinco capacidades; el resto sigue por nombre de rol (deuda D-24).
+    -- ===== Cambiar permisos es solo de la dirección (para que delegar la gestión del equipo no permita escalar privilegios).
+    -- ============================================================================================
+    declare
+        CW_LG constant text := 'aaaaaaaa-3000-0000-0000-00000000000a';   -- área jurídica
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        AR_B  constant text := 'bbbbbbbb-1000-0000-0000-000000000001';
+        grantc text := $q$select count(*)::text from (select public.fn_grant_capability(%L, %s, %s, %L)) x$q$;
+        revokec text := $q$select count(*)::text from (select public.fn_revoke_capability(%L::uuid, %L)) x$q$;
+        hasc text := $q$select public.has_capability(%L)::text$q$;
+        gid text;
+    begin
+        -- ----- El catálogo y los valores por omisión (lo que había cableado)
+        perform pg_temp.expect('E16B: el catálogo de capacidades tiene las cinco iniciales', DIR, 'authenticated',
+            'select count(*)::text from public.capability', '5');
+        perform pg_temp.expect('E16B: se leen sin ser dirección (la interfaz las nombra)', CW, 'authenticated',
+            'select count(*)::text from public.capability', '5');
+        perform pg_temp.expect('E16B: dirección tiene todas por omisión (gestión del equipo)', DIR, 'authenticated', format(hasc, 'manage_team'), 'true');
+        perform pg_temp.expect('E16B: dirección ve la auditoría por omisión', DIR, 'authenticated', format(hasc, 'view_audit'), 'true');
+        perform pg_temp.expect('E16B: dirección administra requerimientos de autoridad por omisión', DIR, 'authenticated', format(hasc, 'manage_authority_requests'), 'true');
+        perform pg_temp.expect('E16B: dirección configura la organización por omisión', DIR, 'authenticated', format(hasc, 'manage_org_settings'), 'true');
+        perform pg_temp.expect('E16B: Trabajo Social administra diccionarios por omisión (como antes)', CW, 'authenticated', format(hasc, 'manage_catalogs'), 'true');
+        perform pg_temp.expect('E16B: el área jurídica no administra diccionarios', CW_LG, 'authenticated', format(hasc, 'manage_catalogs'), 'false');
+        perform pg_temp.expect('E16B: Trabajo Social no gestiona el equipo por omisión', CW, 'authenticated', format(hasc, 'manage_team'), 'false');
+        perform pg_temp.expect('E16B: el rol de solo lectura no tiene ninguna capacidad', VW, 'authenticated', format(hasc, 'manage_catalogs'), 'false');
+        perform pg_temp.expect('E16B: una capacidad que no existe no se tiene', DIR, 'authenticated', format(hasc, 'inventada'), 'false');
+        perform pg_temp.expect('E16B: las capacidades son por organización (dirección B no tiene las de A, tiene las suyas)', DIRB2, 'authenticated', format(hasc, 'manage_team'), 'true');
+        perform pg_temp.expect('E16B: la interfaz conoce las capacidades de la dirección (las cinco)', DIR, 'authenticated',
+            'select array_length(public.fn_my_capabilities(), 1)::text', '5');
+        perform pg_temp.expect('E16B: y las de Trabajo Social (solo diccionarios)', CW, 'authenticated',
+            'select array_to_string(public.fn_my_capabilities(), '','')', 'manage_catalogs');
+        perform pg_temp.expect('E16B: y las del rol de solo lectura (ninguna)', VW, 'authenticated',
+            'select coalesce(array_length(public.fn_my_capabilities(), 1), 0)::text', '0');
+        perform pg_temp.expect('E16B: los valores por omisión se sembraron para la organización demo', null, null,
+            $q$select count(*)::text from public.capability_grant where organization_id = '00000000-0000-0000-0000-000000000001' and revoked_at is null$q$, '6');
+
+        -- ----- Lectura de las asignaciones
+        perform pg_temp.expect('E16B: la dirección ve las asignaciones de permisos de su organización', DIR, 'authenticated',
+            'select (count(*) > 0)::text from public.capability_grant', 'true');
+        perform pg_temp.expect('E16B: quien no gestiona permisos no ve las asignaciones', CW, 'authenticated', 'select count(*)::text from public.capability_grant', '0');
+        perform pg_temp.expect('E16B: otra organización no ve las de A', DIRB2, 'authenticated',
+            format($q$select count(*)::text from public.capability_grant where organization_id = %L::uuid$q$, ORG_A), '0');
+        perform pg_temp.expect('E16B: las asignaciones no se escriben por la API directa', DIR, 'authenticated',
+            format($q$with i as (insert into public.capability_grant (organization_id, capability_code, role_name, granted_by) values (%L::uuid, 'view_audit', 'viewer', %L::uuid) returning 1) select count(*)::text from i$q$, ORG_A, DIR), 'ERR');
+        perform pg_temp.expect('E16B: ni se borran por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.capability_grant returning 1) select count(*)::text from d$q$, 'ERR');
+
+        -- ----- Otorgar a un rol: el observador ve la auditoría (prueba de que view_audit gobierna la lectura)
+        perform pg_temp.expect('E16B: antes, el observador no lee la auditoría', VW, 'authenticated', 'select count(*)::text from public.audit_event', '0');
+        perform pg_temp.expect('E16B control positivo: la dirección concede la auditoría al rol observador', DIR, 'authenticated',
+            format(grantc, 'view_audit', format('%L', 'viewer'), 'null', 'Auditoría externa', null), '1');
+        perform pg_temp.expect('E16B: ahora el observador sí lee la auditoría', VW, 'authenticated', 'select (count(*) > 0)::text from public.audit_event', 'true');
+        perform pg_temp.expect('E16B: lo concedido a un rol no se concede dos veces → BV351', DIR, 'authenticated',
+            format(grantc, 'view_audit', format('%L', 'viewer'), 'null', null, null), 'ERR:BV351');
+        gid := (select id::text from public.capability_grant where capability_code = 'view_audit' and role_name = 'viewer' and revoked_at is null and organization_id = ORG_A::uuid);
+        perform pg_temp.expect('E16B: revocar sin motivo no se puede → BV304', DIR, 'authenticated', format(revokec, gid, null), 'ERR:BV304');
+        perform pg_temp.expect('E16B control positivo: con motivo se revoca', DIR, 'authenticated', format(revokec, gid, 'Terminó la auditoría'), '1');
+        perform pg_temp.expect('E16B: la concesión queda cerrada con su motivo, no se borra', null, null,
+            format($q$select count(*)::text from public.capability_grant where id = %L::uuid and revoked_at is not null and revoke_reason = 'Terminó la auditoría'$q$, gid), '1');
+        perform pg_temp.expect('E16B: el observador vuelve a no leer la auditoría', VW, 'authenticated', 'select count(*)::text from public.audit_event', '0');
+        perform pg_temp.expect('E16B: una concesión que ya no está vigente → BV352', DIR, 'authenticated', format(revokec, gid, 'x'), 'ERR:BV352');
+
+        -- ----- Otorgar a un ÁREA: Trabajo Social recibe la gestión del equipo (delegar sin migración)
+        perform pg_temp.expect('E16B: antes, Trabajo Social no gestiona el equipo (E16A → BV346)', CW, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_grant_role(%L::uuid, 'viewer', null, null)) x$q$, 'aaaaaaaa-3000-0000-0000-000000000008'), 'ERR:BV346');
+        perform pg_temp.expect('E16B control positivo: la dirección concede la gestión del equipo al área de Trabajo Social', DIR, 'authenticated',
+            format(grantc, 'manage_team', 'null', format('%L::uuid', AR_TS), 'Delegación', null), '1');
+        perform pg_temp.expect('E16B: ahora quien tiene rol operativo en Trabajo Social gestiona el equipo', CW, 'authenticated', format(hasc, 'manage_team'), 'true');
+        perform pg_temp.expect('E16B: y la función del equipo se lo permite', CW, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_grant_role(%L::uuid, 'viewer', null, 'Delegado')) x$q$, 'aaaaaaaa-3000-0000-0000-000000000008'), '1');
+        perform pg_temp.expect('E16B: el área jurídica no la recibió', CW_LG, 'authenticated', format(hasc, 'manage_team'), 'false');
+        perform pg_temp.expect('E16B: quien recibe la gestión del equipo NO cambia permisos → BV353', CW, 'authenticated',
+            format(grantc, 'view_audit', format('%L', 'viewer'), 'null', null, null), 'ERR:BV353');
+        gid := (select id::text from public.capability_grant where capability_code = 'manage_team' and area_id = AR_TS::uuid and revoked_at is null);
+        perform pg_temp.expect('E16B: quien recibe la gestión del equipo tampoco revoca permisos → BV353', CW, 'authenticated', format(revokec, gid, 'x'), 'ERR:BV353');
+        perform pg_temp.expect('E16B control positivo: la dirección retira la delegación', DIR, 'authenticated', format(revokec, gid, 'Se centraliza'), '1');
+        perform pg_temp.expect('E16B: Trabajo Social vuelve a no gestionar el equipo', CW, 'authenticated', format(hasc, 'manage_team'), 'false');
+
+        -- ----- Requerimientos de autoridad y configuración de la organización
+        perform pg_temp.expect('E16B prep: un requerimiento de autoridad de A (la fixture solo traía el de B)', null, null,
+            format($q$with i as (insert into public.authority_request (organization_id, authority_name, request_type, official_letter_ref, received_at, extract_delivered) values (%L::uuid, 'Autoridad A', 'Consulta', 'A/0001', now(), false) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('E16B: antes, ingreso no lee requerimientos de autoridad', INT, 'authenticated', 'select count(*)::text from public.authority_request', '0');
+        perform pg_temp.expect('E16B: la dirección concede los requerimientos de autoridad al rol de ingreso', DIR, 'authenticated',
+            format(grantc, 'manage_authority_requests', format('%L', 'intake_officer'), 'null', null, null), '1');
+        perform pg_temp.expect('E16B: ahora ingreso los lee', INT, 'authenticated', 'select (count(*) > 0)::text from public.authority_request', 'true');
+        perform pg_temp.expect('E16B: antes, ingreso no configura la organización → BV109', INT, 'authenticated',
+            'select count(*)::text from (select public.fn_update_organization_security_settings(true)) x', 'ERR:BV109');
+        perform pg_temp.expect('E16B: la dirección concede la configuración al rol de ingreso', DIR, 'authenticated',
+            format(grantc, 'manage_org_settings', format('%L', 'intake_officer'), 'null', null, null), '1');
+        perform pg_temp.expect('E16B: ahora ingreso configura la organización', INT, 'authenticated',
+            'select count(*)::text from (select public.fn_update_organization_security_settings(true)) x', '1');
+
+        -- ----- Validaciones
+        perform pg_temp.expect('E16B: una capacidad que no existe → BV349', DIR, 'authenticated',
+            format(grantc, 'inventada', format('%L', 'viewer'), 'null', null, null), 'ERR:BV349');
+        perform pg_temp.expect('E16B: hay que indicar un rol o un área, no ambos → BV350', DIR, 'authenticated',
+            format(grantc, 'view_audit', format('%L', 'viewer'), format('%L::uuid', AR_TS), null, null), 'ERR:BV350');
+        perform pg_temp.expect('E16B: ni ninguno → BV350', DIR, 'authenticated',
+            format(grantc, 'view_audit', 'null', 'null', null, null), 'ERR:BV350');
+        perform pg_temp.expect('E16B: un rol que no existe → BV350', DIR, 'authenticated',
+            format(grantc, 'view_audit', format('%L', 'superadmin'), 'null', null, null), 'ERR:BV350');
+        perform pg_temp.expect('E16B: un área de otra organización → BV350', DIR, 'authenticated',
+            format(grantc, 'view_audit', 'null', format('%L::uuid', AR_B), null, null), 'ERR:BV350');
+        perform pg_temp.expect('E16B: el rol de solo lectura no cambia permisos → BV353', VW, 'authenticated',
+            format(grantc, 'view_audit', format('%L', 'viewer'), 'null', null, null), 'ERR:BV353');
+        perform pg_temp.expect('E16B: otra organización no revoca asignaciones de A → BV352', DIRB2, 'authenticated',
+            format(revokec, (select id::text from public.capability_grant where organization_id = ORG_A::uuid and revoked_at is null limit 1), 'x'), 'ERR:BV352');
+        perform pg_temp.expect('E16B: los cambios de permisos quedan en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where table_name = 'capability_grant' and created_at >= transaction_timestamp()$q$, 'true');
+
+        -- ----- Salvaguarda: si una organización se queda sin ninguna concesión de una capacidad, aplica la dirección (no hay bloqueo)
+        perform pg_temp.expect('E16B prep: se retiran todas las concesiones de la gestión del equipo en A (solo en la transacción de prueba)', null, null,
+            format($q$with u as (update public.capability_grant set revoked_at = now() where organization_id = %L::uuid and capability_code = 'manage_team' and revoked_at is null returning 1) select (count(*) > 0)::text from u$q$, ORG_A), 'true');
+        perform pg_temp.expect('E16B: sin concesiones, la dirección sigue gestionando el equipo (la organización no se bloquea)', DIR, 'authenticated', format(hasc, 'manage_team'), 'true');
+        perform pg_temp.expect('E16B: y nadie más', CW, 'authenticated', format(hasc, 'manage_team'), 'false');
     end;
 
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)

@@ -447,6 +447,16 @@ try {
           record(role.key, vp.name, 'configuracion/sección ' + (i + 1), await auditNow());
         }
 
+        // Equipo y permisos (E16): cada pestaña
+        await page.evaluate(() => { location.hash = '#/equipo'; });
+        await page.waitForTimeout(1200);
+        const teamTabs = await page.locator('main [role=tab]').count();
+        for (let i = 0; i < teamTabs; i++) {
+          await page.locator('main [role=tab]').nth(i).click();
+          await page.waitForTimeout(500);
+          record(role.key, vp.name, 'equipo/pestaña ' + (i + 1), await auditNow());
+        }
+
         // Diccionarios (E14): cada pestaña
         await page.evaluate(() => { location.hash = '#/diccionarios'; });
         await page.waitForTimeout(1200);

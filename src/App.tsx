@@ -25,7 +25,6 @@ import { CatalogProvider } from './lib/catalog';
 import { EnvironmentProvider, useEnvironment } from './lib/environment';
 import { RouteId, navigate, useRoute } from './lib/router';
 import { allowedRoutes, defaultRoute, hasCaseAccess } from './lib/navigation';
-import { canManageCatalogs } from './lib/dictionaries';
 import { DictionariesView } from './components/DictionariesView';
 import { TeamView } from './components/TeamView';
 import { AppShell } from './components/AppShell';
@@ -61,8 +60,9 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     window.scrollTo(0, 0);
   }, [route.id, route.param, route.sub]);
   const { isDemo } = useEnvironment();
-  const allowed = allowedRoutes(roles, isDemo, canManageCatalogs(roles, currentUser.areaCodes ?? []));
-  const current: RouteId = route.id && allowed.includes(route.id) ? route.id : defaultRoute(roles);
+  const capabilities = currentUser.capabilities ?? [];
+  const allowed = allowedRoutes(roles, isDemo, capabilities);
+  const current: RouteId = route.id && allowed.includes(route.id) ? route.id : defaultRoute(roles, capabilities);
   const [isDirectorDigestOpen, setIsDirectorDigestOpen] = useState<boolean>(false);
   const [data, setData] = useState<OrgData>(EMPTY_ORG_DATA);
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -93,7 +93,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   }, [reload]);
 
   useEffect(() => {
-    if (!route.id || !allowed.includes(route.id)) navigate(defaultRoute(roles), null, { replace: true });
+    if (!route.id || !allowed.includes(route.id)) navigate(defaultRoute(roles, capabilities), null, { replace: true });
   }, [route.id, allowed.join(','), roles.join(',')]);
 
   // Toda escritura es una función de la base (valida rol, audita y es transaccional).
@@ -303,7 +303,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
         {current === 'areas' && <AreasView areas={data.areas} />}
         {current === 'dictionaries' && <DictionariesView onChanged={async () => { await reload(); }} />}
-        {current === 'team' && <TeamView currentUserId={currentUser.profile.id} />}
+        {current === 'team' && <TeamView currentUserId={currentUser.profile.id} canEditPermissions={isDirector} />}
         {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}
         {current === 'authority' && <AuthorityView requests={data.authorityRequests} />}
         {current === 'configuration' && (

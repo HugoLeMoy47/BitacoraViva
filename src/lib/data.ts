@@ -718,6 +718,11 @@ export const api = {
   setUserActive: (userId: string, active: boolean, reason?: string) =>
     rpc('fn_set_user_active', { p_user_id: userId, p_active: active, p_reason: reason?.trim() || null }),
 
+  // Permisos (E16 fase B): solo la dirección cambia permisos; la base valida, exige motivo al revocar y deja auditoría
+  grantCapability: (capability: string, roleName: string | null, areaId: string | null, reason?: string) =>
+    rpc<string>('fn_grant_capability', { p_capability_code: capability, p_role_name: roleName, p_area_id: areaId, p_reason: reason?.trim() || null }),
+  revokeCapability: (grantId: string, reason: string) => rpc('fn_revoke_capability', { p_grant_id: grantId, p_reason: reason.trim() }),
+
   // Papel en la familia (E15 fase 4): un valor del diccionario; cambiarlo o quitarlo pide motivo
   setFamilyMemberRole: (caseId: string, itemId: string | null, reason?: string) =>
     rpc('fn_set_family_member_role', { p_case_id: caseId, p_item_id: itemId, p_reason: reason?.trim() || null }),

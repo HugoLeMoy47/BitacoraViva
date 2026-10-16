@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canManageCatalogs, keyFromLabel, validateBands } from './dictionaries';
-import { allowedRoutes } from './navigation';
+import { keyFromLabel, validateBands } from './dictionaries';
 
 describe('clave de un valor nuevo', () => {
   it('sale del nombre: sin acentos, en minúsculas y con guiones bajos', () => {
@@ -45,22 +44,5 @@ describe('grupos por edad: validación previa al envío', () => {
   it('máximo 12 grupos', () => {
     const many = Array.from({ length: 13 }, (_, i) => ({ label: `G${i}`, minAge: String(i * 5) }));
     expect(validateBands(many)).toBe('dictionaries.bands_err_max');
-  });
-});
-
-describe('quién administra los diccionarios', () => {
-  it('dirección sí; Trabajo Social (con rol operativo en esa área) sí; las demás áreas no', () => {
-    expect(canManageCatalogs(['director'], [])).toBe(true);
-    expect(canManageCatalogs(['caseworker'], ['trabajo_social'])).toBe(true);
-    expect(canManageCatalogs(['intake_officer'], ['trabajo_social'])).toBe(true);
-    expect(canManageCatalogs(['caseworker'], ['legal'])).toBe(false);
-    expect(canManageCatalogs(['viewer'], ['trabajo_social'])).toBe(false);
-    expect(canManageCatalogs(['volunteer'], ['trabajo_social'])).toBe(false);
-  });
-  it('la pantalla «Diccionarios» solo aparece a quien los administra', () => {
-    expect(allowedRoutes(['director'], false, true)).toContain('dictionaries');
-    expect(allowedRoutes(['caseworker'], false, true)).toContain('dictionaries');
-    expect(allowedRoutes(['caseworker'], false, false)).not.toContain('dictionaries');
-    expect(allowedRoutes(['viewer'], false, false)).not.toContain('dictionaries');
   });
 });
