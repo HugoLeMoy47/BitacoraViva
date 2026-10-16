@@ -3425,10 +3425,10 @@ begin
         gid text;
     begin
         -- ----- El catálogo y los valores por omisión (lo que había cableado)
-        perform pg_temp.expect('E16B: el catálogo de capacidades tiene las cinco iniciales', DIR, 'authenticated',
-            'select count(*)::text from public.capability', '5');
+        perform pg_temp.expect('E16B: el catálogo de capacidades tiene las nueve (cinco de la fase B y cuatro de D-24 tanda 2)', DIR, 'authenticated',
+            'select count(*)::text from public.capability', '9');
         perform pg_temp.expect('E16B: se leen sin ser dirección (la interfaz las nombra)', CW, 'authenticated',
-            'select count(*)::text from public.capability', '5');
+            'select count(*)::text from public.capability', '9');
         perform pg_temp.expect('E16B: dirección tiene todas por omisión (gestión del equipo)', DIR, 'authenticated', format(hasc, 'manage_team'), 'true');
         perform pg_temp.expect('E16B: dirección ve la auditoría por omisión', DIR, 'authenticated', format(hasc, 'view_audit'), 'true');
         perform pg_temp.expect('E16B: dirección administra requerimientos de autoridad por omisión', DIR, 'authenticated', format(hasc, 'manage_authority_requests'), 'true');
@@ -3439,14 +3439,14 @@ begin
         perform pg_temp.expect('E16B: el rol de solo lectura no tiene ninguna capacidad', VW, 'authenticated', format(hasc, 'manage_catalogs'), 'false');
         perform pg_temp.expect('E16B: una capacidad que no existe no se tiene', DIR, 'authenticated', format(hasc, 'inventada'), 'false');
         perform pg_temp.expect('E16B: las capacidades son por organización (dirección B no tiene las de A, tiene las suyas)', DIRB2, 'authenticated', format(hasc, 'manage_team'), 'true');
-        perform pg_temp.expect('E16B: la interfaz conoce las capacidades de la dirección (las cinco)', DIR, 'authenticated',
-            'select array_length(public.fn_my_capabilities(), 1)::text', '5');
+        perform pg_temp.expect('E16B: la interfaz conoce las capacidades de la dirección (las nueve)', DIR, 'authenticated',
+            'select array_length(public.fn_my_capabilities(), 1)::text', '9');
         perform pg_temp.expect('E16B: y las de Trabajo Social (solo diccionarios)', CW, 'authenticated',
             'select array_to_string(public.fn_my_capabilities(), '','')', 'manage_catalogs');
         perform pg_temp.expect('E16B: y las del rol de solo lectura (ninguna)', VW, 'authenticated',
             'select coalesce(array_length(public.fn_my_capabilities(), 1), 0)::text', '0');
         perform pg_temp.expect('E16B: los valores por omisión se sembraron para la organización demo', null, null,
-            $q$select count(*)::text from public.capability_grant where organization_id = '00000000-0000-0000-0000-000000000001' and revoked_at is null$q$, '6');
+            $q$select count(*)::text from public.capability_grant where organization_id = '00000000-0000-0000-0000-000000000001' and revoked_at is null$q$, '10');
 
         -- ----- Lectura de las asignaciones
         perform pg_temp.expect('E16B: la dirección ve las asignaciones de permisos de su organización', DIR, 'authenticated',
@@ -3544,6 +3544,94 @@ begin
         $q$with u as (update public.case set id = id returning 1) select count(*)::text from u$q$, 'ERR|0');
     perform pg_temp.expect('D-24: el director no inserta organizaciones con INSERT directo', DIR, 'authenticated',
         $q$with i as (insert into public.organization (display_name) values ('Directa') returning 1) select count(*)::text from i$q$, 'ERR');
+
+    -- ============================================================================================
+    -- ===== D-24 tanda 2: administración como capacidades (migración 20261028000001)
+    -- ===== manage_areas (áreas), manage_status_catalog (ejes y valores de estatus), manage_task_catalogs (categorías, áreas de
+    -- ===== trabajo y tipos de tarea de expediente) y manage_task_settings (ajustes de operación). Por omisión, solo dirección.
+    -- ============================================================================================
+    declare
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        AR_B  constant text := 'bbbbbbbb-1000-0000-0000-000000000001';
+        grantc text := $q$select count(*)::text from (select public.fn_grant_capability(%L, %s, %s, %L)) x$q$;
+        revokec text := $q$select count(*)::text from (select public.fn_revoke_capability(%L::uuid, %L)) x$q$;
+        hasc text := $q$select public.has_capability(%L)::text$q$;
+        c text;
+        gid text;
+        u_area text := $q$with u as (update public.area set name = name where id = %L::uuid returning 1) select count(*)::text from u$q$;
+        u_axis text := $q$with u as (update public.status_axis set sort_order = sort_order where id = 'aaaaaaaa-2000-0000-0000-000000000005' returning 1) select count(*)::text from u$q$;
+        u_val text := $q$with u as (update public.status_value set sort_order = sort_order where id = 'aaaaaaaa-2100-0000-0000-000000000001' returning 1) select count(*)::text from u$q$;
+        u_cat text := $q$with u as (update public.task_category set label_es = label_es where archived_at is null returning 1) select (count(*) > 0)::text from u$q$;
+        u_wa text := $q$with u as (update public.work_area set label_es = label_es where archived_at is null returning 1) select (count(*) > 0)::text from u$q$;
+        u_kind text := $q$with u as (update public.case_task_kind set label_es = label_es where archived_at is null returning 1) select (count(*) > 0)::text from u$q$;
+        i_cat text := $q$with i as (insert into public.task_category (organization_id, key, label_es) values ('aaaaaaaa-0000-0000-0000-00000000000a', 'cat_d24', 'D24') returning 1) select count(*)::text from i$q$;
+        setting text := $q$select count(*)::text from (select public.fn_update_task_setting('all', 30, 0, 1)) x$q$;
+    begin
+        -- ----- Por omisión, como estaba: solo dirección
+        foreach c in array array['manage_areas','manage_status_catalog','manage_task_catalogs','manage_task_settings'] loop
+            perform pg_temp.expect('D-24 t2: dirección tiene ' || c || ' por omisión', DIR, 'authenticated', format(hasc, c), 'true');
+            perform pg_temp.expect('D-24 t2: la dirección de otra organización también tiene la suya (' || c || ')', DIRB2, 'authenticated', format(hasc, c), 'true');
+            perform pg_temp.expect('D-24 t2: Trabajo Social no tiene ' || c || ' por omisión', CW, 'authenticated', format(hasc, c), 'false');
+            perform pg_temp.expect('D-24 t2: ingreso no tiene ' || c || ' por omisión', INT, 'authenticated', format(hasc, c), 'false');
+        end loop;
+
+        -- ----- Antes de delegar, ingreso no administra nada
+        perform pg_temp.expect('D-24 t2: ingreso no cambia áreas', INT, 'authenticated', format(u_area, AR_TS), 'ERR|0');
+        perform pg_temp.expect('D-24 t2: ingreso no cambia ejes de estatus', INT, 'authenticated', u_axis, 'ERR|0');
+        perform pg_temp.expect('D-24 t2: ingreso no cambia valores de estatus', INT, 'authenticated', u_val, 'ERR|0');
+        perform pg_temp.expect('D-24 t2: ingreso no cambia categorías de tareas', INT, 'authenticated', u_cat, 'ERR|false');
+        perform pg_temp.expect('D-24 t2: ingreso no cambia áreas de trabajo', INT, 'authenticated', u_wa, 'ERR|false');
+        perform pg_temp.expect('D-24 t2: ingreso no cambia tipos de tarea de expediente', INT, 'authenticated', u_kind, 'ERR|false');
+        perform pg_temp.expect('D-24 t2: ingreso no inserta categorías de tareas', INT, 'authenticated', i_cat, 'ERR');
+        perform pg_temp.expect('D-24 t2: ingreso no cambia los ajustes de operación → TK010', INT, 'authenticated', setting, 'ERR:TK010');
+        perform pg_temp.expect('D-24 t2: la dirección sigue administrando (control positivo de áreas)', DIR, 'authenticated', format(u_area, AR_TS), '1');
+        perform pg_temp.expect('D-24 t2: la dirección sigue administrando (control positivo de estatus)', DIR, 'authenticated', u_val, '1');
+        perform pg_temp.expect('D-24 t2: la dirección sigue administrando (control positivo de tareas)', DIR, 'authenticated', u_cat, 'true');
+
+        -- ----- Delegar a un ROL: ingreso recibe las cuatro
+        foreach c in array array['manage_areas','manage_status_catalog','manage_task_catalogs','manage_task_settings'] loop
+            perform pg_temp.expect('D-24 t2 control positivo: la dirección concede ' || c || ' al rol de ingreso', DIR, 'authenticated',
+                format(grantc, c, format('%L', 'intake_officer'), 'null', 'Delegación de prueba'), '1');
+        end loop;
+        perform pg_temp.expect('D-24 t2: ahora ingreso cambia áreas', INT, 'authenticated', format(u_area, AR_TS), '1');
+        perform pg_temp.expect('D-24 t2: ahora ingreso cambia ejes de estatus', INT, 'authenticated', u_axis, '1');
+        perform pg_temp.expect('D-24 t2: ahora ingreso cambia valores de estatus', INT, 'authenticated', u_val, '1');
+        perform pg_temp.expect('D-24 t2: ahora ingreso cambia categorías de tareas', INT, 'authenticated', u_cat, 'true');
+        perform pg_temp.expect('D-24 t2: ahora ingreso cambia áreas de trabajo', INT, 'authenticated', u_wa, 'true');
+        perform pg_temp.expect('D-24 t2: ahora ingreso cambia tipos de tarea de expediente', INT, 'authenticated', u_kind, 'true');
+        perform pg_temp.expect('D-24 t2: ahora ingreso crea una categoría de tareas', INT, 'authenticated', i_cat, '1');
+        perform pg_temp.expect('D-24 t2: ahora ingreso cambia los ajustes de operación', INT, 'authenticated', setting, '1');
+        perform pg_temp.expect('D-24 t2: la delegación no cruza organizaciones (área de B)', INT, 'authenticated', format(u_area, AR_B), '0');
+        perform pg_temp.expect('D-24 t2: delegar administración no da gestión del equipo', INT, 'authenticated', format(hasc, 'manage_team'), 'false');
+        perform pg_temp.expect('D-24 t2: ni deja cambiar permisos → BV353', INT, 'authenticated',
+            format(grantc, 'manage_areas', format('%L', 'viewer'), 'null', null), 'ERR:BV353');
+
+        -- ----- Revocar devuelve la restricción
+        gid := (select id::text from public.capability_grant where capability_code = 'manage_areas' and role_name = 'intake_officer' and revoked_at is null and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'::uuid);
+        perform pg_temp.expect('D-24 t2 control positivo: se revoca con motivo', DIR, 'authenticated', format(revokec, gid, 'Prueba terminada'), '1');
+        perform pg_temp.expect('D-24 t2: ingreso vuelve a no cambiar áreas', INT, 'authenticated', format(u_area, AR_TS), 'ERR|0');
+        perform pg_temp.expect('D-24 t2: pero conserva lo que no se revocó (estatus)', INT, 'authenticated', u_val, '1');
+
+        -- ----- Delegar a un ÁREA: Trabajo Social recibe los catálogos de tareas
+        perform pg_temp.expect('D-24 t2: antes, Trabajo Social no cambia categorías', CW, 'authenticated', u_cat, 'ERR|false');
+        perform pg_temp.expect('D-24 t2 control positivo: la dirección concede los catálogos de tareas al área de Trabajo Social', DIR, 'authenticated',
+            format(grantc, 'manage_task_catalogs', 'null', format('%L', AR_TS), 'Prueba de área'), '1');
+        perform pg_temp.expect('D-24 t2: ahora Trabajo Social cambia categorías', CW, 'authenticated', u_cat, 'true');
+        perform pg_temp.expect('D-24 t2: sin recibir los ajustes de operación → TK010', CW, 'authenticated', setting, 'ERR:TK010');
+
+        -- ----- Quien administra los catálogos de tareas ve también lo archivado (para poder desarchivar)
+        perform pg_temp.expect('D-24 t2: la dirección archiva las áreas de trabajo', DIR, 'authenticated',
+            $q$with u as (update public.work_area set archived_at = now() returning 1) select (count(*) > 0)::text from u$q$, 'true');
+        perform pg_temp.expect('D-24 t2: ingreso, con el permiso, ve las áreas de trabajo archivadas', INT, 'authenticated',
+            'select (count(*) > 0)::text from public.work_area where archived_at is not null', 'true');
+        perform pg_temp.expect('D-24 t2: el rol de solo lectura no las ve', VW, 'authenticated',
+            'select count(*)::text from public.work_area where archived_at is not null', '0');
+
+        -- ----- Quien nunca recibió nada sigue sin poder
+        perform pg_temp.expect('D-24 t2: el rol de solo lectura no cambia estatus', VW, 'authenticated', u_val, 'ERR|0');
+        perform pg_temp.expect('D-24 t2: sin rol no se cambia nada', NR, 'authenticated', format(u_area, AR_TS), 'ERR|0');
+        perform pg_temp.expect('D-24 t2: anon no cambia áreas', null, 'anon', format(u_area, AR_TS), 'ERR|0');
+    end;
 
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',

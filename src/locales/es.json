@@ -606,7 +606,7 @@
     "remove": "Quitar",
     "remove_title": "Quitar un permiso",
     "removed": "Permiso quitado. Queda en el historial.",
-    "debt_note": "Estos son los cinco permisos que ya se configuran. Los demás (por ejemplo, quién abre expedientes o anonimiza) siguen definidos por el rol y todavía no se pueden cambiar aquí."
+    "debt_note": "Estos son los permisos que ya se configuran. Los demás (por ejemplo, quién abre expedientes) siguen definidos por el rol y todavía no se pueden cambiar aquí; anonimizar, la oposición, el extracto ARCO y la lectura de expedientes son garantías que no se configuran."
   },
   "team": {
     "title": "Equipo y permisos",
