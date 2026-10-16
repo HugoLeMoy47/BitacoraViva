@@ -14,7 +14,8 @@ import { DisabledReason, describedBy } from './DisabledReason';
 // Permisos (E16 fase B): qué puede hacer cada ROL y cada ÁREA. Un permiso («capacidad») se concede a un rol o a un área; un área
 // vale para quien tiene un rol operativo (dirección, ingreso o atención) en ella. Solo la dirección cambia permisos (para que
 // delegar la gestión del equipo no permita escalar privilegios). Quitar un permiso pide motivo y queda en el historial.
-// Lo que no está en esta lista (la deuda D-24) sigue por nombre de rol: no es configurable todavía.
+// Lo que no está en esta lista son garantías del producto (anonimizar, oposición, extracto ARCO, lectura de expedientes…): se
+// quedan por nombre de rol a propósito (D-24 cerrada; propuesta de E16 §9).
 const INPUT = 'min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-turquesa focus:outline-none';
 const BTN = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50';
 const BTN_PRIMARY = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon shadow-sm hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
