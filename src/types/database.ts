@@ -341,7 +341,7 @@ export interface SocialQuestion {
   organization_id: string;
   key: string;
   label_es: string;
-  section: 'migration' | 'sensitive';
+  section: 'migration' | 'sensitive' | 'origin';
   answer_type: 'yes_no' | 'number' | 'text' | 'date';
   has_detail: boolean;
   is_sensitive: boolean;

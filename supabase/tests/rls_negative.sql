@@ -3171,6 +3171,41 @@ begin
             format(seta, 'aaaaaaaa-5000-0000-0000-000000000001', '[{"question_key":"wants_return","choice":"yes","detail":"Detalle identificable"},{"question_key":"nueva_pregunta","choice":"no"}]', null), '1');
     end;
 
+    -- ============================================================================================
+    -- ===== E15 fase 3: registro de origen (KOBO / REDODEM) y «Servicio social» (migración 20261023000002)
+    -- ===== El registro de origen son preguntas de la ficha social en una sección propia, solo informativas; de KOBO solo se
+    -- ===== guarda lo que no se repite en la ficha. «Servicio social» es una línea de servicio nueva de la bitácora.
+    -- ============================================================================================
+    declare
+        C_NO3 constant text := pg_temp.id('5000', 33);
+        q_org constant text := 'aaaaaaaa-c100-0000-0000-000000000011';
+        q_ors constant text := 'aaaaaaaa-c100-0000-0000-000000000012';
+        seta3 text := $q$select count(*)::text from (select public.fn_set_social_answers(%L::uuid, %L::jsonb, %L)) x$q$;
+        DEMO_ORG constant text := '00000000-0000-0000-0000-000000000001';
+    begin
+        begin
+            insert into public.social_question (id, organization_id, key, label_es, section, answer_type, is_sensitive, sort_order) values
+                (q_org::uuid, ORG_A::uuid, 'origin_registered_on', 'Fecha de registro de origen (prueba)', 'origin', 'date', false, 1),
+                (q_ors::uuid, ORG_A::uuid, 'origin_population', 'Tipo de población de origen (prueba)', 'origin', 'text', true, 2);
+        exception when others then
+            raise notice 'E15f3 escenario: sin la sección de origen todavía (%).', sqlerrm;
+        end;
+        perform pg_temp.expect('E15f3: la sección de registro de origen existe y se responde (fecha de registro)', CW, 'authenticated',
+            format(seta3, C_NO3, '[{"question_key":"origin_registered_on","date":"2026-02-01","precision":"day"}]', null), '1');
+        perform pg_temp.expect('E15f3: un dato de origen marcado sensible exige consentimiento sensible → BV408', CW, 'authenticated',
+            format(seta3, C_NO3, '[{"question_key":"origin_population","text":"Migrante en tránsito"}]', null), 'ERR:BV408');
+        perform pg_temp.expect('E15f3: Trabajo Social agrega una pregunta de la sección de origen', CW, 'authenticated',
+            format($q$with i as (insert into public.social_question (organization_id, key, label_es, section, answer_type, sort_order) values (%L::uuid, 'origen_extra', '¿Otro dato de origen?', 'origin', 'text', 9) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('E15f3: una sección que no existe sigue rechazándose', CW, 'authenticated',
+            format($q$with i as (insert into public.social_question (organization_id, key, label_es, section, answer_type, sort_order) values (%L::uuid, 'sec_mala_3', 'x', 'externa', 'text', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('E15f3: se siembran las tres preguntas de origen (sin repetir la edad ni la nacionalidad de KOBO)', null, null,
+            format($q$select count(*)::text from public.social_question where organization_id = %L::uuid and section = 'origin'$q$, DEMO_ORG), '3');
+        perform pg_temp.expect('E15f3: no se siembra la edad ni la nacionalidad de KOBO (ya están en la ficha)', null, null,
+            format($q$select count(*)::text from public.social_question where organization_id = %L::uuid and (key ilike '%%kobo_age%%' or key ilike '%%kobo_nationality%%')$q$, DEMO_ORG), '0');
+        perform pg_temp.expect('E15f3: «Servicio social» es una línea de servicio de la bitácora', null, null,
+            format($q$select count(*)::text from public.catalog_item where organization_id = %L::uuid and catalog = 'service_line' and key = 'social_service'$q$, DEMO_ORG), '1');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
