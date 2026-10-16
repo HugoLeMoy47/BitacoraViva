@@ -22,6 +22,8 @@ import { NewCaseInput, SubfolioInput } from '../lib/data';
 interface CasesViewProps {
   cases: CaseWithDetails[];
   activeRole: RoleName;
+  /** Permisos de la cuenta (`fn_my_capabilities`): abrir expedientes, rectificar datos, cambiar el estatus jurídico. */
+  capabilities?: string[];
   assignedAreaCode?: string;
   assignedAreaId?: string;
   authorUserId: string;
@@ -65,6 +67,7 @@ interface CasesViewProps {
 export const CasesView: React.FC<CasesViewProps> = ({
   cases,
   activeRole,
+  capabilities = [],
   assignedAreaCode,
   assignedAreaId,
   authorUserId,
@@ -85,7 +88,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
   onSelectCase,
 }) => {
 
-  const canOpenCase = activeRole === 'intake_officer' || activeRole === 'director';
+  const canOpenCase = capabilities.includes('open_cases');
 
   const selectedCase = cases.find((c) => c.case_number === selectedCaseNumber);
 
@@ -152,7 +155,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
   }
 
   // Derechos y consentimiento (E5): también páginas. Al terminar o cancelar se vuelve a la pestaña Privacidad.
-  if (selectedCase && selectedCaseSub === 'rectificar' && onRectifyPerson && (activeRole === 'intake_officer' || activeRole === 'director') && !selectedCase.person.is_anonymized) {
+  if (selectedCase && selectedCaseSub === 'rectificar' && onRectifyPerson && capabilities.includes('rectify_person_data') && !selectedCase.person.is_anonymized) {
     return (
       <RectifyPersonPage
         caseData={selectedCase}
@@ -178,6 +181,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
         caseData={selectedCase}
         onBack={() => onSelectCase(null)}
         activeRole={activeRole}
+        capabilities={capabilities}
         assignedAreaCode={assignedAreaCode}
         authorUserId={authorUserId}
         authorFullName={authorFullName}

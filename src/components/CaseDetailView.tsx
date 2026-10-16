@@ -86,6 +86,8 @@ interface CaseDetailViewProps {
   caseData: CaseWithDetails;
   onBack: () => void;
   activeRole: RoleName;
+  /** Permisos de la cuenta (`fn_my_capabilities`). */
+  capabilities?: string[];
   assignedAreaCode?: string;
   authorUserId: string;
   authorFullName: string;
@@ -127,6 +129,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   caseData,
   onBack,
   activeRole,
+  capabilities = [],
   assignedAreaCode,
   authorUserId,
   authorFullName,
@@ -185,7 +188,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   }, [caseData?.id]);
 
   const isDirector = activeRole === 'director';
-  const isLegalCaseworker = activeRole === 'caseworker' && assignedAreaCode === 'legal';
+  const canChangeLegal = capabilities.includes('change_legal_status');
   const canWriteJournal = activeRole === 'caseworker' || activeRole === 'intake_officer' || activeRole === 'director';
   // Aclarar o compartir una entrada: su autoría, las personas de su área y Dirección (la base lo exige igual)
   const myAreaIds = useSession().user?.areaIds ?? [];
@@ -195,9 +198,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const canLinkTasks = canWriteJournal;
   // Subfolio (BV-3.2): lo abren ingreso y dirección, sobre un caso principal y abierto
   const canCreateSubfolio =
-    !!onStartSubfolio && (activeRole === 'intake_officer' || activeRole === 'director') && !caseData.parent_case_id && !caseData.closed_at;
+    !!onStartSubfolio && capabilities.includes('open_cases') && !caseData.parent_case_id && !caseData.closed_at;
   const canManageConsent = activeRole === 'intake_officer' || activeRole === 'caseworker' || activeRole === 'director';
-  const canRectify = activeRole === 'intake_officer' || activeRole === 'director';
+  const canRectify = capabilities.includes('rectify_person_data');
   // E14: los datos sensibles nuevos solo se registran con consentimiento sensible vigente (D-14)
   const sensitiveOk = hasCurrentSensitiveConsent(caseData.consents);
   const canEditExtra = canWriteJournal && !!onDataChanged && !caseData.person.is_anonymized;
@@ -257,7 +260,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     }
 
     // Regla de gobernanza: legal_status solo director o caseworker de legal
-    if (transitioningAxis === 'legal_status' && !isDirector && !isLegalCaseworker) {
+    if (transitioningAxis === 'legal_status' && !canChangeLegal) {
       setErrorMessage(t('cases.err_legal_restricted'));
       return;
     }

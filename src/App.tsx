@@ -278,6 +278,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
           <CasesView
             cases={casesList}
             activeRole={activeRole}
+            capabilities={capabilities}
             assignedAreaCode={currentUser.assignedAreaCode}
             assignedAreaId={currentUser.userRole?.area_id || undefined}
             authorUserId={currentUser.profile.id}
