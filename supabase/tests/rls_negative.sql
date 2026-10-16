@@ -3425,10 +3425,10 @@ begin
         gid text;
     begin
         -- ----- El catálogo y los valores por omisión (lo que había cableado)
-        perform pg_temp.expect('E16B: el catálogo de capacidades tiene las nueve (cinco de la fase B y cuatro de D-24 tanda 2)', DIR, 'authenticated',
-            'select count(*)::text from public.capability', '9');
+        perform pg_temp.expect('E16B: el catálogo de capacidades tiene las doce (cinco de la fase B, cuatro de D-24 tanda 2 y tres de la tanda 3)', DIR, 'authenticated',
+            'select count(*)::text from public.capability', '12');
         perform pg_temp.expect('E16B: se leen sin ser dirección (la interfaz las nombra)', CW, 'authenticated',
-            'select count(*)::text from public.capability', '9');
+            'select count(*)::text from public.capability', '12');
         perform pg_temp.expect('E16B: dirección tiene todas por omisión (gestión del equipo)', DIR, 'authenticated', format(hasc, 'manage_team'), 'true');
         perform pg_temp.expect('E16B: dirección ve la auditoría por omisión', DIR, 'authenticated', format(hasc, 'view_audit'), 'true');
         perform pg_temp.expect('E16B: dirección administra requerimientos de autoridad por omisión', DIR, 'authenticated', format(hasc, 'manage_authority_requests'), 'true');
@@ -3439,14 +3439,14 @@ begin
         perform pg_temp.expect('E16B: el rol de solo lectura no tiene ninguna capacidad', VW, 'authenticated', format(hasc, 'manage_catalogs'), 'false');
         perform pg_temp.expect('E16B: una capacidad que no existe no se tiene', DIR, 'authenticated', format(hasc, 'inventada'), 'false');
         perform pg_temp.expect('E16B: las capacidades son por organización (dirección B no tiene las de A, tiene las suyas)', DIRB2, 'authenticated', format(hasc, 'manage_team'), 'true');
-        perform pg_temp.expect('E16B: la interfaz conoce las capacidades de la dirección (las nueve)', DIR, 'authenticated',
-            'select array_length(public.fn_my_capabilities(), 1)::text', '9');
+        perform pg_temp.expect('E16B: la interfaz conoce las capacidades de la dirección (las doce)', DIR, 'authenticated',
+            'select array_length(public.fn_my_capabilities(), 1)::text', '12');
         perform pg_temp.expect('E16B: y las de Trabajo Social (solo diccionarios)', CW, 'authenticated',
             'select array_to_string(public.fn_my_capabilities(), '','')', 'manage_catalogs');
         perform pg_temp.expect('E16B: y las del rol de solo lectura (ninguna)', VW, 'authenticated',
             'select coalesce(array_length(public.fn_my_capabilities(), 1), 0)::text', '0');
         perform pg_temp.expect('E16B: los valores por omisión se sembraron para la organización demo', null, null,
-            $q$select count(*)::text from public.capability_grant where organization_id = '00000000-0000-0000-0000-000000000001' and revoked_at is null$q$, '10');
+            $q$select count(*)::text from public.capability_grant where organization_id = '00000000-0000-0000-0000-000000000001' and revoked_at is null$q$, '16');
 
         -- ----- Lectura de las asignaciones
         perform pg_temp.expect('E16B: la dirección ve las asignaciones de permisos de su organización', DIR, 'authenticated',
@@ -3631,6 +3631,80 @@ begin
         perform pg_temp.expect('D-24 t2: el rol de solo lectura no cambia estatus', VW, 'authenticated', u_val, 'ERR|0');
         perform pg_temp.expect('D-24 t2: sin rol no se cambia nada', NR, 'authenticated', format(u_area, AR_TS), 'ERR|0');
         perform pg_temp.expect('D-24 t2: anon no cambia áreas', null, 'anon', format(u_area, AR_TS), 'ERR|0');
+    end;
+
+    -- ============================================================================================
+    -- ===== D-24 tanda 3: operación como capacidades (migración 20261029000001)
+    -- ===== open_cases (abrir expedientes y subfolios), rectify_person_data (rectificar datos y registrar la religión) y
+    -- ===== change_legal_status (cambiar el estatus jurídico). Por omisión, como estaba: dirección e ingreso abren y rectifican;
+    -- ===== dirección y el área jurídica cambian el estatus jurídico. Cerrar y reabrir el expediente siguen siendo de dirección.
+    -- ============================================================================================
+    declare
+        CW_LG constant text := 'aaaaaaaa-3000-0000-0000-00000000000a';   -- área jurídica
+        AR_LG constant text := 'aaaaaaaa-1000-0000-0000-000000000002';
+        grantc text := $q$select count(*)::text from (select public.fn_grant_capability(%L, %s, %s, %L)) x$q$;
+        revokec text := $q$select count(*)::text from (select public.fn_revoke_capability(%L::uuid, %L)) x$q$;
+        hasc text := $q$select public.has_capability(%L)::text$q$;
+        rect text := $q$select count(*)::text from (select public.fn_rectify_person(%L::uuid,'Eta','Rectificable',null,null,date '1985-03-04',false,null,null,null,null,'Prueba D-24')) x$q$;
+        relig text := $q$select count(*)::text from (select public.fn_set_person_religion(%L::uuid, null, null, null)) x$q$;
+        legal text := $q$select count(*)::text from (select public.fn_change_case_status(%L::uuid, 'legal_status', 'asylum_seeker', 'Prueba D-24')) x$q$;
+        closing text := $q$select count(*)::text from (select public.fn_change_case_status(%L::uuid, 'record_status', 'closed', 'Prueba D-24')) x$q$;
+        gid text;
+        P6 text;
+        C3 text;
+    begin
+        P6 := pg_temp.id('4000', 6);
+        C3 := pg_temp.id('5000', 3);
+
+        -- ----- Por omisión, como estaba
+        perform pg_temp.expect('D-24 t3: dirección abre expedientes por omisión', DIR, 'authenticated', format(hasc, 'open_cases'), 'true');
+        perform pg_temp.expect('D-24 t3: ingreso abre expedientes por omisión', INT, 'authenticated', format(hasc, 'open_cases'), 'true');
+        perform pg_temp.expect('D-24 t3: atención no abre expedientes por omisión', CW, 'authenticated', format(hasc, 'open_cases'), 'false');
+        perform pg_temp.expect('D-24 t3: el rol de solo lectura no abre expedientes', VW, 'authenticated', format(hasc, 'open_cases'), 'false');
+        perform pg_temp.expect('D-24 t3: dirección rectifica datos por omisión', DIR, 'authenticated', format(hasc, 'rectify_person_data'), 'true');
+        perform pg_temp.expect('D-24 t3: ingreso rectifica datos por omisión', INT, 'authenticated', format(hasc, 'rectify_person_data'), 'true');
+        perform pg_temp.expect('D-24 t3: atención no rectifica datos por omisión', CW, 'authenticated', format(hasc, 'rectify_person_data'), 'false');
+        perform pg_temp.expect('D-24 t3: dirección cambia el estatus jurídico por omisión', DIR, 'authenticated', format(hasc, 'change_legal_status'), 'true');
+        perform pg_temp.expect('D-24 t3: el área jurídica cambia el estatus jurídico por omisión', CW_LG, 'authenticated', format(hasc, 'change_legal_status'), 'true');
+        perform pg_temp.expect('D-24 t3: Trabajo Social no cambia el estatus jurídico por omisión', CW, 'authenticated', format(hasc, 'change_legal_status'), 'false');
+        perform pg_temp.expect('D-24 t3: ingreso no cambia el estatus jurídico por omisión', INT, 'authenticated', format(hasc, 'change_legal_status'), 'false');
+        perform pg_temp.expect('D-24 t3: la dirección de otra organización también las tiene', DIRB2, 'authenticated', format(hasc, 'open_cases'), 'true');
+
+        -- ----- Lo que ya se rechazaba se sigue rechazando con el mismo código
+        perform pg_temp.expect('D-24 t3: atención no abre expedientes → BV113', CW, 'authenticated', new_case, 'ERR:BV113');
+        perform pg_temp.expect('D-24 t3: atención no rectifica → BV119', CW, 'authenticated', format(rect, P6), 'ERR:BV119');
+        perform pg_temp.expect('D-24 t3: atención no registra la religión → BV121', CW, 'authenticated', format(relig, P6), 'ERR:BV121');
+        perform pg_temp.expect('D-24 t3: Trabajo Social no cambia el estatus jurídico → BV110', CW, 'authenticated', format(legal, C3), 'ERR:BV110');
+        perform pg_temp.expect('D-24 t3: ingreso no cambia el estatus jurídico → BV110', INT, 'authenticated', format(legal, C3), 'ERR:BV110');
+        perform pg_temp.expect('D-24 t3: control positivo: ingreso rectifica', INT, 'authenticated', format(rect, P6), '1');
+
+        -- ----- Delegar a un ROL: atención recibe las tres
+        perform pg_temp.expect('D-24 t3 control positivo: la dirección concede abrir expedientes a atención', DIR, 'authenticated',
+            format(grantc, 'open_cases', format('%L', 'caseworker'), 'null', 'Delegación de prueba'), '1');
+        perform pg_temp.expect('D-24 t3 control positivo: la dirección concede rectificar a atención', DIR, 'authenticated',
+            format(grantc, 'rectify_person_data', format('%L', 'caseworker'), 'null', 'Delegación de prueba'), '1');
+        perform pg_temp.expect('D-24 t3 control positivo: la dirección concede el estatus jurídico a atención', DIR, 'authenticated',
+            format(grantc, 'change_legal_status', format('%L', 'caseworker'), 'null', 'Delegación de prueba'), '1');
+        -- Con el permiso, la función ya no responde BV113: llega a las demás reglas del alta (aquí, la ocupación obligatoria de la ficha)
+        perform pg_temp.expect('D-24 t3: ahora atención abre expedientes (ya no BV113)', CW, 'authenticated', new_case, '1|ERR:BV339');
+        perform pg_temp.expect('D-24 t3: ahora atención rectifica', CW, 'authenticated', format(rect, P6), '1');
+        perform pg_temp.expect('D-24 t3: ahora atención registra la religión', CW, 'authenticated', format(relig, P6), '1');
+        perform pg_temp.expect('D-24 t3: ahora atención cambia el estatus jurídico', CW, 'authenticated', format(legal, C3), '1');
+        perform pg_temp.expect('D-24 t3: delegar el estatus jurídico no deja cerrar el expediente → BV111', CW, 'authenticated', format(closing, C3), 'ERR:BV111');
+        perform pg_temp.expect('D-24 t3: el rol de solo lectura sigue sin poder abrir → BV113', VW, 'authenticated', new_case, 'ERR:BV113');
+        perform pg_temp.expect('D-24 t3: delegar no da gestión del equipo', CW, 'authenticated', format(hasc, 'manage_team'), 'false');
+
+        -- ----- Revocar devuelve la restricción
+        gid := (select id::text from public.capability_grant where capability_code = 'open_cases' and role_name = 'caseworker' and revoked_at is null and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'::uuid);
+        perform pg_temp.expect('D-24 t3 control positivo: se revoca con motivo', DIR, 'authenticated', format(revokec, gid, 'Prueba terminada'), '1');
+        perform pg_temp.expect('D-24 t3: atención vuelve a no abrir expedientes → BV113', CW, 'authenticated', new_case, 'ERR:BV113');
+        perform pg_temp.expect('D-24 t3: y conserva lo que no se revocó (rectificar)', CW, 'authenticated', format(rect, P6), '1');
+
+        -- ----- El estatus jurídico: quitarlo al rol lo devuelve al área jurídica, que lo tiene por omisión
+        gid := (select id::text from public.capability_grant where capability_code = 'change_legal_status' and role_name = 'caseworker' and revoked_at is null and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'::uuid);
+        perform pg_temp.expect('D-24 t3 control positivo: se retira el estatus jurídico al rol de atención', DIR, 'authenticated', format(revokec, gid, 'Prueba terminada'), '1');
+        perform pg_temp.expect('D-24 t3: Trabajo Social vuelve a no poder → BV110', CW, 'authenticated', format(legal, C3), 'ERR:BV110');
+        perform pg_temp.expect('D-24 t3: el área jurídica sigue pudiendo', CW_LG, 'authenticated', format(hasc, 'change_legal_status'), 'true');
     end;
 
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
