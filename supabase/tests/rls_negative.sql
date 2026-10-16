@@ -1214,7 +1214,9 @@ begin
         perform pg_temp.expect('el voluntariado activo no gana acceso al expediente', VOL, 'authenticated', 'select count(*)::text from public.person', '0');
 
         -- TK006 sigue vigente: DIRA2 es ahora el único director activo de A
-        perform pg_temp.expect('TK006: el único director activo de A no puede desactivar su cuenta', DIRA2, 'authenticated',
+        perform pg_temp.expect('E16A: el único director activo de A no puede desactivar su cuenta por la función → BV343', DIRA2, 'authenticated',
+            pg_temp.q($q$select count(*)::text from (select public.fn_set_user_active({DIRA2}, false, 'x')) x$q$), 'ERR:BV343');
+        perform pg_temp.expect('TK006: el disparador sigue vigente a nivel de tabla: el único director activo de A no se desactiva', null, null,
             pg_temp.q('with u as (update public.user_profile set active = false where id = {DIRA2} returning 1) select count(*)::text from u'), 'ERR:TK006');
 
         -- Reactivar devuelve el acceso (las cuentas no quedan marcadas de forma permanente)
@@ -1608,10 +1610,12 @@ begin
     perform pg_temp.expect('control positivo: anon consulta el entorno por función', null, 'anon', 'select public.fn_app_environment()', 'demo|production');
 
     -- ===== TK006: la organización no se queda sin dirección (se prueba aquí porque cambia a B)
-    perform pg_temp.expect('el último director no puede revocar su propio rol', DIRB, 'authenticated',
+    perform pg_temp.expect('el último director no puede revocar su propio rol (disparador a nivel de tabla)', null, null,
         pg_temp.q('with u as (update public.user_role set revoked_at = now(), revoked_by = {DIRB} where user_id = {DIRB} and role_name = ''director'' returning 1) select count(*)::text from u'), 'ERR:TK006');
-    perform pg_temp.expect('el último director no puede desactivar su cuenta', DIRB, 'authenticated',
+    perform pg_temp.expect('el último director no puede desactivar su cuenta (disparador a nivel de tabla)', null, null,
         pg_temp.q('with u as (update public.user_profile set active = false where id = {DIRB} returning 1) select count(*)::text from u'), 'ERR:TK006');
+    perform pg_temp.expect('E16A: el último director tampoco se revoca ni se desactiva por las funciones → BV343', DIRB, 'authenticated',
+        pg_temp.q($q$select count(*)::text from (select public.fn_set_user_active({DIRB}, false, 'x')) x$q$), 'ERR:BV343');
     perform pg_temp.expect('se agrega un segundo director a B', null, null,
         pg_temp.q($q$with a as (insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
                                values ({DIRB2}, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dir2@tst-b.invalid', now(), now()) returning id),
@@ -1620,9 +1624,11 @@ begin
                           r as (insert into public.user_role (user_id, role_name, granted_by, granted_at)
                                 select id, 'director', {DIRB}, now() from p returning 1)
                      select count(*)::text from r$q$), '1');
-    perform pg_temp.expect('control positivo: con otro director vigente sí puede dejar su rol', DIRB, 'authenticated',
-        pg_temp.q('with u as (update public.user_role set revoked_at = now(), revoked_by = {DIRB} where user_id = {DIRB} and role_name = ''director'' returning 1) select count(*)::text from u'), '1');
-    perform pg_temp.expect('el director que queda ya no puede dejar su rol', DIRB2, 'authenticated',
+    perform pg_temp.expect('control positivo: con otro director vigente, la dirección sí puede quitarle el rol a otro director', DIRB2, 'authenticated',
+        pg_temp.q($q$select count(*)::text from (select public.fn_revoke_role((select id from public.user_role where user_id = {DIRB} and role_name = 'director' and revoked_at is null), 'Deja la dirección')) x$q$), '1');
+    perform pg_temp.expect('el director que queda no puede dejar su propio rol por la función → BV343', DIRB2, 'authenticated',
+        pg_temp.q($q$select count(*)::text from (select public.fn_revoke_role((select id from public.user_role where user_id = {DIRB2} and role_name = 'director' and revoked_at is null), 'x')) x$q$), 'ERR:BV343');
+    perform pg_temp.expect('el director que queda no pierde su rol (disparador a nivel de tabla)', null, null,
         pg_temp.q('with u as (update public.user_role set revoked_at = now(), revoked_by = {DIRB2} where user_id = {DIRB2} and role_name = ''director'' returning 1) select count(*)::text from u'), 'ERR:TK006');
 
     -- ============================================================================================
@@ -3275,6 +3281,123 @@ begin
             $q$select count(*)::text from public.catalog_item where organization_id = '00000000-0000-0000-0000-000000000001' and catalog = 'family_role' and key in ('mother','father_partner','child','other')$q$, '4');
         perform pg_temp.expect('E15f4: el extracto de acceso ARCO incluye el papel en la familia', DIR, 'authenticated',
             format($q$select (bool_or(f ? 'family_role'))::text from jsonb_array_elements(public.fn_generate_arco_access_extract(%L::uuid)->'family') f$q$, pg_temp.id('4000', 32)), 'true');
+    end;
+
+    -- ============================================================================================
+    -- ===== E16 fase A: gestionar el equipo (migración 20261025000001)
+    -- ===== La dirección otorga, revoca y desactiva por funciones (motivo, auditoría, salvaguardas); ya no escribe directo en
+    -- ===== `user_role` y `user_profile` (paga la parte de roles de D-20). Rol y área son independientes: cualquier rol con
+    -- ===== cualquier área o sin ella, y una persona puede tener varios (muchas gorras). Nunca sin dirección (TK006).
+    -- ============================================================================================
+    declare
+        TARGET constant text := 'aaaaaaaa-3000-0000-0000-000000000008';   -- VOL2: voluntariado de A
+        AR_LG constant text := 'aaaaaaaa-1000-0000-0000-000000000002';
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        AR_B  constant text := 'bbbbbbbb-1000-0000-0000-000000000001';
+        grant_ text := $q$select count(*)::text from (select public.fn_grant_role(%L::uuid, %L, %s, %L)) x$q$;
+        revoke_ text := $q$select count(*)::text from (select public.fn_revoke_role(%L::uuid, %L)) x$q$;
+        active_ text := $q$select count(*)::text from (select public.fn_set_user_active(%L::uuid, %s, %L)) x$q$;
+        row_cw text;
+    begin
+        -- ----- Otorgar
+        perform pg_temp.expect('E16A control positivo: la dirección otorga un rol con su área', DIR, 'authenticated',
+            format(grant_, TARGET, 'caseworker', format('%L::uuid', AR_LG), 'Cubre al área jurídica'), '1');
+        perform pg_temp.expect('E16A: quedó vigente, con quién y por qué', null, null,
+            format($q$select count(*)::text from public.user_role where user_id = %L::uuid and role_name = 'caseworker' and area_id = %L::uuid
+               and revoked_at is null and granted_by = %L::uuid and grant_reason = 'Cubre al área jurídica'$q$, TARGET, AR_LG, DIR), '1');
+        perform pg_temp.expect('E16A: el mismo rol en la misma área no se duplica → BV345', DIR, 'authenticated',
+            format(grant_, TARGET, 'caseworker', format('%L::uuid', AR_LG), null), 'ERR:BV345');
+        perform pg_temp.expect('E16A: el mismo rol en otra área sí (muchas gorras)', DIR, 'authenticated',
+            format(grant_, TARGET, 'caseworker', format('%L::uuid', AR_TS), null), '1');
+        perform pg_temp.expect('E16A: cualquier rol puede ir con área o sin ella, sin restricciones de combinación', DIR, 'authenticated',
+            format(grant_, TARGET, 'viewer', format('%L::uuid', AR_LG), null), '1');
+        perform pg_temp.expect('E16A: ni siquiera dirección está limitada a no tener área', DIR, 'authenticated',
+            format(grant_, TARGET, 'director', format('%L::uuid', AR_TS), 'Prueba de flexibilidad'), '1');
+        perform pg_temp.expect('E16A: un rol que no existe → BV344', DIR, 'authenticated',
+            format(grant_, TARGET, 'superadmin', 'null', null), 'ERR:BV344');
+        perform pg_temp.expect('E16A: un área de otra organización → BV344', DIR, 'authenticated',
+            format(grant_, TARGET, 'caseworker', format('%L::uuid', AR_B), null), 'ERR:BV344');
+        perform pg_temp.expect('E16A: sin rol indicado → BV344', DIR, 'authenticated',
+            format(grant_, TARGET, null, 'null', null), 'ERR:BV344');
+        perform pg_temp.expect('E16A: una cuenta de otra organización no se gestiona → BV347', DIRB2, 'authenticated',
+            format(grant_, TARGET, 'viewer', 'null', null), 'ERR:BV347');
+        perform pg_temp.expect('E16A: solo la dirección gestiona el equipo: caseworker → BV346', CW, 'authenticated',
+            format(grant_, TARGET, 'viewer', 'null', null), 'ERR:BV346');
+        perform pg_temp.expect('E16A: el rol de solo lectura no gestiona el equipo → BV346', VW, 'authenticated',
+            format(grant_, TARGET, 'viewer', 'null', null), 'ERR:BV346');
+        perform pg_temp.expect('E16A: el voluntariado no gestiona el equipo → BV346', VOL, 'authenticated',
+            format(grant_, TARGET, 'viewer', 'null', null), 'ERR:BV346');
+        perform pg_temp.expect('E16A: sin rol alguno no se gestiona el equipo → BV346', NR, 'authenticated',
+            format(grant_, TARGET, 'viewer', 'null', null), 'ERR:BV346');
+
+        -- ----- Revocar (no se borra: fecha, quién y motivo)
+        row_cw := (select id::text from public.user_role where user_id = TARGET::uuid and role_name = 'caseworker' and area_id = AR_LG::uuid and revoked_at is null);
+        perform pg_temp.expect('E16A: revocar sin motivo no se puede → BV304', DIR, 'authenticated',
+            format(revoke_, row_cw, null), 'ERR:BV304');
+        perform pg_temp.expect('E16A: quien no gestiona el equipo no revoca → BV346', CW, 'authenticated',
+            format(revoke_, row_cw, 'x'), 'ERR:BV346');
+        perform pg_temp.expect('E16A control positivo: con motivo se revoca', DIR, 'authenticated',
+            format(revoke_, row_cw, 'Ya no cubre al área'), '1');
+        perform pg_temp.expect('E16A: la asignación queda cerrada con su motivo, no se borra', null, null,
+            format($q$select count(*)::text from public.user_role where id = %L::uuid and revoked_at is not null and revoked_by = %L::uuid and revoke_reason = 'Ya no cubre al área'$q$, row_cw, DIR), '1');
+        perform pg_temp.expect('E16A: una asignación que ya no está vigente → BV348', DIR, 'authenticated',
+            format(revoke_, row_cw, 'x'), 'ERR:BV348');
+        perform pg_temp.expect('E16A: una asignación que no existe → BV348', DIR, 'authenticated',
+            format(revoke_, 'aaaaaaaa-ffff-0000-0000-000000000000', 'x'), 'ERR:BV348');
+        perform pg_temp.expect('E16A: nadie se revoca a sí mismo → BV343', DIR, 'authenticated',
+            format(revoke_, (select id::text from public.user_role where user_id = DIR::uuid and role_name = 'director' and revoked_at is null limit 1), 'x'), 'ERR:BV343');
+        perform pg_temp.expect('E16A: una asignación de otra organización no se revoca → BV348', DIRB2, 'authenticated',
+            format(revoke_, (select id::text from public.user_role where user_id = TARGET::uuid and role_name = 'viewer' and revoked_at is null limit 1), 'x'), 'ERR:BV348');
+        perform pg_temp.expect('E16A: se revoca la dirección de prueba (queda otra dirección vigente)', DIR, 'authenticated',
+            format(revoke_, (select id::text from public.user_role where user_id = TARGET::uuid and role_name = 'director' and revoked_at is null limit 1), 'Fin de la prueba'), '1');
+
+        -- ----- Desactivar y reactivar cuentas
+        perform pg_temp.expect('E16A: desactivar sin motivo no se puede → BV304', DIR, 'authenticated',
+            format(active_, TARGET, 'false', null), 'ERR:BV304');
+        perform pg_temp.expect('E16A: nadie se desactiva a sí mismo → BV343', DIR, 'authenticated',
+            format(active_, DIR, 'false', 'x'), 'ERR:BV343');
+        perform pg_temp.expect('E16A: quien no gestiona el equipo no desactiva → BV346', CW, 'authenticated',
+            format(active_, TARGET, 'false', 'x'), 'ERR:BV346');
+        perform pg_temp.expect('E16A: una cuenta de otra organización no se desactiva → BV347', DIRB2, 'authenticated',
+            format(active_, TARGET, 'false', 'x'), 'ERR:BV347');
+        perform pg_temp.expect('E16A control positivo: con motivo se desactiva la cuenta', DIR, 'authenticated',
+            format(active_, TARGET, 'false', 'Dejó el albergue'), '1');
+        perform pg_temp.expect('E16A: la cuenta desactivada queda inactiva', null, null,
+            format($q$select count(*)::text from public.user_profile where id = %L::uuid and not active$q$, TARGET), '1');
+        perform pg_temp.expect('E16A: la desactivación deja su motivo en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where table_name = 'user_profile' and new_values->>'reason' = 'Dejó el albergue' and created_at >= transaction_timestamp()$q$, 'true');
+        perform pg_temp.expect('E16A control positivo: con motivo se reactiva', DIR, 'authenticated',
+            format(active_, TARGET, 'true', 'Regresó al albergue'), '1');
+        perform pg_temp.expect('E16A: la cuenta reactivada vuelve a estar activa', null, null,
+            format($q$select count(*)::text from public.user_profile where id = %L::uuid and active$q$, TARGET), '1');
+        perform pg_temp.expect('E16A: repetir el mismo estado no cambia nada ni pide motivo', DIR, 'authenticated',
+            format(active_, TARGET, 'true', null), '1');
+
+        -- ----- Nunca sin dirección: la salvaguarda sigue en la base, también por las funciones
+        perform pg_temp.expect('E16A: el último director de una organización no pierde su rol (la base lo impide aunque se pida con permiso)', null, null,
+            format($q$with u as (update public.user_role set revoked_at = now() where user_id = %L::uuid and role_name = 'director' and revoked_at is null returning 1) select count(*)::text from u$q$, 'bbbbbbbb-3000-0000-0000-000000000003'), 'ERR:TK006');
+
+        -- ----- Ya no se escribe directo
+        perform pg_temp.expect('E16A: la dirección ya no inserta roles por la API directa', DIR, 'authenticated',
+            format($q$with i as (insert into public.user_role (user_id, role_name, granted_by) values (%L::uuid, 'viewer', %L::uuid) returning 1) select count(*)::text from i$q$, TARGET, DIR), 'ERR');
+        perform pg_temp.expect('E16A: ni los cambia por la API directa', DIR, 'authenticated',
+            format($q$with u as (update public.user_role set revoked_at = now() where user_id = %L::uuid returning 1) select count(*)::text from u$q$, TARGET), 'ERR');
+        perform pg_temp.expect('E16A: ni los borra por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.user_role returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('E16A: ni desactiva cuentas por la API directa', DIR, 'authenticated',
+            format($q$with u as (update public.user_profile set active = false where id = %L::uuid returning 1) select count(*)::text from u$q$, TARGET), 'ERR');
+        perform pg_temp.expect('E16A: caseworker tampoco escribe roles directo', CW, 'authenticated',
+            format($q$with i as (insert into public.user_role (user_id, role_name, granted_by) values (%L::uuid, 'director', %L::uuid) returning 1) select count(*)::text from i$q$, CW, CW), 'ERR');
+
+        -- ----- Lectura para la pantalla «Equipo»
+        perform pg_temp.expect('E16A: la dirección ve los roles de su organización (también los revocados, para el historial)', DIR, 'authenticated',
+            format($q$select (count(*) filter (where revoked_at is not null) > 0)::text from public.user_role where user_id = %L::uuid$q$, TARGET), 'true');
+        perform pg_temp.expect('E16A: otra organización no ve los roles de A', DIRB2, 'authenticated',
+            format($q$select count(*)::text from public.user_role where user_id = %L::uuid$q$, TARGET), '0');
+        perform pg_temp.expect('E16A: la pantalla sabe si se puede gestionar el equipo (dirección: sí)', DIR, 'authenticated', 'select public.can_manage_team()::text', 'true');
+        perform pg_temp.expect('E16A: la pantalla sabe si se puede gestionar el equipo (caseworker: no)', CW, 'authenticated', 'select public.can_manage_team()::text', 'false');
+        perform pg_temp.expect('E16A: los cambios de roles quedan en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where table_name = 'user_role' and created_at >= transaction_timestamp()$q$, 'true');
     end;
 
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)

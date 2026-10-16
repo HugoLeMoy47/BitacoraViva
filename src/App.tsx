@@ -27,6 +27,7 @@ import { RouteId, navigate, useRoute } from './lib/router';
 import { allowedRoutes, defaultRoute, hasCaseAccess } from './lib/navigation';
 import { canManageCatalogs } from './lib/dictionaries';
 import { DictionariesView } from './components/DictionariesView';
+import { TeamView } from './components/TeamView';
 import { AppShell } from './components/AppShell';
 import { CasesView } from './components/CasesView';
 import { DirectorSharingInbox } from './components/DirectorSharingInbox';
@@ -302,6 +303,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
         {current === 'areas' && <AreasView areas={data.areas} />}
         {current === 'dictionaries' && <DictionariesView onChanged={async () => { await reload(); }} />}
+        {current === 'team' && <TeamView currentUserId={currentUser.profile.id} />}
         {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}
         {current === 'authority' && <AuthorityView requests={data.authorityRequests} />}
         {current === 'configuration' && (
