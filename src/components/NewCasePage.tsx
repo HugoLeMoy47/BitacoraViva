@@ -693,7 +693,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                     <option value={3}>{t('intake.sex_3')}</option>
                   </select>
                   {!sensitiveGranted && (
-                    <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
                       {t('intake.consent.sensitive_disabled_notice')}
                     </span>
                   )}
@@ -727,7 +727,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                     <option value="Otro">{t('intake.other_country')}</option>
                   </select>
                   {!sensitiveGranted && (
-                    <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
                       {t('intake.consent.sensitive_disabled_notice')}
                     </span>
                   )}
@@ -756,7 +756,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                     />
                   )}
                   {!sensitiveGranted && (
-                    <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
                       {t('diccionarios.only_no_response')}
                     </span>
                   )}
@@ -774,7 +774,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                 />
                 {!sensitiveGranted && (
-                  <span className="mt-1 block text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                  <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
                     {t('intake.consent.sensitive_disabled_notice')}
                   </span>
                 )}
@@ -806,7 +806,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   <option value="">{t('common.not_recorded')}</option>
                   {departmentOptions.map((i) => <option key={i.id} value={i.id}>{i.label_es}</option>)}
                 </select>
-                <span className="mt-1 block text-[11px] text-gray-600">
+                <span className="mt-1 block text-xs text-gray-600">
                   {!sensitiveGranted ? t('diccionarios.only_no_response') : nationalityId === null ? t('profile.department_needs_nationality') : t('profile.department_depends')}
                 </span>
               </div>
@@ -814,7 +814,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
               {occupationItems.length > 0 && (
                 <fieldset>
                   <legend className="block text-xs font-medium text-gray-700 mb-1">{t('profile.occupation')} <span className="text-alerta-dark">*</span></legend>
-                  <p className="mb-2 text-[11px] text-gray-600">{t('profile.occupation_hint')}</p>
+                  <p className="mb-2 text-xs text-gray-600">{t('profile.occupation_hint')}</p>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {occupationItems.map((i) => {
                       const checked = occupationIds.includes(i.id);

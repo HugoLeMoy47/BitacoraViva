@@ -42,6 +42,9 @@ Todas corren en el CI; conviene correrlas antes de abrir un pull request.
 | `npm run check:literals` | Ningún texto visible escrito a mano en los componentes (Regla Dura 9) |
 | `npm run check:modales` | Un modal es para decisiones cortas: más de 3 campos va en una página |
 | `npm run check:errores` | Cada error de la base tiene su código `BVnnn` y su texto |
+| `npm run check:tamano-texto` | Ningún texto menor de 12 px (lo mismo que mide el auditor, en un segundo) |
+| `npm run check:etiquetas-auditoria` | Cada tabla con disparador de auditoría tiene su etiqueta en «Auditoría» (agrega la etiqueta en `audit.tables` al crear una tabla auditada) |
+| `npm run verificar` | **Todo lo estático de arriba, más las pruebas unitarias, de una sola vez.** Córrelo antes de cada push |
 | `npm run scan:secrets` | Sin `service_role` ni llaves en el repositorio (Regla Dura 2) |
 | `npm run test:unit` | Lógica pura: reportes, CSV, fechas flexibles, grupos por edad, diccionarios… |
 | `npm run test:rls` | Pruebas negativas de la base (ver abajo) |
@@ -61,6 +64,8 @@ Son cientos de pruebas **negativas** («esto debe estar prohibido y lo está»):
 `--include=<nombre completo de la migración>` aplica esa migración dentro de la misma transacción de prueba, antes del escenario, y se revierte con ella: es la forma de **probar una migración nueva antes de empujarla**. Usa el nombre completo, no el prefijo del día: las ya empujadas chocan al repetirse. Una vez empujada, `--include` ya no hace falta. Las pruebas se escriben **antes** que la migración, en rojo.
 
 ## Auditoría de interfaz
+
+> **Antes de abrir un pull request que toque la interfaz:** `npm run verificar` y, con el compilado fresco, `npm run audit:ui` (tarda unos 9 minutos: lánzalo en segundo plano y no empujes hasta que termine en «✓ Sin hallazgos»). El CI repite esta auditoría y un hallazgo la hace fallar.
 
 ```bash
 npm run build && npm run audit:ui

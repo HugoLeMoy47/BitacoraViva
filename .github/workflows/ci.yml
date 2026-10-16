@@ -51,6 +51,10 @@ jobs:
         run: npm run check:modales
       - name: Cada error de la base tiene su código y su texto (E13)
         run: npm run check:errores
+      - name: Ningún texto menor de 12 px (lo mismo que mide el auditor, en un segundo)
+        run: npm run check:tamano-texto
+      - name: Cada tabla con auditoría tiene su etiqueta en pantalla (no se muestra el nombre técnico)
+        run: npm run check:etiquetas-auditoria
       - name: Pruebas unitarias
         run: npm run test:unit
 
