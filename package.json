@@ -17,7 +17,10 @@
     "check:literals": "node scripts/check-literals.mjs",
     "primer-uso": "node scripts/primer-uso.mjs",
     "check:modales": "node scripts/check-modales.mjs",
-    "check:errores": "node scripts/check-errores.mjs"
+    "check:errores": "node scripts/check-errores.mjs",
+    "check:tamano-texto": "node scripts/check-tamano-texto.mjs",
+    "check:etiquetas-auditoria": "node scripts/check-etiquetas-auditoria.mjs",
+    "verificar": "npm run scan:secrets && npm run build && npm run check:i18n && npm run check:literals && npm run check:modales && npm run check:errores && npm run check:tamano-texto && npm run check:etiquetas-auditoria && npm run test:unit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

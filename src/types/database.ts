@@ -262,9 +262,14 @@ export interface Person {
   other_profile?: string | null;
   primary_language_id?: number | null;
   other_language?: string | null;
+  /** Columnas numéricas antiguas de MAP-OIM v3: sin uso desde E15 (ver `*_item_id`) */
   education_level_id?: number | null;
   marital_status_id?: number | null;
   occupations: string[];
+  /** Ficha completa (E15 fase 1): valores de diccionarios editables; vacío = «No registrado» */
+  education_level_item_id?: string | null;
+  marital_status_item_id?: string | null;
+  origin_department_item_id?: string | null;
   phone_number?: string | null;
   email?: string | null;
   address_line?: string | null;
@@ -307,6 +312,8 @@ export interface Case {
   assigned_user_id?: string | null;
   /** EXPEDIENTE de la hoja de casos anterior (E14); el folio de caso del sistema no cambia */
   legacy_reference?: string | null;
+  /** Número de referencia: folio manual, texto corto (E15 fase 1) */
+  reference_number?: string | null;
   /** Plan al ingreso: valor del eje jurídico (E14 fase 4b); vacío = «No registrado» */
   intake_plan_value_id?: string | null;
   created_at: string;
@@ -317,7 +324,9 @@ export interface Case {
 export interface CatalogItem {
   id: string;
   organization_id: string;
-  catalog: 'language' | 'religion' | 'specific_need' | 'service_line';
+  catalog: 'language' | 'religion' | 'specific_need' | 'service_line' | 'education_level' | 'marital_status' | 'occupation' | 'department';
+  /** Solo el departamento: país (de la lista de nacionalidades) al que pertenece; null en los demás y en «no quiso responder» */
+  country_id?: number | null;
   key: string;
   label_es: string;
   legacy_code?: string | null;
@@ -546,6 +555,8 @@ export interface CaseWithDetails extends Case {
   family?: CaseFamilyView | null;
   /** Necesidades específicas marcadas (valores vigentes del diccionario, E14 fase 4b) */
   needs?: string[];
+  /** Ocupaciones en su lugar de origen (valores vigentes del diccionario, E15 fase 1) */
+  occupations?: string[];
 }
 
 // ------------------------------------------------------------------------------

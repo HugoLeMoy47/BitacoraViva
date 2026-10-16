@@ -15,8 +15,14 @@ import { DisabledReason, describedBy } from './DisabledReason';
 // renombran y se retiran valores; retirar NO borra: el valor deja de ofrecerse, pero lo ya registrado lo conserva.
 // Los grupos por edad se reemplazan completos y lo anterior se cierra con motivo.
 type TabId = CatalogItem['catalog'] | 'age_bands';
-const TABS: TabId[] = ['service_line', 'specific_need', 'language', 'religion', 'age_bands'];
-const SENSITIVE: TabId[] = ['specific_need', 'language', 'religion'];
+const TABS: TabId[] = ['service_line', 'specific_need', 'education_level', 'marital_status', 'occupation', 'department', 'language', 'religion', 'age_bands'];
+// Países de la lista de nacionalidades (id de MAP-OIM); el grupo «otro» (1) sirve a los demás países
+const DEPARTMENT_COUNTRIES: { id: number; labelKey: string }[] = [
+  { id: 93, labelKey: 'intake.countries.honduras' },
+  { id: 86, labelKey: 'intake.countries.guatemala' },
+  { id: 1, labelKey: 'intake.other_country' },
+];
+const SENSITIVE: TabId[] = ['specific_need', 'language', 'religion', 'department'];
 
 const INPUT = 'min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-turquesa focus:outline-none';
 const BTN = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50';
@@ -49,7 +55,15 @@ const ItemsEditor: React.FC<{ catalog: CatalogItem['catalog']; onChanged: () => 
   const { catalogItems } = useCatalog();
   const { user } = useSession();
   const toast = useToast();
-  const items = useMemo(() => catalogItems.filter((i) => i.catalog === catalog).sort((a, b) => a.sort_order - b.sort_order), [catalogItems, catalog]);
+  // El departamento se administra por país: se ve y se agrega el del país elegido (más el valor del sistema)
+  const [country, setCountry] = useState<number>(DEPARTMENT_COUNTRIES[0].id);
+  const isDepartment = catalog === 'department';
+  const items = useMemo(
+    () => catalogItems
+      .filter((i) => i.catalog === catalog && (!isDepartment || i.is_system || i.country_id === country))
+      .sort((a, b) => a.sort_order - b.sort_order),
+    [catalogItems, catalog, isDepartment, country]
+  );
   const [newLabel, setNewLabel] = useState('');
   const [editing, setEditing] = useState<{ id: string; label: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -76,7 +90,7 @@ const ItemsEditor: React.FC<{ catalog: CatalogItem['catalog']; onChanged: () => 
     const key = keyFromLabel(newLabel, catalogItems.filter((i) => i.catalog === catalog).map((i) => i.key));
     const sort = Math.max(0, ...items.filter((i) => !i.is_system).map((i) => i.sort_order)) + 1;
     run(async () => {
-      await dataApi.addCatalogItem(orgId, catalog, key, newLabel, sort);
+      await dataApi.addCatalogItem(orgId, catalog, key, newLabel, sort, isDepartment ? country : undefined);
       setNewLabel('');
     }, 'dictionaries.added');
   };
@@ -85,6 +99,14 @@ const ItemsEditor: React.FC<{ catalog: CatalogItem['catalog']; onChanged: () => 
     <div>
       <h3 className="text-base font-bold text-carbon">{t(`dictionaries.tab.${catalog}`)}</h3>
       <p className="mt-1 text-sm text-gray-600">{t(`dictionaries.hint.${catalog}`)}</p>
+      {isDepartment && (
+        <div className="mt-3">
+          <label className="mb-1 block text-sm font-semibold text-gray-700" htmlFor="dic-country">{t('dictionaries.department_country')}</label>
+          <select id="dic-country" name="dic-country" autoComplete="off" className={`${INPUT} max-w-xs`} value={country} onChange={(e) => setCountry(Number(e.target.value))}>
+            {DEPARTMENT_COUNTRIES.map((c) => <option key={c.id} value={c.id}>{t(c.labelKey)}</option>)}
+          </select>
+        </div>
+      )}
       <ul className="mt-4 divide-y divide-gray-100">
         {items.map((i) => (
           <li key={i.id} className="flex flex-wrap items-center gap-2 py-2">

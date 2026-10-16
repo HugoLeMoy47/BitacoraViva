@@ -263,6 +263,59 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
 on conflict (organization_id, catalog, key) do nothing;
 
+-- 5i. Ficha de la persona (E15 fase 1): estudios, estado civil, ocupación y departamento de origen (listas de MAP-OIM v3 y divisiones
+-- oficiales de Honduras y Guatemala). Dirección y Trabajo Social los editan; «La persona no quiso responder» es del sistema.
+insert into public.catalog_item (organization_id, catalog, key, label_es, is_system, sort_order)
+select '00000000-0000-0000-0000-000000000001', v.catalog, v.key, v.label_es, v.is_system, v.sort_order
+from (values
+    ('education_level', 'no_schooling', 'Sin estudios', false, 1),
+    ('education_level', 'primary', 'Primaria', false, 2),
+    ('education_level', 'secondary', 'Secundaria', false, 3),
+    ('education_level', 'upper_secondary', 'Bachillerato / técnico', false, 4),
+    ('education_level', 'university', 'Universidad', false, 5),
+    ('education_level', 'postgraduate', 'Posgrado', false, 6),
+    ('education_level', 'no_response', 'La persona no quiso responder', true, 99),
+    ('marital_status', 'married', 'Casado(a)', false, 1),
+    ('marital_status', 'divorced', 'Divorciado(a)', false, 2),
+    ('marital_status', 'separated', 'Separado(a)', false, 3),
+    ('marital_status', 'single', 'Soltero(a)', false, 4),
+    ('marital_status', 'free_union', 'Unión libre', false, 5),
+    ('marital_status', 'widowed', 'Viudo(a)', false, 6),
+    ('marital_status', 'no_response', 'La persona no quiso responder', true, 99),
+    ('occupation', 'agriculture_commerce', 'Agricultura / comercio', false, 1),
+    ('occupation', 'construction', 'Construcción', false, 2),
+    ('occupation', 'student', 'Estudiante', false, 3),
+    ('occupation', 'trades', 'Oficios', false, 4),
+    ('occupation', 'professional', 'Profesionista', false, 5),
+    ('occupation', 'services', 'Servicios', false, 6),
+    ('occupation', 'household', 'Trabajo del hogar', false, 7),
+    ('occupation', 'no_response', 'La persona no quiso responder', true, 99),
+    ('department', 'no_response', 'La persona no quiso responder', true, 99)
+) as v(catalog, key, label_es, is_system, sort_order)
+on conflict (organization_id, catalog, key) do nothing;
+
+insert into public.catalog_item (organization_id, catalog, key, label_es, is_system, sort_order, country_id)
+select '00000000-0000-0000-0000-000000000001', 'department', v.key, v.label_es, false, v.sort_order, v.country_id
+from (values
+    (93, 'hn_atlantida', 'Atlántida', 1), (93, 'hn_choluteca', 'Choluteca', 2), (93, 'hn_colon', 'Colón', 3),
+    (93, 'hn_comayagua', 'Comayagua', 4), (93, 'hn_copan', 'Copán', 5), (93, 'hn_cortes', 'Cortés', 6),
+    (93, 'hn_el_paraiso', 'El Paraíso', 7), (93, 'hn_francisco_morazan', 'Francisco Morazán', 8),
+    (93, 'hn_gracias_a_dios', 'Gracias a Dios', 9), (93, 'hn_intibuca', 'Intibucá', 10),
+    (93, 'hn_islas_de_la_bahia', 'Islas de la Bahía', 11), (93, 'hn_la_paz', 'La Paz', 12),
+    (93, 'hn_lempira', 'Lempira', 13), (93, 'hn_ocotepeque', 'Ocotepeque', 14), (93, 'hn_olancho', 'Olancho', 15),
+    (93, 'hn_santa_barbara', 'Santa Bárbara', 16), (93, 'hn_valle', 'Valle', 17), (93, 'hn_yoro', 'Yoro', 18),
+    (86, 'gt_alta_verapaz', 'Alta Verapaz', 1), (86, 'gt_baja_verapaz', 'Baja Verapaz', 2),
+    (86, 'gt_chimaltenango', 'Chimaltenango', 3), (86, 'gt_chiquimula', 'Chiquimula', 4),
+    (86, 'gt_el_progreso', 'El Progreso', 5), (86, 'gt_escuintla', 'Escuintla', 6),
+    (86, 'gt_guatemala', 'Guatemala', 7), (86, 'gt_huehuetenango', 'Huehuetenango', 8),
+    (86, 'gt_izabal', 'Izabal', 9), (86, 'gt_jalapa', 'Jalapa', 10), (86, 'gt_jutiapa', 'Jutiapa', 11),
+    (86, 'gt_peten', 'Petén', 12), (86, 'gt_quetzaltenango', 'Quetzaltenango', 13), (86, 'gt_quiche', 'Quiché', 14),
+    (86, 'gt_retalhuleu', 'Retalhuleu', 15), (86, 'gt_sacatepequez', 'Sacatepéquez', 16),
+    (86, 'gt_san_marcos', 'San Marcos', 17), (86, 'gt_santa_rosa', 'Santa Rosa', 18), (86, 'gt_solola', 'Sololá', 19),
+    (86, 'gt_suchitepequez', 'Suchitepéquez', 20), (86, 'gt_totonicapan', 'Totonicapán', 21), (86, 'gt_zacapa', 'Zacapa', 22)
+) as v(country_id, key, label_es, sort_order)
+on conflict (organization_id, catalog, key) do nothing;
+
 -- 5h. Grupos por edad (E14 fase 5): los de la hoja de casos, solo por edad (sin sexo); dirección y Trabajo Social los editan.
 insert into public.age_band (organization_id, label_es, min_age, sort_order)
 select '00000000-0000-0000-0000-000000000001', v.label_es, v.min_age, v.sort_order

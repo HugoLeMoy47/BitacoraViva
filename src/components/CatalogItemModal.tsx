@@ -16,13 +16,15 @@ interface Props {
   sensitiveOk: boolean;
   initialItemId: string | null;
   initialDetail: string;
+  /** Sin detalle (estudios, estado civil, departamento): solo el valor y, si ya había uno, el motivo */
+  withDetail?: boolean;
   onSubmit: (itemId: string | null, detail: string, reason: string) => Promise<void>;
   onClose: () => void;
 }
 
 const CONTROL = 'mt-1 w-full rounded-lg border border-gray-300 p-3 text-base focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa';
 
-export const CatalogItemModal: React.FC<Props> = ({ title, hint, items, sensitiveOk, initialItemId, initialDetail, onSubmit, onClose }) => {
+export const CatalogItemModal: React.FC<Props> = ({ title, hint, items, sensitiveOk, initialItemId, initialDetail, withDetail = true, onSubmit, onClose }) => {
   const uid = React.useId();
   const [itemId, setItemId] = useState(initialItemId ?? '');
   const [detail, setDetail] = useState(initialDetail);
@@ -32,7 +34,7 @@ export const CatalogItemModal: React.FC<Props> = ({ title, hint, items, sensitiv
 
   const offered = items.filter((i) => i.is_active && (sensitiveOk || i.key === 'no_response'));
   const chosen = items.find((i) => i.id === itemId);
-  const detailOk = !!chosen && chosen.key !== 'no_response';
+  const detailOk = withDetail && !!chosen && chosen.key !== 'no_response';
   const hadValue = !!initialItemId || initialDetail !== '';
   const changed = itemId !== (initialItemId ?? '') || (detailOk ? detail.trim() : '') !== initialDetail.trim();
   const needsReason = hadValue && changed;

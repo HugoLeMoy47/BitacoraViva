@@ -78,6 +78,7 @@ import { DatePrecision, startsInFuture, toStoredDate, todayLocalIso } from '../l
 import { SmallFieldModal } from './SmallFieldModal';
 import { CatalogItemModal } from './CatalogItemModal';
 import { CaseNeedsPanel } from './CaseNeedsPanel';
+import { PersonProfilePanel } from './PersonProfilePanel';
 import { IntakePlanModal } from './IntakePlanModal';
 
 interface CaseDetailViewProps {
@@ -773,6 +774,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             personId={caseData.titular_person_id}
             documents={caseData.documents ?? []}
             canEdit={canEditExtra}
+            onChanged={onDataChanged ?? (async () => {})}
+          />
+
+          <PersonProfilePanel
+            caseData={caseData}
+            canEdit={canEditExtra}
+            sensitiveOk={sensitiveOk}
             onChanged={onDataChanged ?? (async () => {})}
           />
 
