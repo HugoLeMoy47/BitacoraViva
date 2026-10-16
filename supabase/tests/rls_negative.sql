@@ -3529,6 +3529,22 @@ begin
         perform pg_temp.expect('E16B: y nadie más', CW, 'authenticated', format(hasc, 'manage_team'), 'false');
     end;
 
+    -- ===== D-24 tanda 1: las tablas que solo se escriben por funciones no tienen políticas de escritura (eran inertes)
+    foreach t in array array['user_role','user_profile','person','case','case_status','case_vulnerability_marker','consent','arco_request','journal_entry','privacy_notice','organization'] loop
+        perform pg_temp.expect('D-24: ' || t || ' no tiene políticas de escritura', DIR, 'authenticated',
+            format($q$select count(*)::text from pg_policies where schemaname = 'public' and tablename = %L and cmd <> 'SELECT'$q$, t), '0');
+        perform pg_temp.expect('D-24: authenticated no puede insertar directo en ' || t, DIR, 'authenticated',
+            format($q$select has_table_privilege('authenticated', 'public.%I', 'INSERT')::text$q$, t), case when t = 'organization' then 'true' else 'false' end);
+        perform pg_temp.expect('D-24: authenticated no puede actualizar directo ' || t, DIR, 'authenticated',
+            format($q$select has_table_privilege('authenticated', 'public.%I', 'UPDATE')::text$q$, t), 'false');
+    end loop;
+    perform pg_temp.expect('D-24: el director no actualiza personas con UPDATE directo', DIR, 'authenticated',
+        $q$with u as (update public.person set id = id returning 1) select count(*)::text from u$q$, 'ERR|0');
+    perform pg_temp.expect('D-24: el director no actualiza expedientes con UPDATE directo', DIR, 'authenticated',
+        $q$with u as (update public.case set id = id returning 1) select count(*)::text from u$q$, 'ERR|0');
+    perform pg_temp.expect('D-24: el director no inserta organizaciones con INSERT directo', DIR, 'authenticated',
+        $q$with i as (insert into public.organization (display_name) values ('Directa') returning 1) select count(*)::text from i$q$, 'ERR');
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
