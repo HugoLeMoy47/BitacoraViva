@@ -35,7 +35,7 @@ const VIEWPORTS = [
 ];
 
 const ROLES = [
-  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/rectificar', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/nueva', 'tareas/reportes', 'tareas/rutinas', 'tareas/rutinas/nueva', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'diccionarios', 'acerca'] },
+  { key: 'director', button: 'Dirección', routes: ['operacion', 'expedientes', 'expedientes/nuevo', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/subfolio', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/rectificar', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/nueva', 'tareas/reportes', 'tareas/rutinas', 'tareas/rutinas/nueva', 'tareas/notas', 'tareas/catalogos', 'tareas/ajustes', 'indicadores', 'areas', 'auditoria', 'autoridad', 'configuracion', 'diccionarios', 'equipo', 'acerca'] },
   { key: 'caseworker', button: 'Trabajo Social / caso', routes: ['expedientes', 'expedientes/ASF-2026-0001', 'expedientes/ASF-2026-0001/nueva-entrada', 'expedientes/ASF-2026-0001/consentimiento', 'tareas', 'tareas/notas', 'indicadores', 'diccionarios', 'acerca'] },
   { key: 'intake', button: 'Oficial de ingreso', routes: ['expedientes', 'expedientes/nuevo', 'tareas', 'indicadores', 'acerca'] },
   { key: 'viewer', button: 'Observador / auditor', routes: ['indicadores', 'acerca'] },

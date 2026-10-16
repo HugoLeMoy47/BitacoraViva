@@ -6,6 +6,7 @@ import {
   FolderOpen,
   BookOpen,
   Gauge,
+  UsersRound,
   History,
   Info,
   Layers,
@@ -36,6 +37,7 @@ const ICON: Record<RouteId, React.ReactNode> = {
   authority: <Scale className="h-4 w-4" aria-hidden="true" />,
   configuration: <Settings className="h-4 w-4" aria-hidden="true" />,
   dictionaries: <BookOpen className="h-4 w-4" aria-hidden="true" />,
+  team: <UsersRound className="h-4 w-4" aria-hidden="true" />,
   about: <Info className="h-4 w-4" aria-hidden="true" />,
 };
 

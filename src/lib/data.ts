@@ -711,6 +711,13 @@ export const api = {
   setAgeBands: (bands: { label: string; min_age: number }[], reason?: string) =>
     rpc('fn_set_age_bands', { p_bands: bands, p_reason: reason?.trim() || null }),
 
+  // Equipo (E16 fase A): solo la dirección; la base valida, exige motivo al quitar y deja auditoría
+  grantRole: (userId: string, roleName: string, areaId: string | null, reason?: string) =>
+    rpc<string>('fn_grant_role', { p_user_id: userId, p_role_name: roleName, p_area_id: areaId, p_reason: reason?.trim() || null }),
+  revokeRole: (userRoleId: string, reason: string) => rpc('fn_revoke_role', { p_user_role_id: userRoleId, p_reason: reason.trim() }),
+  setUserActive: (userId: string, active: boolean, reason?: string) =>
+    rpc('fn_set_user_active', { p_user_id: userId, p_active: active, p_reason: reason?.trim() || null }),
+
   // Papel en la familia (E15 fase 4): un valor del diccionario; cambiarlo o quitarlo pide motivo
   setFamilyMemberRole: (caseId: string, itemId: string | null, reason?: string) =>
     rpc('fn_set_family_member_role', { p_case_id: caseId, p_item_id: itemId, p_reason: reason?.trim() || null }),

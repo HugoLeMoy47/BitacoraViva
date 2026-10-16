@@ -8,7 +8,7 @@ import { RouteId } from './router';
 //
 // Los roles se ACUMULAN (ADR-0007): una persona con varios roles ve la unión de sus pantallas.
 const ROLE_ROUTES: Record<RoleName, RouteId[]> = {
-  director: ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration', 'dictionaries'],
+  director: ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration', 'dictionaries', 'team'],
   intake_officer: ['cases', 'tasks', 'indicators'],
   caseworker: ['cases', 'tasks', 'indicators'],
   viewer: ['indicators'],
@@ -17,10 +17,10 @@ const ROLE_ROUTES: Record<RoleName, RouteId[]> = {
 };
 
 // Orden canónico: define el orden de la barra y cuál es la pantalla de inicio
-const ROUTE_ORDER: RouteId[] = ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration', 'dictionaries', 'about'];
+const ROUTE_ORDER: RouteId[] = ['operations', 'cases', 'tasks', 'indicators', 'areas', 'audit', 'authority', 'configuration', 'dictionaries', 'team', 'about'];
 
 export const PRIMARY_ROUTES: RouteId[] = ['operations', 'cases', 'tasks', 'indicators'];
-export const ADMIN_ROUTES: RouteId[] = ['areas', 'audit', 'authority', 'configuration', 'dictionaries'];
+export const ADMIN_ROUTES: RouteId[] = ['areas', 'audit', 'authority', 'configuration', 'dictionaries', 'team'];
 
 /** Roles con acceso al expediente (o a sus indicadores). Los de tareas no cuentan. */
 const CASE_ROLES: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer'];
@@ -62,5 +62,6 @@ export const ROUTE_LABEL_KEY: Record<RouteId, string> = {
   authority: 'navigation.authority_requests',
   configuration: 'navigation.configuration',
   dictionaries: 'navigation.dictionaries',
+  team: 'navigation.team',
   about: 'navigation.about',
 };
