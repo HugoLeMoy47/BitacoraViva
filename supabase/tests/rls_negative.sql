@@ -3708,6 +3708,118 @@ begin
     end;
 
     -- ============================================================================================
+    -- ===== E16 fase C: invitar personas (ADR-0010; migración 20261030000001)
+    -- ===== La regla vive en la base: `fn_prepare_invitation` con la sesión de quien invita (capacidad manage_team) y
+    -- ===== `fn_complete_invitation` solo para la llave de servicio. Invitar no concede ningún rol.
+    -- ============================================================================================
+    declare
+        prep text := $q$select (public.fn_prepare_invitation(%L, %L))::text$q$;
+        prep_resend text := $q$select (public.fn_prepare_invitation(%L, %L)->>'resend')$q$;
+        comp text := $q$select count(*)::text from (select public.fn_complete_invitation(%L::uuid, %L::uuid)) x$q$;
+        grantc text := $q$select count(*)::text from (select public.fn_grant_capability(%L, %s, %s, %L)) x$q$;
+        revokec text := $q$select count(*)::text from (select public.fn_revoke_capability(%L::uuid, %L)) x$q$;
+        NEWU constant text := 'aaaaaaaa-3000-0000-0000-0000000000f1';
+        NEWU2 constant text := 'aaaaaaaa-3000-0000-0000-0000000000f2';
+        inv text;
+        inv2 text;
+        gid text;
+        i int;
+    begin
+        -- ----- Quién puede invitar
+        perform pg_temp.expect('E16C: atención no invita → BV346', CW, 'authenticated', format(prep, 'nueva@tst-a.invalid', 'Nueva Persona'), 'ERR:BV346');
+        perform pg_temp.expect('E16C: el rol de solo lectura no invita → BV346', VW, 'authenticated', format(prep, 'nueva@tst-a.invalid', 'Nueva Persona'), 'ERR:BV346');
+        perform pg_temp.expect('E16C: una cuenta sin rol no invita → BV346', NR, 'authenticated', format(prep, 'nueva@tst-a.invalid', 'Nueva Persona'), 'ERR:BV346');
+        perform pg_temp.expect('E16C: anon no invita', null, 'anon', format(prep, 'nueva@tst-a.invalid', 'Nueva Persona'), 'ERR');
+
+        -- ----- Datos válidos
+        perform pg_temp.expect('E16C: un correo sin forma de correo → BV354', DIR, 'authenticated', format(prep, 'sin-arroba', 'Nueva Persona'), 'ERR:BV354');
+        perform pg_temp.expect('E16C: un correo vacío → BV354', DIR, 'authenticated', format(prep, '   ', 'Nueva Persona'), 'ERR:BV354');
+        perform pg_temp.expect('E16C: sin nombre → BV355', DIR, 'authenticated', format(prep, 'nueva@tst-a.invalid', '  '), 'ERR:BV355');
+        perform pg_temp.expect('E16C: un nombre de más de 120 caracteres → BV355', DIR, 'authenticated', format(prep, 'nueva@tst-a.invalid', repeat('x', 121)), 'ERR:BV355');
+        perform pg_temp.expect('E16C: un correo que ya tiene cuenta en la organización → BV356', DIR, 'authenticated', format(prep, 'cw@tst-a.invalid', 'Otra'), 'ERR:BV356');
+        perform pg_temp.expect('E16C: ni con otras mayúsculas → BV356', DIR, 'authenticated', format(prep, 'CW@Tst-A.invalid', 'Otra'), 'ERR:BV356');
+        perform pg_temp.expect('E16C: un correo de otra organización responde igual (no revela de quién es) → BV356', DIR, 'authenticated', format(prep, 'dir@tst-b.invalid', 'Otra'), 'ERR:BV356');
+        perform pg_temp.expect('E16C: nada de lo rechazado dejó invitaciones', null, null, 'select count(*)::text from public.user_invitation', '0');
+
+        -- ----- Invitar (control positivo); el correo se guarda en minúsculas y la organización sale de la sesión
+        perform pg_temp.expect('E16C control positivo: la dirección prepara una invitación', DIR, 'authenticated',
+            format(prep_resend, 'Nueva.Persona@TST-A.invalid', 'Nueva Persona'), 'false');
+        inv := (select id::text from public.user_invitation where email = 'nueva.persona@tst-a.invalid');
+        perform pg_temp.expect('E16C: queda registrada, con el correo en minúsculas', null, null,
+            format($q$select count(*)::text from public.user_invitation where id = %L::uuid and email = 'nueva.persona@tst-a.invalid' and full_name = 'Nueva Persona' and completed_at is null$q$, inv), '1');
+        perform pg_temp.expect('E16C: queda en la organización y a nombre de quien invita', null, null,
+            format($q$select count(*)::text from public.user_invitation where id = %L::uuid and organization_id = %L::uuid and invited_by = %L::uuid$q$, inv, ORG_A, DIR), '1');
+        perform pg_temp.expect('E16C: la dirección de otra organización invita y queda en la suya (la petición no trae organización)', DIRB2, 'authenticated',
+            format(prep_resend, 'nueva.b@tst-b.invalid', 'Nueva B'), 'false');
+        perform pg_temp.expect('E16C: la invitación de B no cae en A', null, null,
+            $q$select organization_id::text from public.user_invitation where email = 'nueva.b@tst-b.invalid'$q$, 'bbbbbbbb-0000-0000-0000-00000000000b');
+        perform pg_temp.expect('E16C: invitar no concede ningún rol', null, null,
+            $q$select count(*)::text from public.user_role ur join public.user_profile up on up.id = ur.user_id where up.email = 'nueva.persona@tst-a.invalid'$q$, '0');
+        perform pg_temp.expect('E16C: la invitación deja huella en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where table_name = 'user_invitation'$q$, 'true');
+
+        -- ----- Lectura y escritura directa
+        perform pg_temp.expect('E16C: la dirección ve las invitaciones de su organización', DIR, 'authenticated', 'select (count(*) > 0)::text from public.user_invitation', 'true');
+        perform pg_temp.expect('E16C: quien no gestiona el equipo no las ve', CW, 'authenticated', 'select count(*)::text from public.user_invitation', '0');
+        perform pg_temp.expect('E16C: otra organización no ve las de A', DIRB2, 'authenticated',
+            format($q$select count(*)::text from public.user_invitation where organization_id = %L::uuid$q$, ORG_A), '0');
+        perform pg_temp.expect('E16C: no se escriben por la API directa (INSERT)', DIR, 'authenticated',
+            format($q$with i as (insert into public.user_invitation (organization_id, email, full_name, invited_by) values (%L::uuid, 'directa@tst-a.invalid', 'Directa', %L::uuid) returning 1) select count(*)::text from i$q$, ORG_A, DIR), 'ERR');
+        perform pg_temp.expect('E16C: ni por la API directa (UPDATE)', DIR, 'authenticated',
+            $q$with u as (update public.user_invitation set full_name = 'Cambiada' returning 1) select count(*)::text from u$q$, 'ERR|0');
+        perform pg_temp.expect('E16C: ni se borran', DIR, 'authenticated',
+            $q$with d as (delete from public.user_invitation returning 1) select count(*)::text from d$q$, 'ERR');
+
+        -- ----- Completar: solo la llave de servicio
+        insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at) values
+            (NEWU::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nueva.persona@tst-a.invalid', now(), now());
+        perform pg_temp.expect('E16C: la dirección no completa invitaciones (solo la llave de servicio)', DIR, 'authenticated', format(comp, inv, NEWU), 'ERR');
+        perform pg_temp.expect('E16C: anon tampoco', null, 'anon', format(comp, inv, NEWU), 'ERR');
+        perform pg_temp.expect('E16C: una invitación que no existe → BV358', null, 'service_role', format(comp, '00000000-0000-0000-0000-0000000000aa', NEWU), 'ERR:BV358');
+        perform pg_temp.expect('E16C control positivo: la llave de servicio completa la invitación', null, 'service_role', format(comp, inv, NEWU), '1');
+        perform pg_temp.expect('E16C: crea el perfil en la organización de la invitación, activo, con el correo y el nombre', null, null,
+            format($q$select count(*)::text from public.user_profile where id = %L::uuid and organization_id = %L::uuid and active and email = 'nueva.persona@tst-a.invalid' and full_name = 'Nueva Persona'$q$, NEWU, ORG_A), '1');
+        perform pg_temp.expect('E16C: la invitación queda completada y ligada a la cuenta', null, null,
+            format($q$select count(*)::text from public.user_invitation where id = %L::uuid and completed_at is not null and user_id = %L::uuid$q$, inv, NEWU), '1');
+        perform pg_temp.expect('E16C: completarla otra vez → BV358', null, 'service_role', format(comp, inv, NEWU), 'ERR:BV358');
+        perform pg_temp.expect('E16C: la persona invitada entra sin ningún rol', null, null,
+            format($q$select count(*)::text from public.user_role where user_id = %L::uuid$q$, NEWU), '0');
+        perform pg_temp.expect('E16C: y sin ninguna capacidad', NEWU, 'authenticated', 'select public.has_capability(''manage_team'')::text', 'false');
+        perform pg_temp.expect('E16C: ni ve expedientes', NEWU, 'authenticated', 'select count(*)::text from public."case"', '0');
+        perform pg_temp.expect('E16C: ni las invitaciones', NEWU, 'authenticated', 'select count(*)::text from public.user_invitation', '0');
+        perform pg_temp.expect('E16C: la dirección ya ve a la persona nueva en su equipo', DIR, 'authenticated',
+            format($q$select count(*)::text from public.user_profile where id = %L::uuid$q$, NEWU), '1');
+        perform pg_temp.expect('E16C: y le puede otorgar un rol con lo que ya existe', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_grant_role(%L::uuid, 'viewer', null, 'Alta')) x$q$, NEWU), '1');
+
+        -- ----- Reenviar: solo mientras la persona no haya aceptado la invitación
+        perform pg_temp.expect('E16C: reenviar a quien aún no aceptó (la cuenta no está confirmada)', DIR, 'authenticated',
+            format(prep_resend, 'nueva.persona@tst-a.invalid', 'Nueva Persona'), 'true');
+        update auth.users set email_confirmed_at = now() where id = NEWU::uuid;
+        perform pg_temp.expect('E16C: ya aceptó: no se reenvía → BV356', DIR, 'authenticated', format(prep, 'nueva.persona@tst-a.invalid', 'Nueva Persona'), 'ERR:BV356');
+
+        -- ----- Delegar el permiso
+        perform pg_temp.expect('E16C: antes, atención no invita → BV346', CW, 'authenticated', format(prep, 'delegada@tst-a.invalid', 'Delegada'), 'ERR:BV346');
+        perform pg_temp.expect('E16C control positivo: la dirección delega la gestión del equipo a atención', DIR, 'authenticated',
+            format(grantc, 'manage_team', format('%L', 'caseworker'), 'null', 'Prueba'), '1');
+        perform pg_temp.expect('E16C: ahora atención invita', CW, 'authenticated', format(prep_resend, 'delegada@tst-a.invalid', 'Delegada'), 'false');
+        perform pg_temp.expect('E16C: queda a nombre de quien invitó', null, null,
+            format($q$select count(*)::text from public.user_invitation where email = 'delegada@tst-a.invalid' and invited_by = %L::uuid$q$, CW), '1');
+        gid := (select id::text from public.capability_grant where capability_code = 'manage_team' and role_name = 'caseworker' and revoked_at is null and organization_id = ORG_A::uuid);
+        perform pg_temp.expect('E16C control positivo: se revoca', DIR, 'authenticated', format(revokec, gid, 'Prueba terminada'), '1');
+        perform pg_temp.expect('E16C: atención vuelve a no invitar → BV346', CW, 'authenticated', format(prep, 'otra.delegada@tst-a.invalid', 'Otra'), 'ERR:BV346');
+
+        -- ----- Tope por hora y por persona
+        for i in 1..20 loop
+            perform pg_temp.run_as(DIRA2, 'authenticated', format(prep, 'tope' || i || '@tst-a.invalid', 'Persona ' || i));
+        end loop;
+        perform pg_temp.expect('E16C: la invitación 21 en una hora → BV357', DIRA2, 'authenticated', format(prep, 'tope21@tst-a.invalid', 'Persona 21'), 'ERR:BV357');
+        perform pg_temp.expect('E16C: el tope es por persona: otra dirección sigue pudiendo', DIR, 'authenticated', format(prep_resend, 'otra.persona@tst-a.invalid', 'Otra Persona'), 'false');
+        update public.user_invitation set invited_at = now() - interval '2 hours' where invited_by = DIRA2::uuid;
+        perform pg_temp.expect('E16C: con las invitaciones de hace dos horas, vuelve a poder', DIRA2, 'authenticated', format(prep_resend, 'tope22@tst-a.invalid', 'Persona 22'), 'false');
+    end;
+
+    -- ============================================================================================
     -- ===== D-24 tanda 4 (cierre): lo único que sigue por nombre de rol son las garantías del producto
     -- ===== Cualquier comprobación nueva por nombre de rol hace fallar esta prueba: hay que decidir si es una garantía (y
     -- ===== añadirla aquí, con su razón en la propuesta de E16 §9) o un permiso (y entonces es una capacidad).
