@@ -32,9 +32,10 @@ export const canManageTasks = (roles: RoleName[]): boolean => roles.includes('di
 
 /**
  * Pantallas de administración: ya no las da el rol sino una CAPACIDAD (E16 fase B), que la dirección concede a un rol o a
- * un área. Por omisión la dirección tiene las cinco (y Trabajo Social la de diccionarios). La base vuelve a exigirlas.
+ * un área. Por omisión la dirección tiene todas (y Trabajo Social la de diccionarios). La base vuelve a exigirlas.
  */
 export const ROUTE_CAPABILITY: Partial<Record<RouteId, string>> = {
+  areas: 'manage_areas',
   dictionaries: 'manage_catalogs',
   team: 'manage_team',
   audit: 'view_audit',

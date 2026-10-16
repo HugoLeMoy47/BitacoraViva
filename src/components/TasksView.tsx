@@ -65,7 +65,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
   const tasks = useTasks(user);
   const isPhone = usePhoneScreen();
   const isManagement = canManageTasks(user.roles);
-  const canCatalogs = user.roles.includes('director');
+  const canCatalogs = (user.capabilities ?? []).includes('manage_task_catalogs');
+  const canSettings = (user.capabilities ?? []).includes('manage_task_settings');
   const me = user.profile.id;
 
   // Sólo se llega a una sección que el rol puede usar; si no, el tablero
@@ -74,7 +75,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
     : isManagement && sectionParam === 'rutinas' ? 'routines'
     : sectionParam === 'notas' ? 'notes'
     : canCatalogs && sectionParam === 'catalogos' ? 'catalogs'
-    : canCatalogs && sectionParam === 'ajustes' ? 'settings'
+    : canSettings && sectionParam === 'ajustes' ? 'settings'
     : 'board';
 
   const [filter, setFilter] = useState<PersonFilter>('all');
@@ -256,7 +257,8 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
     { id: 'board', label: t('tasks.tab_board') },
     ...(isManagement ? [{ id: 'reports', label: t('tasks.tab_reports') }, { id: 'routines', label: t('tasks.tab_routines') }] : []),
     { id: 'notes', label: t('tasks.tab_notes') },
-    ...(canCatalogs ? [{ id: 'catalogs', label: t('tasks.tab_catalogs') }, { id: 'settings', label: t('tasks.tab_settings') }] : []),
+    ...(canCatalogs ? [{ id: 'catalogs', label: t('tasks.tab_catalogs') }] : []),
+    ...(canSettings ? [{ id: 'settings', label: t('tasks.tab_settings') }] : []),
   ];
 
   return (
