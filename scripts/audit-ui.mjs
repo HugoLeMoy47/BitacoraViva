@@ -270,6 +270,9 @@ async function keyboardJourney(page) {
   await page.keyboard.type('Auditoria');
   if (!(await tabTo(page, /Fecha de nacimiento/))) fail('alta paso 2: no se llega a la fecha de nacimiento');
   await page.getByLabel(/Fecha de nacimiento/).fill('1990-05-17');
+  // La ocupación en su lugar de origen es obligatoria en el alta (E15): se elige con teclado «La persona no quiso responder»
+  if (!(await tabTo(page, /no quiso responder/i))) fail('alta paso 2: no se llega a la ocupación con Tab');
+  await page.keyboard.press('Space');
   for (let k = 0; k < 2; k++) {
     if (!(await tabTo(page, /Siguiente/))) fail('alta paso ' + (k + 2) + ': no se llega a «Siguiente»');
     await page.keyboard.press('Enter');
@@ -494,7 +497,9 @@ try {
             const supuestos2 = [];
             if (await page.getByLabel(/Fecha de nacimiento/).inputValue() !== '') supuestos2.push({ rule: 'valor-supuesto', detail: 'alta paso 2: la fecha de nacimiento viene escrita de antemano' });
             if (await page.evaluate(() => [...document.querySelectorAll('main select')].some((s) => s.value !== ''))) supuestos2.push({ rule: 'valor-supuesto', detail: 'alta paso 2: sexo o nacionalidad vienen elegidos de antemano' });
+            if (await page.evaluate(() => [...document.querySelectorAll('main input[type=checkbox]')].some((c) => c.checked))) supuestos2.push({ rule: 'valor-supuesto', detail: 'alta paso 2: la ocupación viene marcada de antemano' });
             await page.getByLabel(/Fecha de nacimiento/).fill('1990-05-17');
+            await page.getByRole('checkbox', { name: /no quiso responder/i }).check();
             record(role.key, vp.name, 'alta/paso 2', [...(await auditNow()), ...supuestos2]);
             await page.getByRole('button', { name: /Siguiente/ }).click();
             await page.waitForTimeout(250);

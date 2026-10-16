@@ -115,6 +115,8 @@ async function tarea1(page) {
     await k.type(d.getByLabel(/Nombres/), 'Prueba', 'Nombres');
     await k.type(d.getByLabel(/Primer apellido/i), 'PrimerUso', 'Primer apellido');
     await k.type(d.getByLabel(/Fecha de nacimiento/), '1990-05-17', 'Fecha de nacimiento');
+    // La ocupación es obligatoria: si no se sabe, se dice que la persona no quiso responder
+    await k.click(d.getByRole('checkbox', { name: /no quiso responder/i }), 'Ocupación: no quiso responder');
     await k.shot(`t1-paso2-${page.viewportSize().width}.png`);
     await k.click(d.getByRole('button', { name: /Siguiente/ }), 'Siguiente (persona)');
     await k.shot(`t1-paso4-${page.viewportSize().width}.png`);

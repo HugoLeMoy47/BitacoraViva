@@ -2842,6 +2842,197 @@ begin
             format($q$select (count(*) > 0)::text from public.fn_metric_rows(%L::uuid, null, null) where metric = 'age_band' and bucket = 'sin_dato'$q$, ORG_A), 'true');
     end;
 
+    -- ============================================================================================
+    -- ===== E15 fase 1: ficha de la persona completa (migración 20261022000001)
+    -- ===== Nivel de estudios, estado civil, ocupación en su lugar de origen y departamento de origen ya no son solo una
+    -- ===== columna: son valores de diccionarios editables, se capturan en el alta y se corrigen con motivo. El departamento
+    -- ===== depende de la nacionalidad (que es dato sensible) y se trata como sensible. Más el número de referencia (folio manual).
+    -- ============================================================================================
+    declare
+        P_OK constant text := pg_temp.id('4000', 32);   -- con consentimiento sensible vigente
+        P_NO constant text := pg_temp.id('4000', 33);   -- sin consentimiento sensible
+        C_OK constant text := pg_temp.id('5000', 32);
+        C_NO constant text := pg_temp.id('5000', 33);
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        e_pri constant text := 'aaaaaaaa-c000-0000-0000-000000000051';
+        e_uni constant text := 'aaaaaaaa-c000-0000-0000-000000000052';
+        e_old constant text := 'aaaaaaaa-c000-0000-0000-000000000053';
+        m_sol constant text := 'aaaaaaaa-c000-0000-0000-000000000054';
+        o_com constant text := 'aaaaaaaa-c000-0000-0000-000000000055';
+        o_est constant text := 'aaaaaaaa-c000-0000-0000-000000000056';
+        o_hog constant text := 'aaaaaaaa-c000-0000-0000-000000000057';
+        o_ser constant text := 'aaaaaaaa-c000-0000-0000-000000000058';
+        o_nr  constant text := 'aaaaaaaa-c000-0000-0000-000000000059';
+        d_hn  constant text := 'aaaaaaaa-c000-0000-0000-00000000005a';
+        d_gt  constant text := 'aaaaaaaa-c000-0000-0000-00000000005b';
+        d_nr  constant text := 'aaaaaaaa-c000-0000-0000-00000000005c';
+        e_b   constant text := 'bbbbbbbb-c000-0000-0000-000000000005';
+        setp text := $q$select count(*)::text from (select public.fn_set_person_profile_item(%L::uuid, %L, %L::uuid, %L)) x$q$;
+        seto text := $q$select count(*)::text from (select public.fn_set_person_occupations(%L::uuid, %L::uuid[], %L)) x$q$;
+        setr text := $q$select count(*)::text from (select public.fn_set_case_reference_number(%L::uuid, %L, %L)) x$q$;
+        alta text := $q$select count(*)::text from (select public.fn_create_case_with_person(
+            'Nueva','Ficha',null,null,date '2000-01-01',false,%s,%s,%L,null,null,null,'fija',false,null,null,null,null,null,
+            'aaaaaaaa-1000-0000-0000-000000000001'::uuid, array[]::text[], %L::jsonb, %s)) x$q$;
+        cons_gen text := '[{"consent_type":"general_care","status":"granted"}]';
+        cons_sens text := '[{"consent_type":"general_care","status":"granted"},{"consent_type":"sensitive_data","status":"granted"}]';
+    begin
+        begin
+            insert into public.catalog_item (id, organization_id, catalog, key, label_es, is_active, is_system, sort_order, country_id) values
+                (e_pri::uuid, ORG_A::uuid, 'education_level', 'primary', 'Primaria (prueba)', true, false, 2, null),
+                (e_uni::uuid, ORG_A::uuid, 'education_level', 'university', 'Universidad (prueba)', true, false, 5, null),
+                (e_old::uuid, ORG_A::uuid, 'education_level', 'retired', 'Nivel retirado', false, false, 9, null),
+                (m_sol::uuid, ORG_A::uuid, 'marital_status', 'single', 'Soltero (prueba)', true, false, 4, null),
+                (o_com::uuid, ORG_A::uuid, 'occupation', 'commerce', 'Comercio (prueba)', true, false, 1, null),
+                (o_est::uuid, ORG_A::uuid, 'occupation', 'student', 'Estudiante (prueba)', true, false, 3, null),
+                (o_hog::uuid, ORG_A::uuid, 'occupation', 'household', 'Trabajo del hogar (prueba)', true, false, 7, null),
+                (o_ser::uuid, ORG_A::uuid, 'occupation', 'services', 'Servicios (prueba)', true, false, 6, null),
+                (o_nr::uuid, ORG_A::uuid, 'occupation', 'no_response', 'La persona no quiso responder', true, true, 99, null),
+                (d_hn::uuid, ORG_A::uuid, 'department', 'hn_cortes', 'Cortés (prueba)', true, false, 1, 93),
+                (d_gt::uuid, ORG_A::uuid, 'department', 'gt_peten', 'Petén (prueba)', true, false, 1, 86),
+                (d_nr::uuid, ORG_A::uuid, 'department', 'no_response', 'La persona no quiso responder', true, true, 99, null),
+                (e_b::uuid, ORG_B::uuid, 'education_level', 'primary', 'Primaria B', true, false, 2, null);
+        exception when others then
+            raise notice 'E15 escenario: sin los diccionarios de la ficha todavía (%).', sqlerrm;
+        end;
+        update public.person set nationality_country_id = 93 where id = P_OK::uuid;
+
+        -- ----- Nivel de estudios y estado civil (diccionario; no son datos sensibles)
+        perform pg_temp.expect('E15 control positivo: quien atiende registra el nivel de estudios', CW, 'authenticated',
+            format(setp, P_NO, 'education_level', e_pri, null), '1');
+        perform pg_temp.expect('E15: quedó guardado', null, null,
+            format($q$select count(*)::text from public.person where id = %L::uuid and education_level_item_id = %L::uuid$q$, P_NO, e_pri), '1');
+        perform pg_temp.expect('E15: cambiarlo sin motivo no se puede → BV304', CW, 'authenticated',
+            format(setp, P_NO, 'education_level', e_uni, null), 'ERR:BV304');
+        perform pg_temp.expect('E15 control positivo: con motivo se cambia', CW, 'authenticated',
+            format(setp, P_NO, 'education_level', e_uni, 'La persona lo precisó'), '1');
+        perform pg_temp.expect('E15: el cambio deja su motivo en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where action = 'RECTIFICATION' and table_name = 'person'
+               and new_values->>'reason' = 'La persona lo precisó' and created_at >= transaction_timestamp()$q$, 'true');
+        perform pg_temp.expect('E15 control positivo: estado civil', CW, 'authenticated',
+            format(setp, P_NO, 'marital_status', m_sol, null), '1');
+        perform pg_temp.expect('E15: el rol de solo lectura no escribe → BV120', VW, 'authenticated',
+            format(setp, P_NO, 'education_level', e_pri, 'x'), 'ERR:BV120');
+        perform pg_temp.expect('E15: el voluntariado no escribe → BV120', VOL, 'authenticated',
+            format(setp, P_NO, 'education_level', e_pri, 'x'), 'ERR:BV120');
+        perform pg_temp.expect('E15: otra organización no ve a la persona → BV201', DIRB2, 'authenticated',
+            format(setp, P_NO, 'education_level', e_b, 'x'), 'ERR:BV201');
+        perform pg_temp.expect('E15: un valor de otra organización no se usa → BV220', DIR, 'authenticated',
+            format(setp, P_NO, 'education_level', e_b, 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15: un valor retirado no se usa → BV220', DIR, 'authenticated',
+            format(setp, P_NO, 'education_level', e_old, 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15: un valor de otro diccionario no vale → BV220', DIR, 'authenticated',
+            format(setp, P_NO, 'education_level', m_sol, 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15: un campo que no existe se rechaza → BV220', DIR, 'authenticated',
+            format(setp, P_NO, 'religion', e_pri, 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15: se puede quitar con motivo', DIR, 'authenticated',
+            format(setp, P_NO, 'marital_status', null, 'Se capturó por error'), '1');
+
+        -- ----- Departamento de origen: depende de la nacionalidad, que es dato sensible
+        perform pg_temp.expect('E15 control positivo: departamento del país de la persona, con consentimiento sensible', CW, 'authenticated',
+            format(setp, P_OK, 'origin_department', d_hn, null), '1');
+        perform pg_temp.expect('E15: un departamento de otro país no corresponde → BV337', CW, 'authenticated',
+            format(setp, P_OK, 'origin_department', d_gt, 'x'), 'ERR:BV337');
+        perform pg_temp.expect('E15: sin nacionalidad registrada no hay departamento → BV337', CW, 'authenticated',
+            format(setp, P_NO, 'origin_department', d_hn, null), 'ERR:BV337');
+        perform pg_temp.expect('E15: «no quiso responder» vale sin nacionalidad ni consentimiento sensible', CW, 'authenticated',
+            format(setp, P_NO, 'origin_department', d_nr, null), '1');
+        perform pg_temp.expect('E15 prep: la persona sin consentimiento sensible ya tiene nacionalidad', null, null,
+            format($q$with u as (update public.person set nationality_country_id = 93 where id = %L::uuid returning 1) select count(*)::text from u$q$, P_NO), '1');
+        perform pg_temp.expect('E15: sin consentimiento sensible vigente no se registra un departamento → BV408', CW, 'authenticated',
+            format(setp, P_NO, 'origin_department', d_hn, null), 'ERR:BV408');
+
+        -- ----- Ocupación en su lugar de origen: hasta 3 opciones, o «no quiso responder» solo
+        perform pg_temp.expect('E15 control positivo: dos ocupaciones', CW, 'authenticated',
+            format(seto, P_NO, format('{%s,%s}', o_com, o_est), null), '1');
+        perform pg_temp.expect('E15: quedaron dos vigentes', null, null,
+            format($q$select count(*)::text from public.person_occupation where person_id = %L::uuid and valid_to is null$q$, P_NO), '2');
+        perform pg_temp.expect('E15: más de tres no se admiten → BV338', CW, 'authenticated',
+            format(seto, P_NO, format('{%s,%s,%s,%s}', o_com, o_est, o_hog, o_ser), 'x'), 'ERR:BV338');
+        perform pg_temp.expect('E15: «no quiso responder» no se combina → BV338', CW, 'authenticated',
+            format(seto, P_NO, format('{%s,%s}', o_com, o_nr), 'x'), 'ERR:BV338');
+        perform pg_temp.expect('E15: quitar una ocupación sin motivo no se puede → BV304', CW, 'authenticated',
+            format(seto, P_NO, format('{%s}', o_com), null), 'ERR:BV304');
+        perform pg_temp.expect('E15: con motivo se quita; lo quitado se cierra, no se borra', CW, 'authenticated',
+            format(seto, P_NO, format('{%s}', o_com), 'Corrección de la persona'), '1');
+        perform pg_temp.expect('E15: una vigente y una cerrada con su motivo', null, null,
+            format($q$select count(*) filter (where valid_to is null)::text || '/' || count(*) filter (where valid_to is not null and change_reason = 'Corrección de la persona')::text
+               from public.person_occupation where person_id = %L::uuid$q$, P_NO), '1/1');
+        perform pg_temp.expect('E15: una ocupación de otro diccionario no vale → BV220', CW, 'authenticated',
+            format(seto, P_NO, format('{%s}', e_pri), 'x'), 'ERR:BV220');
+        perform pg_temp.expect('E15: el rol de solo lectura no marca ocupaciones → BV120', VW, 'authenticated',
+            format(seto, P_NO, format('{%s}', o_com), 'x'), 'ERR:BV120');
+        perform pg_temp.expect('E15: las ocupaciones no se escriben por la API directa', CW, 'authenticated',
+            format($q$with i as (insert into public.person_occupation (organization_id, person_id, catalog_item_id, created_by) values (%L::uuid, %L::uuid, %L::uuid, %L::uuid) returning 1) select count(*)::text from i$q$, ORG_A, P_NO, o_hog, CW), 'ERR');
+        perform pg_temp.expect('E15: ni se borran por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.person_occupation returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('E15: otra organización no ve las ocupaciones de A', DIRB2, 'authenticated', 'select count(*)::text from public.person_occupation', '0');
+        perform pg_temp.expect('E15: la auditoría de las ocupaciones deja eventos sin el texto del valor', null, null,
+            $q$select ((count(*) > 0) and not bool_or(coalesce(new_values::text, '') ilike '%Comercio%'))::text from public.audit_event
+               where table_name = 'person_occupation' and created_at >= transaction_timestamp()$q$, 'true');
+
+        -- ----- Número de referencia (folio manual, texto corto)
+        perform pg_temp.expect('E15 control positivo: se registra el número de referencia', CW, 'authenticated',
+            format(setr, C_NO, 'REF-0001', null), '1');
+        perform pg_temp.expect('E15: cambiarlo sin motivo no se puede → BV304', CW, 'authenticated',
+            format(setr, C_NO, 'REF-0002', null), 'ERR:BV304');
+        perform pg_temp.expect('E15: con motivo se cambia', CW, 'authenticated',
+            format(setr, C_NO, 'REF-0002', 'Se corrigió el folio'), '1');
+        perform pg_temp.expect('E15: un texto demasiado largo → BV321', CW, 'authenticated',
+            format(setr, C_NO, repeat('x', 121), 'x'), 'ERR:BV321');
+        perform pg_temp.expect('E15: el rol de solo lectura no lo escribe → BV120', VW, 'authenticated',
+            format(setr, C_NO, 'REF-9', null), 'ERR:BV120');
+        perform pg_temp.expect('E15: no se escribe por la API directa', CW, 'authenticated',
+            format($q$with u as (update public."case" set reference_number = 'DIRECTO' where id = %L::uuid returning 1) select count(*)::text from u$q$, C_NO), 'ERR');
+
+        -- ----- Diccionarios nuevos: dirección y Trabajo Social los editan; el departamento lleva su país
+        perform pg_temp.expect('E15 control positivo: Trabajo Social agrega un nivel de estudios', CW, 'authenticated',
+            format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L::uuid, 'education_level', 'tecnico', 'Técnico', 3) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('E15 control positivo: agrega un departamento con su país', CW, 'authenticated',
+            format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order, country_id) values (%L::uuid, 'department', 'hn_olancho', 'Olancho', 2, 93) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('E15: un departamento sin país no se acepta', CW, 'authenticated',
+            format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L::uuid, 'department', 'sin_pais', 'Sin país', 3) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('E15: un valor que no es departamento no lleva país', CW, 'authenticated',
+            format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order, country_id) values (%L::uuid, 'occupation', 'con_pais', 'Con país', 3, 93) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('E15: el área jurídica no edita estos diccionarios', 'aaaaaaaa-3000-0000-0000-00000000000a', 'authenticated',
+            format($q$with i as (insert into public.catalog_item (organization_id, catalog, key, label_es, sort_order) values (%L::uuid, 'marital_status', 'otro_estado', 'Otro estado', 7) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+
+        -- ----- Alta: la ocupación es obligatoria (con «no quiso responder» como salida) cuando el diccionario tiene opciones
+        perform pg_temp.expect('E15 control positivo: el alta con una ocupación y su nivel de estudios', INT, 'authenticated',
+            format(alta, 'null', 'null', null::text, cons_gen,
+                   format('p_education_level_item_id => %L::uuid, p_marital_status_item_id => %L::uuid, p_occupation_item_ids => array[%L]::uuid[]', e_pri, m_sol, o_com)), '1');
+        perform pg_temp.expect('E15: el alta sin ocupación no se hace → BV339', INT, 'authenticated',
+            format(alta, 'null', 'null', null::text, cons_gen, 'p_education_level_item_id => null'), 'ERR:BV339');
+        perform pg_temp.expect('E15: el alta con «no quiso responder» como ocupación sí se hace', INT, 'authenticated',
+            format(alta, 'null', 'null', null::text, cons_gen, format('p_occupation_item_ids => array[%L]::uuid[]', o_nr)), '1');
+        perform pg_temp.expect('E15: el alta con más de tres ocupaciones → BV338', INT, 'authenticated',
+            format(alta, 'null', 'null', null::text, cons_gen, format('p_occupation_item_ids => array[%L,%L,%L,%L]::uuid[]', o_com, o_est, o_hog, o_ser)), 'ERR:BV338');
+        perform pg_temp.expect('E15: el alta con un nivel de estudios de otra organización → BV220', INT, 'authenticated',
+            format(alta, 'null', 'null', null::text, cons_gen, format('p_education_level_item_id => %L::uuid, p_occupation_item_ids => array[%L]::uuid[]', e_b, o_nr)), 'ERR:BV220');
+        perform pg_temp.expect('E15: el alta con departamento y sin consentimiento sensible → BV402', INT, 'authenticated',
+            format(alta, 'null', 'null', null::text, cons_gen, format('p_origin_department_item_id => %L::uuid, p_occupation_item_ids => array[%L]::uuid[]', d_hn, o_nr)), 'ERR:BV402');
+        perform pg_temp.expect('E15: el alta con «no quiso responder» como departamento no exige consentimiento sensible', INT, 'authenticated',
+            format(alta, 'null', 'null', null::text, cons_gen, format('p_origin_department_item_id => %L::uuid, p_occupation_item_ids => array[%L]::uuid[]', d_nr, o_nr)), '1');
+        perform pg_temp.expect('E15: el alta con departamento de otro país → BV337', INT, 'authenticated',
+            format(alta, '1', '93', 'Honduras', cons_sens, format('p_origin_department_item_id => %L::uuid, p_occupation_item_ids => array[%L]::uuid[]', d_gt, o_nr)), 'ERR:BV337');
+        perform pg_temp.expect('E15 control positivo: el alta con el departamento de su país', INT, 'authenticated',
+            format(alta, '1', '93', 'Honduras', cons_sens, format('p_origin_department_item_id => %L::uuid, p_occupation_item_ids => array[%L]::uuid[]', d_hn, o_com)), '1');
+        perform pg_temp.expect('E15: la ocupación del alta quedó guardada', null, null,
+            $q$select (count(*) > 0)::text from public.person_occupation po join public.person p on p.id = po.person_id
+               where p.given_name = 'Nueva' and p.paternal_family_name = 'Ficha' and po.valid_to is null$q$, 'true');
+
+        -- ----- Extracto ARCO y anonimización (prep: la persona que se anonimiza al final)
+        perform pg_temp.expect('E15 prep: estudios y ocupación de la persona que se anonimiza', DIR, 'authenticated',
+            format(setp, 'aaaaaaaa-4000-0000-0000-000000000001', 'education_level', e_pri, null), '1');
+        perform pg_temp.expect('E15 prep: una ocupación vigente de la persona que se anonimiza', DIR, 'authenticated',
+            format(seto, 'aaaaaaaa-4000-0000-0000-000000000001', format('{%s}', o_hog), null), '1');
+        perform pg_temp.expect('E15 prep: departamento de la persona que se anonimiza (escritura de preparación)', null, null,
+            format($q$with u as (update public.person set origin_department_item_id = %L::uuid where id = 'aaaaaaaa-4000-0000-0000-000000000001' returning 1) select count(*)::text from u$q$, d_hn), '1');
+        perform pg_temp.expect('E15: el extracto de acceso ARCO incluye la ficha completa', DIR, 'authenticated',
+            format($q$select ((e->'person' ? 'education_level') and (e->'person' ? 'origin_department') and (e->'person' ? 'marital_status')
+                              and jsonb_array_length(e->'person'->'occupations') > 0)::text
+                      from (select public.fn_generate_arco_access_extract(%L::uuid) as e) s$q$, 'aaaaaaaa-4000-0000-0000-000000000001'), 'true');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
@@ -2948,6 +3139,15 @@ begin
         $q$select count(*)::text from public.case_need where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is null$q$, '0');
     perform pg_temp.expect('F4b: la necesidad queda como registro cerrado, con el motivo suprimido', null, null,
         $q$select count(*)::text from public.case_need where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null and change_reason = '[SUPRIMIDO - ADR-0001]'$q$, '1');
+
+    -- ===== E15 fase 1: al anonimizar, la ficha de la persona queda sin estudios, estado civil, departamento ni ocupación vigente
+    perform pg_temp.expect('E15: tras anonimizar, la persona no conserva estudios, estado civil ni departamento', null, null,
+        $q$select count(*)::text from public.person where id = 'aaaaaaaa-4000-0000-0000-000000000001'
+           and (education_level_item_id is not null or marital_status_item_id is not null or origin_department_item_id is not null)$q$, '0');
+    perform pg_temp.expect('E15: tras anonimizar, no queda ninguna ocupación vigente', null, null,
+        $q$select count(*)::text from public.person_occupation where person_id = 'aaaaaaaa-4000-0000-0000-000000000001' and valid_to is null$q$, '0');
+    perform pg_temp.expect('E15: la ocupación queda como registro cerrado, con el motivo suprimido', null, null,
+        $q$select count(*)::text from public.person_occupation where person_id = 'aaaaaaaa-4000-0000-0000-000000000001' and valid_to is not null and change_reason = '[SUPRIMIDO - ADR-0001]'$q$, '1');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

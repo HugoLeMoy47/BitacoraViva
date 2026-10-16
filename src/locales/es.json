@@ -449,6 +449,10 @@
     "tabs": "Diccionarios",
     "tab": {
       "service_line": "Líneas de servicio",
+      "education_level": "Nivel de estudios",
+      "marital_status": "Estado civil",
+      "occupation": "Ocupaciones",
+      "department": "Departamentos",
       "specific_need": "Necesidades específicas",
       "language": "Idiomas",
       "religion": "Religiones",
@@ -457,10 +461,15 @@
     "hint": {
       "service_line": "Las «columnas» de la hoja de casos a las que se asigna una entrada de bitácora (hospitalidad, psicología, jurídico…).",
       "specific_need": "Las casillas de necesidades específicas de la ficha de la persona.",
+      "education_level": "Los niveles de estudios que se ofrecen en la ficha de la persona.",
+      "marital_status": "Los estados civiles que se ofrecen en la ficha de la persona.",
+      "occupation": "Las ocupaciones en el lugar de origen que se ofrecen en la ficha (hasta 3 por persona). Es un dato obligatorio en el alta.",
+      "department": "Los departamentos de origen, por país. Se ofrecen los del país de la nacionalidad de la persona.",
       "language": "Los idiomas que se ofrecen en la ficha de la persona.",
       "religion": "Las religiones que se ofrecen en la ficha de la persona.",
       "age_bands": "Los grupos con que se agrupa la edad en la ficha y en los indicadores. Se calculan solo por edad, sin tomar en cuenta el sexo."
     },
+    "department_country": "País de los departamentos",
     "sensitive_note": "Lo que se registra de estos valores en una persona es dato sensible y exige su consentimiento; la lista en sí no lo es.",
     "system": "Del sistema",
     "retired": "Retirado",
@@ -495,6 +504,34 @@
     "bands_err_name": "Cada grupo necesita un nombre.",
     "bands_err_age": "La edad de inicio es un número entero de años.",
     "bands_err_dup": "Dos grupos no pueden llamarse igual."
+  },
+  "profile": {
+    "title": "Ficha complementaria",
+    "subtitle": "Estudios, estado civil, ocupación, departamento de origen y número de referencia. Cambiar o quitar un dato pide motivo; lo anterior queda en el historial.",
+    "register": "Registrar",
+    "education": "Nivel de estudios",
+    "marital": "Estado civil",
+    "department": "Departamento de origen",
+    "reference": "Número de referencia",
+    "occupation": "Ocupación en su lugar de origen",
+    "occupation_hint": "Elige hasta 3, o «La persona no quiso responder». Es obligatoria: si no se sabe, se dice que la persona no quiso responder.",
+    "occupation_required": "Elige al menos una ocupación o «La persona no quiso responder».",
+    "occupation_reason": "Escribe el motivo de quitar una ocupación ya registrada.",
+    "occupation_save": "Guardar ocupación",
+    "department_depends": "Se ofrecen los departamentos del país de la nacionalidad elegida.",
+    "department_needs_nationality": "Para registrar el departamento hace falta la nacionalidad de la persona.",
+    "modal": {
+      "education_level": "Nivel de estudios",
+      "marital_status": "Estado civil",
+      "origin_department": "Departamento de origen",
+      "reference": "Número de referencia"
+    },
+    "hint": {
+      "education_level": "El nivel más alto que la persona dice haber cursado.",
+      "marital_status": "El estado civil que la persona declara.",
+      "origin_department": "Los departamentos del país de su nacionalidad. Es un dato sensible: exige su consentimiento para datos sensibles.",
+      "reference": "El folio manual con que se identifica a la persona fuera del sistema. Texto corto."
+    }
   },
   "derived": {
     "title": "Datos calculados",
@@ -1136,6 +1173,9 @@
       "bv333": "El detalle necesita un valor del diccionario que lo explique. Elige uno primero.",
       "bv335": "Los grupos por edad los administran dirección y Trabajo Social.",
       "bv336": "Revisa los grupos por edad: el primero empieza en 0 años, cada uno empieza en una edad mayor que el anterior, todos llevan nombre y los nombres no se repiten.",
+      "bv337": "Ese departamento no corresponde al país de nacionalidad de la persona. Registra primero la nacionalidad o elige un departamento de ese país.",
+      "bv338": "La ocupación admite hasta 3 opciones, y «La persona no quiso responder» no se combina con otras.",
+      "bv339": "La ocupación en su lugar de origen es obligatoria: elige una opción o «La persona no quiso responder».",
       "bv334": "«La persona no quiso responder» no se combina con otras necesidades. Marca una cosa o la otra.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",

@@ -167,6 +167,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     catalogItems,
     caseNeeds,
     ageBands,
+    personOccupations,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -207,6 +208,8 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     // RLS: solo roles que operan expedientes
     rows<{ case_id: string; catalog_item_id: string }>(supabase.from('case_need').select('case_id, catalog_item_id').is('valid_to', null)),
     rows<AgeBand>(supabase.from('age_band').select('*').is('valid_to', null).order('sort_order')),
+    // RLS: solo roles que operan expedientes
+    rows<{ person_id: string; catalog_item_id: string }>(supabase.from('person_occupation').select('person_id, catalog_item_id').is('valid_to', null)),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -307,6 +310,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
         dates: caseDates.filter((d) => d.case_id === c.id),
         family: familyOf(c.id),
         needs: caseNeeds.filter((n) => n.case_id === c.id).map((n) => n.catalog_item_id),
+        occupations: personOccupations.filter((o) => o.person_id === c.titular_person_id).map((o) => o.catalog_item_id),
         documents: personDocuments
           .filter((d) => d.person_id === c.titular_person_id)
           .map((d) => ({ ...d, type_label: documentTypeById.get(d.document_type_id)?.label_es ?? '—' })),
@@ -418,6 +422,11 @@ export interface NewCaseInput {
   assigned_area_id: string | null;
   vulnerability_codes: string[];
   consents: ConsentInput[];
+  /** Ficha completa (E15 fase 1): estudios, estado civil, departamento de origen y ocupación (obligatoria si hay opciones) */
+  education_level_item_id?: string | null;
+  marital_status_item_id?: string | null;
+  origin_department_item_id?: string | null;
+  occupation_item_ids?: string[];
 }
 
 // Indicadores agregados con supresión de celdas pequeñas (Ethos E-05): `count` llega
@@ -501,6 +510,10 @@ export const api = {
       p_vulnerability_codes: i.vulnerability_codes,
       p_consents: i.consents,
       p_dates: i.dates,
+      p_education_level_item_id: i.education_level_item_id ?? null,
+      p_marital_status_item_id: i.marital_status_item_id ?? null,
+      p_origin_department_item_id: i.origin_department_item_id ?? null,
+      p_occupation_item_ids: i.occupation_item_ids ?? null,
     }),
 
   createSubfolio: (i: SubfolioInput) =>
@@ -673,8 +686,8 @@ export const api = {
     rpc('fn_set_person_religion', { p_person_id: personId, p_item_id: itemId, p_detail: detail.trim() || null, p_reason: reason?.trim() || null }),
 
   // Diccionarios editables (pantalla «Diccionarios»): dirección y Trabajo Social; la base lo exige (RLS + auditoría)
-  addCatalogItem: async (organizationId: string, catalog: CatalogItem['catalog'], key: string, label: string, sortOrder: number) => {
-    const { error } = await supabase.from('catalog_item').insert({ organization_id: organizationId, catalog, key, label_es: label.trim(), sort_order: sortOrder });
+  addCatalogItem: async (organizationId: string, catalog: CatalogItem['catalog'], key: string, label: string, sortOrder: number, countryId?: number) => {
+    const { error } = await supabase.from('catalog_item').insert({ organization_id: organizationId, catalog, key, label_es: label.trim(), sort_order: sortOrder, ...(countryId !== undefined ? { country_id: countryId } : {}) });
     if (error) throw new DbError(error.message, error.code);
   },
   updateCatalogItem: async (id: string, changes: { label_es?: string; is_active?: boolean }) => {
@@ -684,6 +697,14 @@ export const api = {
   // Grupos por edad (fase 5): el conjunto completo; lo anterior se cierra con motivo
   setAgeBands: (bands: { label: string; min_age: number }[], reason?: string) =>
     rpc('fn_set_age_bands', { p_bands: bands, p_reason: reason?.trim() || null }),
+
+  // Ficha completa (E15 fase 1): estudios, estado civil o departamento (un valor del diccionario), ocupaciones (hasta 3) y folio manual
+  setPersonProfileItem: (personId: string, field: 'education_level' | 'marital_status' | 'origin_department', itemId: string | null, reason?: string) =>
+    rpc('fn_set_person_profile_item', { p_person_id: personId, p_field: field, p_item_id: itemId, p_reason: reason?.trim() || null }),
+  setPersonOccupations: (personId: string, itemIds: string[], reason?: string) =>
+    rpc('fn_set_person_occupations', { p_person_id: personId, p_item_ids: itemIds, p_reason: reason?.trim() || null }),
+  setCaseReferenceNumber: (caseId: string, reference: string, reason?: string) =>
+    rpc('fn_set_case_reference_number', { p_case_id: caseId, p_reference: reference, p_reason: reason?.trim() || null }),
 
   // Necesidades específicas: el conjunto completo de casillas marcadas (E14 fase 4b)
   setCaseNeeds: (caseId: string, itemIds: string[], reason?: string) =>

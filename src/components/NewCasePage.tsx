@@ -102,6 +102,11 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const [languageItemId, setLanguageItemId] = useState('');
   const [primaryLanguage, setPrimaryLanguage] = useState('');
   const [phone, setPhone] = useState('');
+  // Ficha completa (E15 fase 1): estudios, estado civil, departamento de origen y ocupación (obligatoria si hay opciones)
+  const [educationItemId, setEducationItemId] = useState('');
+  const [maritalItemId, setMaritalItemId] = useState('');
+  const [departmentItemId, setDepartmentItemId] = useState('');
+  const [occupationIds, setOccupationIds] = useState<string[]>([]);
 
   // Paso 3: Vulnerabilidades (13 marcadores) — sólo con consentimiento expreso para datos sensibles
   const [selectedVulnerabilities, setSelectedVulnerabilities] = useState<VulnerabilityMarkerCode[]>([]);
@@ -135,6 +140,20 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const consentRequired = (key: ConsentKey) => key === 'general_care' || (texts[key]?.required ?? CONSENT_KEYS.find((c) => c.key === key)!.required);
 
   const sensitiveGranted = choices.sensitive_data === 'yes';
+  const occupationItems = catalogItems.filter((i) => i.catalog === 'occupation' && i.is_active);
+  const occupationNoResponse = occupationItems.find((i) => i.key === 'no_response');
+  const occupationRequired = occupationItems.length > 0;
+  // El departamento depende de la nacionalidad: se ofrecen los del país elegido (los demás países comparten el grupo «otro», id 1)
+  const nationalityId = nationalityCountry ? (COUNTRY_ID[nationalityCountry] ?? 1) : null;
+  const departmentOptions = catalogItems.filter(
+    (i) => i.catalog === 'department' && i.is_active && (i.key === 'no_response' || (sensitiveGranted && nationalityId !== null && i.country_id === nationalityId))
+  );
+  const toggleOccupation = (id: string) =>
+    setOccupationIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (id === occupationNoResponse?.id) return [id];
+      return [...prev.filter((x) => x !== occupationNoResponse?.id), id];
+    });
   const generalRefused = choices.general_care === 'no';
   const allDecided = CONSENT_KEYS.every(({ key }) => choices[key] !== null);
 
@@ -220,6 +239,10 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       assigned_area_id: areas.find((a) => a.code === 'trabajo_social')?.id ?? null,
       vulnerability_codes: sensitiveGranted ? selectedVulnerabilities : [],
       consents: buildConsents(),
+      education_level_item_id: educationItemId || null,
+      marital_status_item_id: maritalItemId || null,
+      origin_department_item_id: departmentItemId || null,
+      occupation_item_ids: occupationIds,
     };
     onCaseCreated(input);
   };
@@ -254,6 +277,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       if (!paternalName.trim()) return t('intake.reason.paternal_name');
       if (!birthDate) return t('intake.reason.birth_date');
       if (ageProblem) return t(ageProblem);
+      if (occupationRequired && occupationIds.length === 0) return t('profile.occupation_required');
     }
     if (step === 4 && authorityProblem) return t(authorityProblem);
     return null;
@@ -688,7 +712,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   <select id="newcas-10" name="newcas-10" autoComplete="off"
                     disabled={!sensitiveGranted}
                     value={nationalityCountry}
-                    onChange={(e) => setNationalityCountry(e.target.value)}
+                    onChange={(e) => { setNationalityCountry(e.target.value); setDepartmentItemId(''); }}
                     className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
                     <option value="">{t('common.not_recorded')}</option>
@@ -755,6 +779,56 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   </span>
                 )}
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-13">{t('profile.education')}</label>
+                  <select id="newcas-13" name="newcas-13" autoComplete="off" value={educationItemId} onChange={(e) => setEducationItemId(e.target.value)}
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa">
+                    <option value="">{t('common.not_recorded')}</option>
+                    {catalogItems.filter((i) => i.catalog === 'education_level' && i.is_active).map((i) => <option key={i.id} value={i.id}>{i.label_es}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-14">{t('profile.marital')}</label>
+                  <select id="newcas-14" name="newcas-14" autoComplete="off" value={maritalItemId} onChange={(e) => setMaritalItemId(e.target.value)}
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa">
+                    <option value="">{t('common.not_recorded')}</option>
+                    {catalogItems.filter((i) => i.catalog === 'marital_status' && i.is_active).map((i) => <option key={i.id} value={i.id}>{i.label_es}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-15">{t('profile.department')}</label>
+                <select id="newcas-15" name="newcas-15" autoComplete="off" value={departmentItemId} onChange={(e) => setDepartmentItemId(e.target.value)}
+                  className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa">
+                  <option value="">{t('common.not_recorded')}</option>
+                  {departmentOptions.map((i) => <option key={i.id} value={i.id}>{i.label_es}</option>)}
+                </select>
+                <span className="mt-1 block text-[11px] text-gray-600">
+                  {!sensitiveGranted ? t('diccionarios.only_no_response') : nationalityId === null ? t('profile.department_needs_nationality') : t('profile.department_depends')}
+                </span>
+              </div>
+
+              {occupationItems.length > 0 && (
+                <fieldset>
+                  <legend className="block text-xs font-medium text-gray-700 mb-1">{t('profile.occupation')} <span className="text-alerta-dark">*</span></legend>
+                  <p className="mb-2 text-[11px] text-gray-600">{t('profile.occupation_hint')}</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {occupationItems.map((i) => {
+                      const checked = occupationIds.includes(i.id);
+                      const full = !checked && i.key !== 'no_response' && occupationIds.filter((x) => x !== occupationNoResponse?.id).length >= 3;
+                      return (
+                        <label key={i.id} className={`flex min-h-11 items-center gap-3 rounded-xl border p-2.5 text-xs ${checked ? 'border-turquesa bg-claro font-semibold text-carbon' : 'border-gray-200 text-gray-700'} ${full ? 'opacity-50' : ''}`}>
+                          <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-turquesa" checked={checked} disabled={full} onChange={() => toggleOccupation(i.id)} />
+                          <span>{i.label_es}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
             </div>
           )}
 
