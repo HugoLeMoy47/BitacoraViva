@@ -2,8 +2,6 @@
 // La regla de quién gestiona el equipo vive en la base (`can_manage_team()`, hoy la dirección); aquí solo se decide qué
 // mostrar. Rol y área son independientes: una persona puede tener varios roles, cada uno con su área o sin ella.
 
-import type { RoleName } from '../types/database';
-
 export interface TeamProfile {
   id: string;
   full_name: string;
@@ -45,6 +43,3 @@ export function groupTeam(profiles: TeamProfile[], roles: TeamRole[]): TeamMembe
       };
     });
 }
-
-/** Por ahora solo la dirección gestiona el equipo; la fase B lo vuelve una capacidad configurable */
-export const canManageTeam = (roles: RoleName[]): boolean => roles.includes('director');

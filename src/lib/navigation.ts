@@ -31,18 +31,30 @@ export const hasCaseAccess = (roles: RoleName[]): boolean => roles.some((r) => C
 export const canManageTasks = (roles: RoleName[]): boolean => roles.includes('director') || roles.includes('task_manager');
 
 /**
- * Pantallas permitidas (unión de las de todos los roles). «Acerca de» sólo existe en entorno demo.
- * «Diccionarios» también la ve Trabajo Social (rol operativo en esa área): `canManageCatalogs` sale de `lib/dictionaries`.
+ * Pantallas de administración: ya no las da el rol sino una CAPACIDAD (E16 fase B), que la dirección concede a un rol o a
+ * un área. Por omisión la dirección tiene las cinco (y Trabajo Social la de diccionarios). La base vuelve a exigirlas.
  */
-export function allowedRoutes(roles: RoleName[], isDemo: boolean, canManageCatalogs = false): RouteId[] {
-  const union = new Set<RouteId>(roles.flatMap((r) => ROLE_ROUTES[r] ?? []));
+export const ROUTE_CAPABILITY: Partial<Record<RouteId, string>> = {
+  dictionaries: 'manage_catalogs',
+  team: 'manage_team',
+  audit: 'view_audit',
+  authority: 'manage_authority_requests',
+  configuration: 'manage_org_settings',
+};
+
+/**
+ * Pantallas permitidas: las básicas salen de la unión de los roles; las de administración, de las capacidades de la cuenta
+ * (`fn_my_capabilities`). «Acerca de» sólo existe en entorno demo.
+ */
+export function allowedRoutes(roles: RoleName[], isDemo: boolean, capabilities: string[]): RouteId[] {
+  const union = new Set<RouteId>(roles.flatMap((r) => ROLE_ROUTES[r] ?? []).filter((id) => !ROUTE_CAPABILITY[id]));
+  for (const [id, cap] of Object.entries(ROUTE_CAPABILITY) as [RouteId, string][]) if (capabilities.includes(cap)) union.add(id);
   if (isDemo) union.add('about');
-  if (canManageCatalogs) union.add('dictionaries');
   return ROUTE_ORDER.filter((r) => union.has(r));
 }
 
-export function defaultRoute(roles: RoleName[]): RouteId {
-  return allowedRoutes(roles, false)[0] ?? 'indicators';
+export function defaultRoute(roles: RoleName[], capabilities: string[]): RouteId {
+  return allowedRoutes(roles, false, capabilities)[0] ?? 'indicators';
 }
 
 export const ROLE_NAMES: RoleName[] = ['director', 'intake_officer', 'caseworker', 'viewer', 'task_manager', 'volunteer'];

@@ -263,6 +263,10 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
 on conflict (organization_id, catalog, key) do nothing;
 
+-- 5m. Permisos por omisión (E16 fase B): todo como estaba (dirección tiene las cinco capacidades; el área de Trabajo Social,
+-- la de diccionarios). La dirección los edita en «Equipo y permisos».
+select public.fn_seed_default_capabilities('00000000-0000-0000-0000-000000000001');
+
 -- 5l. Papel en la familia (E15 fase 4): los cuatro papeles de la regla de orden de la matriz de Trabajo Social; dirección y
 -- Trabajo Social los editan. Un papel agregado cuenta como «otro» al sugerir el orden.
 insert into public.catalog_item (organization_id, catalog, key, label_es, is_system, sort_order) values

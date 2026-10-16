@@ -10,6 +10,8 @@ import { formatDate } from '../lib/format';
 import { ROLE_NAMES } from '../lib/navigation';
 import { groupTeam, TeamMember, TeamProfile, TeamRole } from '../lib/team';
 import { ModalShell } from './ModalShell';
+import { Tabs } from './Tabs';
+import { PermissionsPanel } from './PermissionsPanel';
 import { DisabledReason, describedBy } from './DisabledReason';
 
 // Equipo (E16 fase A): la dirección ve a las personas de su organización y otorga, revoca y desactiva por funciones de la
@@ -21,7 +23,8 @@ const BTN_PRIMARY = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-tur
 
 type Action = { kind: 'revoke'; role: TeamRole; who: string } | { kind: 'active'; profile: TeamProfile; activate: boolean };
 
-export const TeamView: React.FC<{ currentUserId: string }> = ({ currentUserId }) => {
+export const TeamView: React.FC<{ currentUserId: string; canEditPermissions: boolean }> = ({ currentUserId, canEditPermissions }) => {
+  const [tab, setTab] = useState<'team' | 'permissions'>('team');
   const { areas } = useCatalog();
   const toast = useToast();
   const [team, setTeam] = useState<TeamMember[] | null>(null);
@@ -53,12 +56,21 @@ export const TeamView: React.FC<{ currentUserId: string }> = ({ currentUserId })
     <div className="mx-auto max-w-4xl space-y-5">
       <div>
         <h2 className="font-title text-2xl font-bold text-carbon">{t('team.title')}</h2>
-        <p className="mt-1 text-sm text-gray-600">{t('team.subtitle')}</p>
-        <p className="mt-1 text-sm text-gray-600">{t('team.rules')}</p>
+        {tab === 'team' && (
+          <>
+            <p className="mt-1 text-sm text-gray-600">{t('team.subtitle')}</p>
+            <p className="mt-1 text-sm text-gray-600">{t('team.rules')}</p>
+          </>
+        )}
       </div>
-      {loadError && <p role="alert" className="rounded-lg border border-alerta-dark/40 bg-alerta-bg/40 p-3 text-sm font-semibold text-alerta-dark">{loadError}</p>}
-      {!team && !loadError && <p className="text-sm text-gray-600">{t('team.loading')}</p>}
-      <ul className="space-y-4">
+      {canEditPermissions && (
+        <Tabs ariaLabel={t('team.tabs')} value={tab} onChange={(id) => setTab(id as 'team' | 'permissions')}
+          items={[{ id: 'team', label: t('team.tab_team') }, { id: 'permissions', label: t('team.tab_permissions') }]} />
+      )}
+      {tab === 'permissions' && canEditPermissions && <PermissionsPanel />}
+      {loadError && tab === 'team' && <p role="alert" className="rounded-lg border border-alerta-dark/40 bg-alerta-bg/40 p-3 text-sm font-semibold text-alerta-dark">{loadError}</p>}
+      {!team && !loadError && tab === 'team' && <p className="text-sm text-gray-600">{t('team.loading')}</p>}
+      <ul className={`space-y-4 ${tab === 'team' ? '' : 'hidden'}`}>
         {(team ?? []).map((m) => {
           const self = m.profile.id === currentUserId;
           return (

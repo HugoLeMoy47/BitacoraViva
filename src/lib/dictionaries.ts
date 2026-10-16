@@ -2,8 +2,6 @@
 // La regla de quién escribe vive en la base (`can_manage_catalogs()`); aquí solo se decide qué mostrar y se revisa lo
 // escrito antes de enviarlo para dar un mensaje claro (la base lo vuelve a exigir).
 
-import type { RoleName } from '../types/database';
-
 /** Clave estable de un valor nuevo, a partir de su nombre; no pisa la de otro valor */
 export function keyFromLabel(label: string, existingKeys: string[]): string {
   const base =
@@ -44,10 +42,4 @@ export function validateBands(rows: BandRow[]): string | null {
     prev = age;
   }
   return null;
-}
-
-/** Dirección, o un rol operativo (ingreso / atención) en el área de Trabajo Social: igual que `can_manage_catalogs()` */
-export function canManageCatalogs(roles: RoleName[], areaCodes: string[]): boolean {
-  if (roles.includes('director')) return true;
-  return (roles.includes('caseworker') || roles.includes('intake_officer')) && areaCodes.includes('trabajo_social');
 }
