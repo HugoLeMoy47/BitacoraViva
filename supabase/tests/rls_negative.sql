@@ -3707,6 +3707,20 @@ begin
         perform pg_temp.expect('D-24 t3: el área jurídica sigue pudiendo', CW_LG, 'authenticated', format(hasc, 'change_legal_status'), 'true');
     end;
 
+    -- ============================================================================================
+    -- ===== D-24 tanda 4 (cierre): lo único que sigue por nombre de rol son las garantías del producto
+    -- ===== Cualquier comprobación nueva por nombre de rol hace fallar esta prueba: hay que decidir si es una garantía (y
+    -- ===== añadirla aquí, con su razón en la propuesta de E16 §9) o un permiso (y entonces es una capacidad).
+    -- ============================================================================================
+    perform pg_temp.expect('D-24: las funciones que comprueban roles por nombre son solo las garantías conocidas', DIR, 'authenticated',
+        $q$select string_agg(p.proname, ',' order by p.proname) from pg_proc p join pg_namespace s on s.oid = p.pronamespace
+           where s.nspname = 'public' and p.prosrc ~ 'has_role(_in_area)?\('$q$,
+        'fn_acknowledge_sharing,fn_anonymize_person,fn_apply_opposition,fn_can_act_on_entry,fn_change_case_status,fn_create_journal_entry,fn_generate_arco_access_extract,fn_grant_capability,fn_prevent_update_journal_entry,fn_read_case_detail,fn_revoke_capability,has_capability');
+    perform pg_temp.expect('D-24: las políticas que comprueban roles por nombre son solo las de lectura compartimentada', DIR, 'authenticated',
+        $q$select string_agg(tablename || '.' || policyname, ',' order by tablename, policyname) from pg_policies
+           where schemaname in ('public', 'storage') and (coalesce(qual, '') || coalesce(with_check, '')) ~ 'has_role(_in_area)?\('$q$,
+        'arco_request.arco_request_select_policy,attachment.attachment_select_policy,capability_grant.capability_grant_select,journal_entry.journal_entry_select_policy,sharing_event.sharing_event_select_policy');
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
