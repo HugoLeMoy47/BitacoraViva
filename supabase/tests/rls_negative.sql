@@ -3033,6 +3033,144 @@ begin
                       from (select public.fn_generate_arco_access_extract(%L::uuid) as e) s$q$, 'aaaaaaaa-4000-0000-0000-000000000001'), 'true');
     end;
 
+    -- ============================================================================================
+    -- ===== E15 fase 2: ficha social con preguntas configurables (migración 20261023000001)
+    -- ===== Las preguntas de la ficha social (contexto migratorio y situaciones sensibles) son datos que editan dirección y
+    -- ===== Trabajo Social; cada respuesta es versionada (lo cambiado se cierra con motivo) y las sensibles exigen el
+    -- ===== consentimiento sensible (salvo «no quiso responder»). Las respuestas son informativas: el marcador manda.
+    -- ============================================================================================
+    declare
+        C_OK constant text := pg_temp.id('5000', 32);   -- con consentimiento sensible vigente
+        C_NO constant text := pg_temp.id('5000', 33);   -- sin consentimiento sensible
+        CW_LG constant text := 'aaaaaaaa-3000-0000-0000-00000000000a';  -- área jurídica: no administra preguntas
+        q_yn   constant text := 'aaaaaaaa-c100-0000-0000-000000000001';
+        q_yns  constant text := 'aaaaaaaa-c100-0000-0000-000000000002';
+        q_num  constant text := 'aaaaaaaa-c100-0000-0000-000000000003';
+        q_txt  constant text := 'aaaaaaaa-c100-0000-0000-000000000004';
+        q_date constant text := 'aaaaaaaa-c100-0000-0000-000000000005';
+        q_off  constant text := 'aaaaaaaa-c100-0000-0000-000000000006';
+        q_b    constant text := 'bbbbbbbb-c100-0000-0000-000000000001';
+        seta text := $q$select count(*)::text from (select public.fn_set_social_answers(%L::uuid, %L::jsonb, %L)) x$q$;
+        cur text := $q$select count(*)::text from public.social_answer where case_id = %L::uuid and valid_to is null$q$;
+    begin
+        begin
+            insert into public.social_question (id, organization_id, key, label_es, section, answer_type, has_detail, is_sensitive, is_active, sort_order) values
+                (q_yn::uuid, ORG_A::uuid, 'wants_return', '¿Quiere regresar? (prueba)', 'migration', 'yes_no', true, false, true, 1),
+                (q_yns::uuid, ORG_A::uuid, 'life_in_danger', '¿Su vida corre peligro? (prueba)', 'sensitive', 'yes_no', false, true, true, 2),
+                (q_num::uuid, ORG_A::uuid, 'times_in_mexico', '¿Cuántas veces en México? (prueba)', 'migration', 'number', false, false, true, 3),
+                (q_txt::uuid, ORG_A::uuid, 'entry_point', '¿Por qué punto ingresó? (prueba)', 'migration', 'text', false, false, true, 4),
+                (q_date::uuid, ORG_A::uuid, 'detention_release', 'Salida de la detención (prueba)', 'sensitive', 'date', false, true, true, 5),
+                (q_off::uuid, ORG_A::uuid, 'retired_question', 'Pregunta retirada', 'migration', 'text', false, false, false, 6),
+                (q_b::uuid, ORG_B::uuid, 'wants_return', '¿Quiere regresar? (B)', 'migration', 'yes_no', false, false, true, 1);
+        exception when others then
+            raise notice 'E15f2 escenario: sin las preguntas de la ficha social todavía (%).', sqlerrm;
+        end;
+
+        -- ----- Respuestas: tipos y reglas
+        perform pg_temp.expect('E15f2 control positivo: quien atiende responde un sí con su detalle', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"yes","detail":"Quiere volver pronto"}]', null), '1');
+        perform pg_temp.expect('E15f2: quedó guardada, vigente', null, null, format(cur, C_NO), '1');
+        perform pg_temp.expect('E15f2: un número', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"times_in_mexico","number":3}]', null), '1');
+        perform pg_temp.expect('E15f2: un texto corto', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"entry_point","text":"Tapachula-prueba"}]', null), '1');
+        perform pg_temp.expect('E15f2: varias respuestas en una sola operación', CW, 'authenticated',
+            format(seta, C_OK, '[{"question_key":"wants_return","choice":"no"},{"question_key":"times_in_mexico","number":1},{"question_key":"detention_release","date":"2026-03-01","precision":"month"}]', null), '1');
+        perform pg_temp.expect('E15f2: un número fuera de rango → BV340', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"times_in_mexico","number":1000}]', 'x'), 'ERR:BV340');
+        perform pg_temp.expect('E15f2: una respuesta de otro tipo → BV340', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"times_in_mexico","text":"tres"}]', 'x'), 'ERR:BV340');
+        perform pg_temp.expect('E15f2: un sí/no con un valor que no existe → BV340', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"quizá"}]', 'x'), 'ERR:BV340');
+        perform pg_temp.expect('E15f2: el detalle solo en las preguntas que lo admiten → BV340', CW, 'authenticated',
+            format(seta, C_OK, '[{"question_key":"life_in_danger","choice":"no","detail":"x"}]', null), 'ERR:BV340');
+        perform pg_temp.expect('E15f2: un texto demasiado largo → BV321', CW, 'authenticated',
+            format(seta, C_NO, format('[{"question_key":"entry_point","text":"%s"}]', repeat('x', 121)), 'x'), 'ERR:BV321');
+        perform pg_temp.expect('E15f2: una fecha futura → BV326', CW, 'authenticated',
+            format(seta, C_OK, '[{"question_key":"detention_release","date":"2999-01-01","precision":"day"}]', 'x'), 'ERR:BV326');
+        perform pg_temp.expect('E15f2: una precisión que no existe → BV325', CW, 'authenticated',
+            format(seta, C_OK, '[{"question_key":"detention_release","date":"2026-03-01","precision":"semana"}]', 'x'), 'ERR:BV325');
+        perform pg_temp.expect('E15f2: una pregunta que no existe → BV340', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"no_existe","choice":"yes"}]', 'x'), 'ERR:BV340');
+        perform pg_temp.expect('E15f2: una pregunta retirada no se responde → BV340', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"retired_question","text":"x"}]', 'x'), 'ERR:BV340');
+        perform pg_temp.expect('E15f2: lo que no es una lista → BV340', CW, 'authenticated',
+            format(seta, C_NO, '{"question_key":"wants_return"}', 'x'), 'ERR:BV340');
+
+        -- ----- Sensibles: consentimiento sensible vigente, salvo «no quiso responder»
+        perform pg_temp.expect('E15f2: sin consentimiento sensible no se responde una pregunta sensible → BV408', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"life_in_danger","choice":"yes"}]', null), 'ERR:BV408');
+        perform pg_temp.expect('E15f2: «no quiso responder» sí se registra sin consentimiento sensible', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"life_in_danger","choice":"no_response"}]', null), '1');
+        perform pg_temp.expect('E15f2 control positivo: con consentimiento sensible, la sensible se responde', CW, 'authenticated',
+            format(seta, C_OK, '[{"question_key":"life_in_danger","choice":"yes"}]', null), '1');
+
+        -- ----- Versionado: nada se sobrescribe
+        perform pg_temp.expect('E15f2: cambiar una respuesta sin motivo no se puede → BV304', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"no"}]', null), 'ERR:BV304');
+        perform pg_temp.expect('E15f2: con motivo se cambia', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"no"}]', 'La persona cambió de opinión'), '1');
+        perform pg_temp.expect('E15f2: la anterior se cerró con su motivo, no se borró', null, null,
+            format($q$select count(*)::text from public.social_answer sa join public.social_question sq on sq.id = sa.question_id
+               where sa.case_id = %L::uuid and sq.key = 'wants_return' and sa.valid_to is not null and sa.change_reason = 'La persona cambió de opinión'$q$, C_NO), '1');
+        perform pg_temp.expect('E15f2: repetir la misma respuesta no cambia nada ni pide motivo', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"no"}]', null), '1');
+        perform pg_temp.expect('E15f2: quitar una respuesta pide motivo → BV304', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"entry_point","clear":true}]', null), 'ERR:BV304');
+        perform pg_temp.expect('E15f2: con motivo se quita (queda cerrada)', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"entry_point","clear":true}]', 'Se capturó por error'), '1');
+        perform pg_temp.expect('E15f2: quitar lo que no estaba no hace falta justificarlo', CW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"detention_release","clear":true}]', null), '1');
+
+        -- ----- Quién
+        perform pg_temp.expect('E15f2: el rol de solo lectura no responde → BV120', VW, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"yes"}]', 'x'), 'ERR:BV120');
+        perform pg_temp.expect('E15f2: el voluntariado no responde → BV120', VOL, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"yes"}]', 'x'), 'ERR:BV120');
+        perform pg_temp.expect('E15f2: otra organización no ve el expediente → BV201', DIRB2, 'authenticated',
+            format(seta, C_NO, '[{"question_key":"wants_return","choice":"yes"}]', 'x'), 'ERR:BV201');
+        perform pg_temp.expect('E15f2: las respuestas no se escriben por la API directa', CW, 'authenticated',
+            format($q$with i as (insert into public.social_answer (organization_id, case_id, question_id, choice, created_by) values (%L::uuid, %L::uuid, %L::uuid, 'yes', %L::uuid) returning 1) select count(*)::text from i$q$, ORG_A, C_NO, q_yn, CW), 'ERR');
+        perform pg_temp.expect('E15f2: ni se borran por la API directa', DIR, 'authenticated',
+            $q$with d as (delete from public.social_answer returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('E15f2: otra organización no ve las respuestas de A', DIRB2, 'authenticated', 'select count(*)::text from public.social_answer', '0');
+        perform pg_temp.expect('E15f2: sin rol no se ven las respuestas', NR, 'authenticated', 'select count(*)::text from public.social_answer', '0');
+        perform pg_temp.expect('E15f2: la auditoría deja eventos sin el texto de lo respondido', null, null,
+            $q$select ((count(*) > 0) and not bool_or(coalesce(new_values::text, '') ilike '%Tapachula-prueba%'))::text from public.audit_event
+               where table_name = 'social_answer' and created_at >= transaction_timestamp()$q$, 'true');
+
+        -- ----- Las preguntas las administran dirección y Trabajo Social
+        perform pg_temp.expect('E15f2 control positivo: Trabajo Social agrega una pregunta', CW, 'authenticated',
+            format($q$with i as (insert into public.social_question (organization_id, key, label_es, section, answer_type, sort_order) values (%L::uuid, 'nueva_pregunta', '¿Nueva pregunta?', 'migration', 'yes_no', 9) returning 1) select count(*)::text from i$q$, ORG_A), '1');
+        perform pg_temp.expect('E15f2: el área jurídica no administra preguntas', CW_LG, 'authenticated',
+            format($q$with i as (insert into public.social_question (organization_id, key, label_es, section, answer_type, sort_order) values (%L::uuid, 'otra_pregunta', '¿Otra?', 'migration', 'yes_no', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('E15f2: una sección que no existe se rechaza', CW, 'authenticated',
+            format($q$with i as (insert into public.social_question (organization_id, key, label_es, section, answer_type, sort_order) values (%L::uuid, 'sec_mala', 'x', 'inventada', 'yes_no', 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('E15f2: el detalle solo en preguntas de sí/no', CW, 'authenticated',
+            format($q$with i as (insert into public.social_question (organization_id, key, label_es, section, answer_type, has_detail, sort_order) values (%L::uuid, 'num_detalle', 'x', 'migration', 'number', true, 9) returning 1) select count(*)::text from i$q$, ORG_A), 'ERR');
+        perform pg_temp.expect('E15f2: el tipo de una pregunta no cambia → BV341', CW, 'authenticated',
+            format($q$with u as (update public.social_question set answer_type = 'text' where id = %L::uuid returning 1) select count(*)::text from u$q$, q_num), 'ERR:BV341');
+        perform pg_temp.expect('E15f2: la clave no cambia → BV341', CW, 'authenticated',
+            format($q$with u as (update public.social_question set key = 'otra_clave' where id = %L::uuid returning 1) select count(*)::text from u$q$, q_num), 'ERR:BV341');
+        perform pg_temp.expect('E15f2: una pregunta sensible no deja de serlo → BV341', CW, 'authenticated',
+            format($q$with u as (update public.social_question set is_sensitive = false where id = %L::uuid returning 1) select count(*)::text from u$q$, q_yns), 'ERR:BV341');
+        perform pg_temp.expect('E15f2 control positivo: una pregunta sí puede pasar a sensible', CW, 'authenticated',
+            format($q$with u as (update public.social_question set is_sensitive = true where id = %L::uuid returning 1) select count(*)::text from u$q$, q_txt), '1');
+        perform pg_temp.expect('E15f2 control positivo: se renombra y se retira', CW, 'authenticated',
+            format($q$with u as (update public.social_question set label_es = 'Texto nuevo', is_active = false where id = %L::uuid returning 1) select count(*)::text from u$q$, q_num), '1');
+        perform pg_temp.expect('E15f2: las preguntas no se borran', DIR, 'authenticated',
+            $q$with d as (delete from public.social_question returning 1) select count(*)::text from d$q$, 'ERR');
+        perform pg_temp.expect('E15f2: otra organización no ve las preguntas de A', DIRB2, 'authenticated',
+            format($q$select count(*)::text from public.social_question where organization_id = %L::uuid$q$, ORG_A), '0');
+        perform pg_temp.expect('E15f2: el rol de solo lectura no ve las preguntas', VW, 'authenticated', 'select count(*)::text from public.social_question', '0');
+
+        -- ----- Extracto ARCO y anonimización (prep: la persona que se anonimiza al final)
+        perform pg_temp.expect('E15f2: el extracto de acceso ARCO incluye las respuestas de la ficha social', DIR, 'authenticated',
+            format($q$select (jsonb_array_length(public.fn_generate_arco_access_extract(%L::uuid)->'social_answers') > 0)::text$q$, pg_temp.id('4000', 32)), 'true');
+        perform pg_temp.expect('E15f2 prep: respuestas con texto y detalle de la persona que se anonimiza', DIR, 'authenticated',
+            format(seta, 'aaaaaaaa-5000-0000-0000-000000000001', '[{"question_key":"wants_return","choice":"yes","detail":"Detalle identificable"},{"question_key":"nueva_pregunta","choice":"no"}]', null), '1');
+    end;
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
@@ -3148,6 +3286,13 @@ begin
         $q$select count(*)::text from public.person_occupation where person_id = 'aaaaaaaa-4000-0000-0000-000000000001' and valid_to is null$q$, '0');
     perform pg_temp.expect('E15: la ocupación queda como registro cerrado, con el motivo suprimido', null, null,
         $q$select count(*)::text from public.person_occupation where person_id = 'aaaaaaaa-4000-0000-0000-000000000001' and valid_to is not null and change_reason = '[SUPRIMIDO - ADR-0001]'$q$, '1');
+
+    -- ===== E15 fase 2: al anonimizar, las respuestas de la ficha social se cierran y su texto y detalle se suprimen
+    perform pg_temp.expect('E15f2: tras anonimizar, no queda ninguna respuesta vigente de la ficha social', null, null,
+        $q$select count(*)::text from public.social_answer where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is null$q$, '0');
+    perform pg_temp.expect('E15f2: las respuestas quedan como registro cerrado, sin texto ni detalle', null, null,
+        $q$select (count(*) > 0 and bool_and(change_reason = '[SUPRIMIDO - ADR-0001]' and text_value is null and detail is null))::text
+           from public.social_answer where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null$q$, 'true');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;

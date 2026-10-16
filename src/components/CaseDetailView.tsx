@@ -79,6 +79,7 @@ import { SmallFieldModal } from './SmallFieldModal';
 import { CatalogItemModal } from './CatalogItemModal';
 import { CaseNeedsPanel } from './CaseNeedsPanel';
 import { PersonProfilePanel } from './PersonProfilePanel';
+import { SocialFichaPanel } from './SocialFichaPanel';
 import { IntakePlanModal } from './IntakePlanModal';
 
 interface CaseDetailViewProps {
@@ -778,6 +779,13 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           />
 
           <PersonProfilePanel
+            caseData={caseData}
+            canEdit={canEditExtra}
+            sensitiveOk={sensitiveOk}
+            onChanged={onDataChanged ?? (async () => {})}
+          />
+
+          <SocialFichaPanel
             caseData={caseData}
             canEdit={canEditExtra}
             sensitiveOk={sensitiveOk}

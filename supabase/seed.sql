@@ -263,6 +263,30 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'no_response', 'La persona no quiso responder', null, true, 99)
 on conflict (organization_id, catalog, key) do nothing;
 
+-- 5j. Preguntas de la ficha social (E15 fase 2): contexto migratorio y situaciones sensibles de la matriz de Trabajo Social
+-- (sin violencias, pospuestas). Dirección y Trabajo Social las administran en «Diccionarios».
+insert into public.social_question (organization_id, key, label_es, section, answer_type, has_detail, is_sensitive, sort_order)
+select '00000000-0000-0000-0000-000000000001', v.key, v.label_es, v.section, v.answer_type, v.has_detail, v.is_sensitive, v.sort_order
+from (values
+    ('wants_return', '¿Quiere regresar a su país?', 'migration', 'yes_no', false, false, 1),
+    ('how_left_country', '¿Cómo salió de su país de origen?', 'migration', 'text', false, false, 2),
+    ('transit_countries', 'Países por los que ha transitado desde su salida', 'migration', 'text', false, false, 3),
+    ('prior_residence_country', 'Antes de llegar a México, ¿en qué país vivió más de seis meses?', 'migration', 'text', false, false, 4),
+    ('first_time_mexico', '¿Es su primera vez en México?', 'migration', 'yes_no', false, false, 5),
+    ('times_in_mexico', 'Si no es su primera vez: ¿cuántas veces ha estado en México?', 'migration', 'number', false, false, 6),
+    ('deported', 'En alguno de esos ingresos, ¿fue deportado(a)?', 'migration', 'yes_no', false, true, 7),
+    ('entry_point', '¿Por qué entidad o punto ingresó a México en esta ocasión?', 'migration', 'text', false, false, 8),
+    ('destination_country', '¿A qué país piensa llegar?', 'migration', 'text', false, false, 9),
+    ('life_in_danger', '¿Siente que en este momento su vida corre peligro?', 'sensitive', 'yes_no', false, true, 1),
+    ('migration_detention', '¿Estuvo en detención migratoria?', 'sensitive', 'yes_no', true, true, 2),
+    ('detention_release', 'Fecha de salida de la detención migratoria', 'sensitive', 'date', false, true, 3),
+    ('health_condition', '¿Tiene alguna situación de salud?', 'sensitive', 'yes_no', true, true, 4),
+    ('pregnancy_suspected', '¿Sospecha de embarazo?', 'sensitive', 'yes_no', false, true, 5),
+    ('gestation_weeks', 'Estimación del período de gestación (semanas)', 'sensitive', 'number', false, true, 6),
+    ('lactating', '¿Está en período de lactancia al momento del registro?', 'sensitive', 'yes_no', false, true, 7)
+) as v(key, label_es, section, answer_type, has_detail, is_sensitive, sort_order)
+on conflict (organization_id, key) do nothing;
+
 -- 5i. Ficha de la persona (E15 fase 1): estudios, estado civil, ocupación y departamento de origen (listas de MAP-OIM v3 y divisiones
 -- oficiales de Honduras y Guatemala). Dirección y Trabajo Social los editan; «La persona no quiso responder» es del sistema.
 insert into public.catalog_item (organization_id, catalog, key, label_es, is_system, sort_order)

@@ -27,6 +27,8 @@ import {
   CaseFamilyView,
   CatalogItem,
   AgeBand,
+  SocialQuestion,
+  SocialAnswer,
   DocumentType,
   FamilyMember,
   FamilyType,
@@ -78,6 +80,8 @@ export interface OrgData {
   catalogItems: CatalogItem[];
   /** Grupos por edad vigentes (E14 fase 5) */
   ageBands: AgeBand[];
+  /** Preguntas de la ficha social (E15 fase 2) */
+  socialQuestions: SocialQuestion[];
   auditEvents: AuditEvent[];
   authorityRequests: AuthorityRequest[];
   sharingEvents: SharingEvent[];
@@ -105,6 +109,7 @@ export const EMPTY_ORG_DATA: OrgData = {
   familyUnits: [],
   catalogItems: [],
   ageBands: [],
+  socialQuestions: [],
   auditEvents: [],
   authorityRequests: [],
   sharingEvents: [],
@@ -168,6 +173,8 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     caseNeeds,
     ageBands,
     personOccupations,
+    socialQuestions,
+    socialAnswers,
   ] = await Promise.all([
     rows<Organization>(supabase.from('organization').select('*')),
     rows<Area>(supabase.from('area').select('*').order('name')),
@@ -210,6 +217,9 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     rows<AgeBand>(supabase.from('age_band').select('*').is('valid_to', null).order('sort_order')),
     // RLS: solo roles que operan expedientes
     rows<{ person_id: string; catalog_item_id: string }>(supabase.from('person_occupation').select('person_id, catalog_item_id').is('valid_to', null)),
+    // RLS: solo roles que operan expedientes
+    rows<SocialQuestion>(supabase.from('social_question').select('*').order('section').order('sort_order')),
+    rows<SocialAnswer>(supabase.from('social_answer').select('id, case_id, question_id, choice, number_value, text_value, date_value, date_precision, detail').is('valid_to', null)),
   ]);
 
   const areaById = new Map(areas.map((a) => [a.id, a]));
@@ -311,6 +321,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
         family: familyOf(c.id),
         needs: caseNeeds.filter((n) => n.case_id === c.id).map((n) => n.catalog_item_id),
         occupations: personOccupations.filter((o) => o.person_id === c.titular_person_id).map((o) => o.catalog_item_id),
+        social_answers: socialAnswers.filter((a) => a.case_id === c.id),
         documents: personDocuments
           .filter((d) => d.person_id === c.titular_person_id)
           .map((d) => ({ ...d, type_label: documentTypeById.get(d.document_type_id)?.label_es ?? '—' })),
@@ -343,6 +354,7 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     familyUnits,
     catalogItems,
     ageBands,
+    socialQuestions,
     auditEvents: audit,
     authorityRequests: authority,
     sharingEvents,
@@ -697,6 +709,19 @@ export const api = {
   // Grupos por edad (fase 5): el conjunto completo; lo anterior se cierra con motivo
   setAgeBands: (bands: { label: string; min_age: number }[], reason?: string) =>
     rpc('fn_set_age_bands', { p_bands: bands, p_reason: reason?.trim() || null }),
+
+  // Ficha social (E15 fase 2): varias respuestas por operación; lo cambiado o quitado se cierra con motivo
+  setSocialAnswers: (caseId: string, answers: unknown[], reason?: string) =>
+    rpc('fn_set_social_answers', { p_case_id: caseId, p_answers: answers, p_reason: reason?.trim() || null }),
+  // Preguntas de la ficha social: dirección y Trabajo Social (la base lo exige)
+  addSocialQuestion: async (q: { organization_id: string; key: string; label_es: string; section: SocialQuestion['section']; answer_type: SocialQuestion['answer_type']; has_detail: boolean; is_sensitive: boolean; sort_order: number }) => {
+    const { error } = await supabase.from('social_question').insert(q);
+    if (error) throw new DbError(error.message, error.code);
+  },
+  updateSocialQuestion: async (id: string, changes: { label_es?: string; is_active?: boolean; is_sensitive?: boolean }) => {
+    const { error } = await supabase.from('social_question').update(changes).eq('id', id);
+    if (error) throw new DbError(error.message, error.code);
+  },
 
   // Ficha completa (E15 fase 1): estudios, estado civil o departamento (un valor del diccionario), ocupaciones (hasta 3) y folio manual
   setPersonProfileItem: (personId: string, field: 'education_level' | 'marital_status' | 'origin_department', itemId: string | null, reason?: string) =>

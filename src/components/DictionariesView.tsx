@@ -7,15 +7,15 @@ import { useCatalog } from '../lib/catalog';
 import { useSession } from '../lib/session';
 import { useToast } from '../lib/toast';
 import { BandRow, keyFromLabel, validateBands } from '../lib/dictionaries';
-import { CatalogItem } from '../types/database';
+import { CatalogItem, SocialQuestion } from '../types/database';
 import { Tabs } from './Tabs';
 import { DisabledReason, describedBy } from './DisabledReason';
 
 // Diccionarios editables (E14): los administran dirección y Trabajo Social (la base lo exige). Aquí se agregan, se
 // renombran y se retiran valores; retirar NO borra: el valor deja de ofrecerse, pero lo ya registrado lo conserva.
 // Los grupos por edad se reemplazan completos y lo anterior se cierra con motivo.
-type TabId = CatalogItem['catalog'] | 'age_bands';
-const TABS: TabId[] = ['service_line', 'specific_need', 'education_level', 'marital_status', 'occupation', 'department', 'language', 'religion', 'age_bands'];
+type TabId = CatalogItem['catalog'] | 'age_bands' | 'social_questions';
+const TABS: TabId[] = ['service_line', 'specific_need', 'education_level', 'marital_status', 'occupation', 'department', 'language', 'religion', 'age_bands', 'social_questions'];
 // Países de la lista de nacionalidades (id de MAP-OIM); el grupo «otro» (1) sirve a los demás países
 const DEPARTMENT_COUNTRIES: { id: number; labelKey: string }[] = [
   { id: 93, labelKey: 'intake.countries.honduras' },
@@ -43,7 +43,7 @@ export const DictionariesView: React.FC<{ onChanged: () => Promise<void> }> = ({
         items={TABS.map((id) => ({ id, label: t(`dictionaries.tab.${id}`) }))}
       />
       <div className="rounded-2xl border border-gray-200 bg-white p-5">
-        {tab === 'age_bands' ? <AgeBandsEditor onChanged={onChanged} /> : <ItemsEditor key={tab} catalog={tab} onChanged={onChanged} />}
+        {tab === 'age_bands' ? <AgeBandsEditor onChanged={onChanged} /> : tab === 'social_questions' ? <SocialQuestionsEditor onChanged={onChanged} /> : <ItemsEditor key={tab} catalog={tab} onChanged={onChanged} />}
         {SENSITIVE.includes(tab) && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{t('dictionaries.sensitive_note')}</p>}
       </div>
     </div>
@@ -150,6 +150,145 @@ const ItemsEditor: React.FC<{ catalog: CatalogItem['catalog']; onChanged: () => 
           </button>
         </div>
         <DisabledReason id="dic-new" reason={addReason} className="mt-2" />
+      </form>
+    </div>
+  );
+};
+
+// ------------------------------------------------------------------ Preguntas de la ficha social (E15 fase 2)
+const QUESTION_TYPES: SocialQuestion['answer_type'][] = ['yes_no', 'number', 'text', 'date'];
+const QUESTION_SECTIONS: SocialQuestion['section'][] = ['migration', 'sensitive'];
+
+const SocialQuestionsEditor: React.FC<{ onChanged: () => Promise<void> }> = ({ onChanged }) => {
+  const { socialQuestions } = useCatalog();
+  const { user } = useSession();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<{ id: string; label: string } | null>(null);
+  const [label, setLabel] = useState('');
+  const [type, setType] = useState<SocialQuestion['answer_type']>('yes_no');
+  const [section, setSection] = useState<SocialQuestion['section']>('migration');
+  const [sensitive, setSensitive] = useState(false);
+  const [detail, setDetail] = useState(false);
+
+  const run = async (action: () => Promise<void>, okKey: string) => {
+    setBusy(true);
+    try {
+      await action();
+      toast.success(t(okKey));
+      await onChanged();
+    } catch (e) {
+      toast.error(friendlyError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exists = (l: string) => socialQuestions.some((q) => q.label_es.trim().toLowerCase() === l.trim().toLowerCase());
+  const addReason = !label.trim() ? t('dictionaries.question_reason_label') : exists(label) ? t('dictionaries.reason_exists') : null;
+  const add = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (addReason || !user) return;
+    const key = keyFromLabel(label, socialQuestions.map((q) => q.key));
+    const sort = Math.max(0, ...socialQuestions.filter((q) => q.section === section).map((q) => q.sort_order)) + 1;
+    run(async () => {
+      await dataApi.addSocialQuestion({
+        organization_id: user.profile.organization_id, key, label_es: label.trim(), section, answer_type: type,
+        has_detail: type === 'yes_no' && detail, is_sensitive: sensitive, sort_order: sort,
+      });
+      setLabel(''); setSensitive(false); setDetail(false);
+    }, 'dictionaries.question_added');
+  };
+
+  return (
+    <div>
+      <h3 className="text-base font-bold text-carbon">{t('dictionaries.tab.social_questions')}</h3>
+      <p className="mt-1 text-sm text-gray-600">{t('dictionaries.hint.social_questions')}</p>
+      {QUESTION_SECTIONS.map((sec) => {
+        const list = socialQuestions.filter((q) => q.section === sec).sort((a, b) => a.sort_order - b.sort_order);
+        return (
+          <div key={sec} className="mt-4">
+            <h4 className="text-sm font-bold text-carbon">{t(`social.section.${sec}`)}</h4>
+            <ul className="mt-1 divide-y divide-gray-100">
+              {list.map((q) => (
+                <li key={q.id} className="flex flex-wrap items-center gap-2 py-2">
+                  {editing?.id === q.id ? (
+                    <>
+                      <label className="sr-only" htmlFor={`dic-q-${q.id}`}>{t('dictionaries.question_label')}</label>
+                      <input id={`dic-q-${q.id}`} name={`dic-q-${q.id}`} autoComplete="off" autoFocus className={`${INPUT} max-w-lg`} value={editing.label} maxLength={160}
+                        onChange={(e) => setEditing({ id: q.id, label: e.target.value })} />
+                      <button type="button" className={BTN_PRIMARY} disabled={busy || !editing.label.trim()}
+                        onClick={() => run(async () => { await dataApi.updateSocialQuestion(q.id, { label_es: editing.label.trim() }); setEditing(null); }, 'dictionaries.renamed')}>
+                        {t('common.save')}
+                      </button>
+                      <button type="button" className={BTN} onClick={() => setEditing(null)}>{t('common.cancel')}</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={`min-w-0 flex-1 text-sm ${q.is_active ? 'font-semibold text-carbon' : 'text-gray-500 line-through'}`}>{q.label_es}</span>
+                      <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">{t(`dictionaries.question_type.${q.answer_type}`)}</span>
+                      {q.has_detail && <span className="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">{t('dictionaries.question_with_detail')}</span>}
+                      {q.is_sensitive && <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{t('dictionaries.question_sensitive')}</span>}
+                      {!q.is_active && <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{t('dictionaries.retired')}</span>}
+                      <button type="button" className={BTN} disabled={busy} onClick={() => setEditing({ id: q.id, label: q.label_es })}>{t('dictionaries.rename')}</button>
+                      {!q.is_sensitive && (
+                        <button type="button" className={BTN} disabled={busy} title={t('dictionaries.question_make_sensitive_help')}
+                          onClick={() => run(() => dataApi.updateSocialQuestion(q.id, { is_sensitive: true }), 'dictionaries.question_made_sensitive')}>
+                          {t('dictionaries.question_make_sensitive')}
+                        </button>
+                      )}
+                      <button type="button" className={BTN} disabled={busy}
+                        onClick={() => run(() => dataApi.updateSocialQuestion(q.id, { is_active: !q.is_active }), q.is_active ? 'dictionaries.retired_ok' : 'dictionaries.reactivated')}>
+                        {q.is_active ? t('dictionaries.retire') : t('dictionaries.reactivate')}
+                      </button>
+                    </>
+                  )}
+                </li>
+              ))}
+              {list.length === 0 && <li className="py-3 text-sm text-gray-600">{t('dictionaries.empty')}</li>}
+            </ul>
+          </div>
+        );
+      })}
+
+      <form onSubmit={add} className="mt-6 space-y-3 border-t border-gray-100 pt-4">
+        <h4 className="text-sm font-bold text-carbon">{t('dictionaries.question_new')}</h4>
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-gray-700" htmlFor="dic-q-new">{t('dictionaries.question_label')}</label>
+          <input id="dic-q-new" name="dic-q-new" autoComplete="off" className={`${INPUT} max-w-xl`} value={label} maxLength={160} onChange={(e) => setLabel(e.target.value)} />
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-700" htmlFor="dic-q-type">{t('dictionaries.question_type_label')}</label>
+            <select id="dic-q-type" name="dic-q-type" autoComplete="off" className={INPUT} value={type} onChange={(e) => { setType(e.target.value as SocialQuestion['answer_type']); if (e.target.value !== 'yes_no') setDetail(false); }}>
+              {QUESTION_TYPES.map((tp) => <option key={tp} value={tp}>{t(`dictionaries.question_type.${tp}`)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-700" htmlFor="dic-q-section">{t('dictionaries.question_section_label')}</label>
+            <select id="dic-q-section" name="dic-q-section" autoComplete="off" className={INPUT} value={section} onChange={(e) => setSection(e.target.value as SocialQuestion['section'])}>
+              {QUESTION_SECTIONS.map((s) => <option key={s} value={s}>{t(`social.section.${s}`)}</option>)}
+            </select>
+          </div>
+        </div>
+        <label className="flex min-h-11 items-center gap-2 text-sm text-carbon">
+          <input type="checkbox" checked={sensitive} onChange={(e) => setSensitive(e.target.checked)} />
+          {t('dictionaries.question_sensitive_check')}
+        </label>
+        {type === 'yes_no' && (
+          <label className="flex min-h-11 items-center gap-2 text-sm text-carbon">
+            <input type="checkbox" checked={detail} onChange={(e) => setDetail(e.target.checked)} />
+            {t('dictionaries.question_detail_check')}
+          </label>
+        )}
+        <div className="flex flex-wrap items-start gap-2">
+          <button type="submit" className={BTN_PRIMARY} disabled={busy || !!addReason} {...describedBy('dic-q-new', addReason)}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {t('dictionaries.add')}
+          </button>
+        </div>
+        <DisabledReason id="dic-q-new" reason={addReason} className="mt-1" />
+        <p className="text-sm text-gray-600">{t('dictionaries.question_immutable')}</p>
       </form>
     </div>
   );

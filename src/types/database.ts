@@ -335,6 +335,33 @@ export interface CatalogItem {
   sort_order: number;
 }
 
+/** Pregunta de la ficha social (E15 fase 2): la administran dirección y Trabajo Social */
+export interface SocialQuestion {
+  id: string;
+  organization_id: string;
+  key: string;
+  label_es: string;
+  section: 'migration' | 'sensitive';
+  answer_type: 'yes_no' | 'number' | 'text' | 'date';
+  has_detail: boolean;
+  is_sensitive: boolean;
+  is_active: boolean;
+  sort_order: number;
+}
+
+/** Respuesta vigente de un expediente a una pregunta de la ficha social */
+export interface SocialAnswer {
+  id: string;
+  case_id: string;
+  question_id: string;
+  choice?: 'yes' | 'no' | 'no_response' | null;
+  number_value?: number | null;
+  text_value?: string | null;
+  date_value?: string | null;
+  date_precision?: 'day' | 'month' | 'year' | null;
+  detail?: string | null;
+}
+
 /** Grupo por edad configurable (E14 fase 5): empieza en `min_age` y termina donde empieza el siguiente; solo por edad, sin sexo */
 export interface AgeBand {
   id: string;
@@ -557,6 +584,8 @@ export interface CaseWithDetails extends Case {
   needs?: string[];
   /** Ocupaciones en su lugar de origen (valores vigentes del diccionario, E15 fase 1) */
   occupations?: string[];
+  /** Respuestas vigentes de la ficha social (E15 fase 2) */
+  social_answers?: SocialAnswer[];
 }
 
 // ------------------------------------------------------------------------------
