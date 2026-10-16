@@ -6,6 +6,9 @@ import { dataApi } from '../lib/data';
 import { useCatalog } from '../lib/catalog';
 import { useToast } from '../lib/toast';
 import { CaseFamilyView } from '../types/database';
+import { suggestFamilyOrder } from '../lib/familyOrder';
+import { itemLabel } from '../lib/catalogs';
+import { CatalogItemModal } from './CatalogItemModal';
 import { ModalShell } from './ModalShell';
 import { DisabledReason, describedBy } from './DisabledReason';
 
@@ -18,7 +21,7 @@ interface PanelProps {
   onChanged: () => Promise<void>;
 }
 
-type Mode = 'assign' | 'create' | 'remove' | 'type' | null;
+type Mode = 'assign' | 'create' | 'remove' | 'type' | 'role' | null;
 
 const BTN = 'mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50';
 const INPUT = 'mt-1 w-full rounded-lg border border-gray-300 p-3 text-base focus:border-turquesa focus:outline-none focus:ring-1 focus:ring-turquesa';
@@ -33,6 +36,14 @@ const parseOrder = (raw: string): { ok: boolean; value: number | null } => {
 
 export const CaseFamilyPanel: React.FC<PanelProps> = ({ caseId, family, canEdit, onChanged }) => {
   const [mode, setMode] = useState<Mode>(null);
+  const [showSuggestion, setShowSuggestion] = useState(false);
+  const { catalogItems } = useCatalog();
+  const roleItems = catalogItems.filter((i) => i.catalog === 'family_role');
+  const roleLabel = (id: string | null | undefined) => itemLabel(roleItems, id, null);
+  // Orden sugerido por la regla de la matriz; aplicarlo es manual, un expediente a la vez
+  const suggestion = family
+    ? suggestFamilyOrder(family.members.map((m) => ({ caseId: m.caseId, caseNumber: m.caseNumber, roleKey: roleItems.find((i) => i.id === m.roleItemId)?.key ?? null, birthDate: m.birthDate })))
+    : null;
   return (
     <div>
       <h3 className="mb-4 border-b pb-2 text-sm font-bold uppercase tracking-wider text-carbon">{t('family.title')}</h3>
@@ -50,7 +61,7 @@ export const CaseFamilyPanel: React.FC<PanelProps> = ({ caseId, family, canEdit,
         </>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 text-xs md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 text-xs md:grid-cols-2 lg:grid-cols-4">
             <div>
               <span className="block text-gray-500">{t('family.number')}</span>
               <span className="font-mono text-sm font-semibold text-carbon">{family.unit.family_number}</span>
@@ -63,6 +74,11 @@ export const CaseFamilyPanel: React.FC<PanelProps> = ({ caseId, family, canEdit,
               <span className="block text-gray-500">{t('family.order')}</span>
               <span className="text-sm font-semibold text-carbon">{family.order ?? t('common.not_recorded')}</span>
             </div>
+            <div>
+              <span className="block text-gray-500">{t('family.role')}</span>
+              <span className="text-sm font-semibold text-carbon">{roleLabel(family.roleItemId) ?? t('common.not_recorded')}</span>
+              {canEdit && <button type="button" onClick={() => setMode('role')} className={BTN}>{family.roleItemId ? t('case_extra.change') : t('family.role_register')}</button>}
+            </div>
           </div>
           <p className="mt-2 text-sm text-gray-600">{t('family.type_note')}</p>
 
@@ -72,10 +88,42 @@ export const CaseFamilyPanel: React.FC<PanelProps> = ({ caseId, family, canEdit,
               <li key={m.caseId} className="rounded-lg border border-gray-200 p-2">
                 <span className="font-mono font-semibold">{m.caseNumber}</span> · {m.personName}
                 {m.order != null && <span className="text-gray-600"> · #{m.order}</span>}
+                {roleLabel(m.roleItemId) && <span className="text-gray-600"> · {roleLabel(m.roleItemId)}</span>}
                 {m.caseId === caseId && <span className="font-semibold text-turquesa-dark"> ({t('family.you')})</span>}
               </li>
             ))}
           </ul>
+
+          {suggestion && family.members.length > 1 && (
+            <div className="mt-3">
+              <button type="button" onClick={() => setShowSuggestion((v) => !v)} aria-expanded={showSuggestion} className={BTN}>{t('family.suggest')}</button>
+              {showSuggestion && (
+                <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+                  {suggestion.ok ? (
+                    <>
+                      <p className="mb-1 text-gray-700">{t('family.suggest_rule')}</p>
+                      <ol className="space-y-1">
+                        {suggestion.order.map((o) => {
+                          const mem = family.members.find((x) => x.caseId === o.caseId)!;
+                          return (
+                            <li key={o.caseId}>
+                              <span className="font-semibold">#{o.order}</span> · <span className="font-mono">{mem.caseNumber}</span> · {mem.personName}
+                              {mem.order !== o.order && <span className="text-gray-600"> ({mem.order == null ? t('common.not_recorded') : `${t('family.suggest_now')} #${mem.order}`})</span>}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                      <p className="mt-2 text-gray-700">{t('family.suggest_apply')}</p>
+                    </>
+                  ) : (
+                    <p className="text-gray-700">
+                      {t('family.suggest_missing')} {suggestion.missing.map((id) => family.members.find((x) => x.caseId === id)?.caseNumber).join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {canEdit && (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -92,6 +140,22 @@ export const CaseFamilyPanel: React.FC<PanelProps> = ({ caseId, family, canEdit,
       {mode === 'create' && <CreateModal caseId={caseId} onClose={() => setMode(null)} onChanged={onChanged} />}
       {mode === 'remove' && family && <RemoveModal caseId={caseId} onClose={() => setMode(null)} onChanged={onChanged} />}
       {mode === 'type' && family && <TypeModal family={family} onClose={() => setMode(null)} onChanged={onChanged} />}
+      {mode === 'role' && family && (
+        <CatalogItemModal
+          title={t('family.role')}
+          hint={t('family.role_hint')}
+          items={roleItems}
+          sensitiveOk
+          withDetail={false}
+          initialItemId={family.roleItemId}
+          initialDetail=""
+          onSubmit={async (itemId, _detail, reason) => {
+            await dataApi.setFamilyMemberRole(caseId, itemId, reason);
+            await onChanged();
+          }}
+          onClose={() => setMode(null)}
+        />
+      )}
     </div>
   );
 };

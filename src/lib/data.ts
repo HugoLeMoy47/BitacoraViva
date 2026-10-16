@@ -241,10 +241,11 @@ export async function loadOrgData(caseAccess = true): Promise<OrgData> {
     const members = (membersByUnit.get(unit.id) ?? [])
       .map((m) => {
         const c = caseById.get(m.case_id);
-        return { caseId: m.case_id, caseNumber: c?.case_number ?? '', personName: fullName(c ? personById.get(c.titular_person_id) : null), order: m.member_order ?? null };
+        const person = c ? personById.get(c.titular_person_id) : null;
+        return { caseId: m.case_id, caseNumber: c?.case_number ?? '', personName: fullName(person), order: m.member_order ?? null, roleItemId: m.family_role_item_id ?? null, birthDate: person?.birth_date ?? null };
       })
       .sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9) || a.caseNumber.localeCompare(b.caseNumber));
-    return { unit, typeLabel: unit.family_type_id ? familyTypeById.get(unit.family_type_id)?.label_es ?? null : null, order: mine.member_order ?? null, members };
+    return { unit, typeLabel: unit.family_type_id ? familyTypeById.get(unit.family_type_id)?.label_es ?? null : null, order: mine.member_order ?? null, roleItemId: mine.family_role_item_id ?? null, members };
   };
   const userName = (id?: string | null) => profiles.find((p) => p.id === id)?.full_name;
 
@@ -709,6 +710,10 @@ export const api = {
   // Grupos por edad (fase 5): el conjunto completo; lo anterior se cierra con motivo
   setAgeBands: (bands: { label: string; min_age: number }[], reason?: string) =>
     rpc('fn_set_age_bands', { p_bands: bands, p_reason: reason?.trim() || null }),
+
+  // Papel en la familia (E15 fase 4): un valor del diccionario; cambiarlo o quitarlo pide motivo
+  setFamilyMemberRole: (caseId: string, itemId: string | null, reason?: string) =>
+    rpc('fn_set_family_member_role', { p_case_id: caseId, p_item_id: itemId, p_reason: reason?.trim() || null }),
 
   // Ficha social (E15 fase 2): varias respuestas por operación; lo cambiado o quitado se cierra con motivo
   setSocialAnswers: (caseId: string, answers: unknown[], reason?: string) =>
