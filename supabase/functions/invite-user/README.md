@@ -12,12 +12,12 @@ solo invita por correo y deshace si algo falla.
 | Secreto | Qué es |
 |---|---|
 | `ALLOWED_ORIGINS` | Orígenes de la aplicación, separados por coma (por ejemplo, la URL publicada y `http://localhost:5173`) |
-| `INVITE_REDIRECT_URL` | Adonde lleva el enlace del correo: la pantalla para elegir contraseña (fija; no viene de la petición) |
+| `INVITE_REDIRECT_URL` | Adonde lleva el enlace del correo: la pantalla para elegir contraseña, `/?bienvenida=1` (fija; no viene de la petición). Se usa un parámetro de consulta y no `#/…` porque Supabase añade los datos de la sesión como fragmento (`#access_token=…`) |
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta Supabase.
 
 ```bash
-npx supabase secrets set ALLOWED_ORIGINS="https://…,http://localhost:5173" INVITE_REDIRECT_URL="https://…/#/bienvenida"
+npx supabase secrets set ALLOWED_ORIGINS="https://…,http://localhost:5173" INVITE_REDIRECT_URL="https://…/?bienvenida=1"
 ```
 
 ## Despliegue (con confirmación del Product Owner, como `db push`)
@@ -32,5 +32,6 @@ La función exige un JWT válido (`verify_jwt`). Para quitarla: `npx supabase fu
 
 - **MFA (D-13):** pendiente; no invitar cuentas reales de dirección hasta cerrarlo.
 - **Correo propio:** el correo predeterminado de Supabase es solo para la demo; para producción, configurar un SMTP propio.
+- **Autenticación → URL Configuration:** la *Site URL* y la lista de *Redirect URLs* deben incluir la dirección publicada (por ejemplo `https://…/**`); si no, el enlace del correo no lleva a la pantalla de bienvenida.
 - **Registro público desactivado** en la configuración de Auth del proyecto.
 - **Rotar la llave de servicio** si se sospecha que se expuso.

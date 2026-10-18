@@ -31,6 +31,7 @@ import { AppShell } from './components/AppShell';
 import { CasesView } from './components/CasesView';
 import { DirectorSharingInbox } from './components/DirectorSharingInbox';
 import { LoginView } from './components/LoginView';
+import { WelcomePage, isWelcomeUrl } from './components/WelcomePage';
 import { IndicatorsView } from './components/IndicatorsView';
 import { OperationsDashboard } from './components/OperationsDashboard';
 import { AreasView, AuditView, AuthorityView } from './components/AdminViews';
@@ -346,7 +347,13 @@ const Gate: React.FC = () => {
   return <Workspace key={user.profile.id} currentUser={user} />;
 };
 
-export const App: React.FC = () => (
+// El enlace del correo de invitación (`/?bienvenida=1`) se atiende FUERA de la sesión normal (ADR-0010): la persona aún no tiene
+// rol y la sesión normal la sacaría antes de poder elegir su contraseña.
+export const App: React.FC = () => isWelcomeUrl(window.location.search) ? (
+  <EnvironmentProvider>
+    <WelcomePage />
+  </EnvironmentProvider>
+) : (
   <EnvironmentProvider>
     <SessionProvider>
       <ToastProvider>
