@@ -12,6 +12,7 @@ import { groupTeam, TeamMember, TeamProfile, TeamRole } from '../lib/team';
 import { ModalShell } from './ModalShell';
 import { Tabs } from './Tabs';
 import { PermissionsPanel } from './PermissionsPanel';
+import { InvitePanel } from './InvitePanel';
 import { DisabledReason, describedBy } from './DisabledReason';
 
 // Equipo (E16 fase A): la dirección ve a las personas de su organización y otorga, revoca y desactiva por funciones de la
@@ -70,6 +71,7 @@ export const TeamView: React.FC<{ currentUserId: string; canEditPermissions: boo
       {tab === 'permissions' && canEditPermissions && <PermissionsPanel />}
       {loadError && tab === 'team' && <p role="alert" className="rounded-lg border border-alerta-dark/40 bg-alerta-bg/40 p-3 text-sm font-semibold text-alerta-dark">{loadError}</p>}
       {!team && !loadError && tab === 'team' && <p className="text-sm text-gray-600">{t('team.loading')}</p>}
+      {tab === 'team' && <InvitePanel onInvited={load} />}
       <ul className={`space-y-4 ${tab === 'team' ? '' : 'hidden'}`}>
         {(team ?? []).map((m) => {
           const self = m.profile.id === currentUserId;

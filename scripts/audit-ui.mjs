@@ -457,6 +457,21 @@ try {
           record(role.key, vp.name, 'equipo/pestaña ' + (i + 1), await auditNow());
         }
 
+        // Invitar a una persona (E16 fase C): el formulario abierto, y la pantalla de bienvenida del enlace del correo
+        // (con la sesión de Dirección ya abierta muestra el formulario de contraseña; sin ella, el aviso de enlace vencido)
+        const inviteButton = page.getByRole('button', { name: 'Invitar a una persona', exact: true });
+        if (await inviteButton.count()) {
+          await inviteButton.click();
+          await page.waitForTimeout(500);
+          record(role.key, vp.name, 'equipo/invitar formulario', await auditNow());
+          await inviteButton.click();
+        }
+        const welcome = await ctx.newPage();
+        await welcome.goto(BASE + '/?bienvenida=1', { waitUntil: 'networkidle' });
+        await welcome.waitForFunction(() => !document.body.innerText.includes('Revisando tu invitación'), null, { timeout: 20000 });
+        record(role.key, vp.name, '(bienvenida: elegir contraseña)', await welcome.evaluate(`(${pageAudit})(${JSON.stringify({ touch: vp.touch, mobile: vp.width < 768 })})`));
+        await welcome.close();
+
         // Diccionarios (E14): cada pestaña
         await page.evaluate(() => { location.hash = '#/diccionarios'; });
         await page.waitForTimeout(1200);

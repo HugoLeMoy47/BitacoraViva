@@ -998,6 +998,42 @@
     "r9": "9. Todo texto visible vive en un archivo de traducción, listo para otros idiomas.",
     "r10": "10. Ningún cambio al sistema se hace a mano: todo queda versionado y revisable."
   },
+  "invite": {
+    "button": "Invitar a una persona",
+    "title": "Invitar a una persona",
+    "hint": "Le llegará un correo con un enlace para elegir su contraseña. Entrará sin ningún rol: tú se lo otorgas después, aquí mismo.",
+    "field_name": "Nombre completo",
+    "field_email": "Correo electrónico",
+    "submit": "Enviar invitación",
+    "sending": "Enviando…",
+    "sent": "Invitación enviada.",
+    "resent": "Invitación reenviada.",
+    "reason_name": "Escribe el nombre de la persona.",
+    "reason_email": "Escribe su correo electrónico.",
+    "list_title": "Invitaciones recientes",
+    "list_empty": "Todavía no has invitado a nadie.",
+    "resend": "Reenviar",
+    "sent_on": "Enviada el",
+    "accepted_note": "Si la persona ya aceptó la invitación, no hace falta reenviarla."
+  },
+  "welcome": {
+    "title": "Te damos la bienvenida",
+    "intro": "Elige una contraseña para entrar a Bitácora Viva.",
+    "checking": "Revisando tu invitación…",
+    "field_password": "Contraseña",
+    "field_confirm": "Repite la contraseña",
+    "rule": "Mínimo 12 caracteres.",
+    "submit": "Guardar contraseña",
+    "saving": "Guardando…",
+    "too_short": "Escribe al menos 12 caracteres.",
+    "mismatch": "Las contraseñas no coinciden.",
+    "save_failed": "No se pudo guardar la contraseña. Prueba con otra más larga o pide que te reenvíen la invitación.",
+    "done_title": "Tu contraseña quedó guardada",
+    "done_body": "Aún no tienes un rol asignado. Pídele a la dirección de tu organización que te lo otorgue; después podrás entrar con tu correo y tu contraseña.",
+    "go_login": "Ir a iniciar sesión",
+    "expired_title": "Este enlace ya no sirve",
+    "expired_body": "El enlace venció o ya se usó. Pide a la dirección que te reenvíe la invitación."
+  },
   "login": {
     "title": "Iniciar sesión",
     "email": "Correo electrónico",
@@ -1178,6 +1214,12 @@
   },
   "errors": {
     "network": "No hay conexión con el servidor. Revisa tu internet e inténtalo de nuevo.",
+    "invite": {
+      "invite_failed": "No se pudo completar la invitación. Inténtalo de nuevo; si sigue fallando, avisa a quien administra el sistema.",
+      "invite_send_failed": "No se pudo enviar el correo. Revisa que esté bien escrito e inténtalo de nuevo en unos minutos.",
+      "origin_not_allowed": "Esta dirección de la aplicación no está autorizada para invitar.",
+      "no_session": "Tu sesión terminó. Entra de nuevo para invitar."
+    },
     "session": "Tu sesión expiró. Vuelve a iniciar sesión.",
     "duplicate": "Otra persona hizo un cambio al mismo tiempo. Actualiza la pantalla e inténtalo de nuevo.",
     "permission": "Tu rol no permite esta acción. {detail}",

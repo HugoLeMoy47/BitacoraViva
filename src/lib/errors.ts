@@ -18,6 +18,12 @@ export function friendlyError(input: unknown): string {
     const text = t(key);
     if (text !== key) return text;
   }
+  // Códigos propios de la función de invitaciones (INVITE_*, ORIGIN_NOT_ALLOWED, NO_SESSION): errors.invite.<código>
+  if (code && /^[A-Z_]+$/.test(code)) {
+    const key = `errors.invite.${code.toLowerCase()}`;
+    const text = t(key);
+    if (text !== key) return text;
+  }
   const raw = input instanceof Error ? input.message : String(input);
   const m = raw.toLowerCase();
   if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('load failed')) return t('errors.network');
