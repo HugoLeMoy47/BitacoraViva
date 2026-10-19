@@ -820,6 +820,9 @@ export interface OrganizationIdentityInput {
 }
 
 export const configApi = {
+  // Logotipo (E17 fase 4): el archivo se sube aparte (src/lib/logo.ts); la base fija cuál es el vigente
+  setLogo: (path: string) => rpc('fn_set_organization_logo', { p_path: path }),
+  clearLogo: () => rpc('fn_clear_organization_logo', {}),
   updateIdentity: (i: OrganizationIdentityInput) =>
     rpc<string>('fn_update_organization_identity', {
       p_display_name: i.display_name,
