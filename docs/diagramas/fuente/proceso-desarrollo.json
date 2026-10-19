@@ -1,0 +1,207 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Bitácora Viva · Del cambio al despliegue",
+    "locale": "es",
+    "output": "docs/diagramas/proceso-desarrollo.html",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "dev",
+      "label": "Desarrollo"
+    },
+    {
+      "id": "ci",
+      "label": "GitHub Actions"
+    },
+    {
+      "id": "db",
+      "label": "Supabase"
+    },
+    {
+      "id": "po",
+      "label": "Product Owner"
+    },
+    {
+      "id": "edge",
+      "label": "Cloudflare"
+    }
+  ],
+  "mainPath": [
+    "rama",
+    "prueba",
+    "pr",
+    "ci_estatica",
+    "merge",
+    "comprobar",
+    "aprueba",
+    "publica"
+  ],
+  "nodes": [
+    {
+      "id": "rama",
+      "col": 0,
+      "lane": "dev",
+      "type": "backend",
+      "label": "Rama desde main",
+      "sublabel": "main está protegida"
+    },
+    {
+      "id": "prueba",
+      "lane": "dev",
+      "col": 1,
+      "type": "backend",
+      "label": "Prueba y cambio",
+      "sublabel": "primero en rojo, luego en verde"
+    },
+    {
+      "id": "pr",
+      "lane": "dev",
+      "col": 2,
+      "type": "backend",
+      "label": "Pull request",
+      "sublabel": "migración si hay esquema"
+    },
+    {
+      "id": "ci_estatica",
+      "lane": "ci",
+      "col": 3,
+      "type": "cloud",
+      "label": "Verificación estática",
+      "sublabel": "build, i18n, literales, pruebas"
+    },
+    {
+      "id": "ci_rls",
+      "lane": "db",
+      "col": 3,
+      "type": "database",
+      "label": "Pruebas de RLS",
+      "sublabel": "base local desde cero"
+    },
+    {
+      "id": "push",
+      "lane": "db",
+      "col": 4,
+      "type": "security",
+      "label": "db push",
+      "sublabel": "antes de fusionar",
+      "tag": "confirma el PO"
+    },
+    {
+      "id": "merge",
+      "lane": "dev",
+      "col": 4,
+      "type": "backend",
+      "label": "Fusionar a main",
+      "sublabel": "con los dos checks en verde"
+    },
+    {
+      "id": "comprobar",
+      "lane": "ci",
+      "col": 5,
+      "type": "cloud",
+      "label": "Despliegue",
+      "sublabel": "comprueba el CI de main"
+    },
+    {
+      "id": "aprueba",
+      "lane": "po",
+      "col": 5,
+      "type": "security",
+      "label": "Aprobación",
+      "sublabel": "entorno production"
+    },
+    {
+      "id": "publica",
+      "lane": "edge",
+      "col": 5,
+      "type": "cloud",
+      "label": "Publicar el Worker",
+      "sublabel": "wrangler deploy de dist/"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "rama",
+      "to": "prueba",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e2",
+      "from": "prueba",
+      "to": "pr",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e3",
+      "from": "pr",
+      "to": "ci_estatica",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e4",
+      "from": "pr",
+      "to": "ci_rls"
+    },
+    {
+      "id": "e5",
+      "from": "ci_rls",
+      "to": "push",
+      "label": "migración",
+      "variant": "security"
+    },
+    {
+      "id": "e6",
+      "from": "ci_estatica",
+      "to": "merge",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e7",
+      "from": "push",
+      "to": "merge",
+      "variant": "security"
+    },
+    {
+      "id": "e8",
+      "from": "merge",
+      "to": "comprobar",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e9",
+      "from": "comprobar",
+      "to": "aprueba",
+      "variant": "security"
+    },
+    {
+      "id": "e10",
+      "from": "aprueba",
+      "to": "publica",
+      "label": "aprobado",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Dos compuertas humanas",
+      "items": [
+        "db push solo con confirmación explícita del Product Owner.",
+        "Publicar el Worker espera su aprobación en Actions."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Qué verifica el CI",
+      "items": [
+        "Sin secretos en el repositorio, tipos y compilación.",
+        "Claves de traducción, cero literales y tamaño de texto.",
+        "Pruebas unitarias y pruebas negativas de RLS."
+      ]
+    }
+  ]
+}

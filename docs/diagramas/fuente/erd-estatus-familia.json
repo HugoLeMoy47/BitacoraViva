@@ -1,0 +1,890 @@
+{
+  "schema_version": 1,
+  "diagram_type": "erd",
+  "meta": {
+    "title": "Modelo de datos · Estatus, familia y ficha social",
+    "locale": "es",
+    "output": "docs/diagramas/erd-estatus-familia.html",
+    "quality_profile": "standard"
+  },
+  "layout": {
+    "mode": "grid",
+    "gapX": 80,
+    "gapY": 40
+  },
+  "entities": [
+    {
+      "id": "status_axis",
+      "width": 252,
+      "label": "status_axis",
+      "tag": "estatus multieje",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "code",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "is_primary",
+          "type": "boolean"
+        },
+        {
+          "name": "is_system",
+          "type": "boolean"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "status_value",
+      "width": 256,
+      "label": "status_value",
+      "tag": "estatus multieje",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "axis_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "status_axis.id"
+        },
+        {
+          "name": "code",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "is_active_care",
+          "type": "boolean"
+        },
+        {
+          "name": "is_system",
+          "type": "boolean"
+        },
+        {
+          "name": "is_terminal",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "case_status",
+      "width": 252,
+      "label": "case_status",
+      "tag": "estatus multieje",
+      "row": 2,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "axis_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "status_axis.id"
+        },
+        {
+          "name": "value_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "status_value.id"
+        },
+        {
+          "name": "valid_from",
+          "type": "timestamptz"
+        },
+        {
+          "name": "valid_to",
+          "type": "timestamptz"
+        },
+        {
+          "name": "reason",
+          "type": "text"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "age_band",
+      "width": 252,
+      "label": "age_band",
+      "tag": "estatus multieje",
+      "row": 3,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "min_age",
+          "type": "int"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "valid_to",
+          "type": "timestamptz"
+        },
+        {
+          "name": "closed_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "change_reason",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "family_type",
+      "width": 244,
+      "label": "family_type",
+      "tag": "familia",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "key",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "legacy_code",
+          "type": "text"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "id": "family_unit",
+      "width": 252,
+      "label": "family_unit",
+      "tag": "familia",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "family_number",
+          "type": "text"
+        },
+        {
+          "name": "family_type_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "family_type.id"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "family_member",
+      "width": 270,
+      "label": "family_member",
+      "tag": "familia",
+      "row": 2,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "family_unit_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "family_unit.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "member_order",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "valid_to",
+          "type": "timestamptz"
+        },
+        {
+          "name": "closed_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "change_reason",
+          "type": "text"
+        },
+        {
+          "name": "family_role_item_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "catalog_item.id"
+        }
+      ]
+    },
+    {
+      "id": "social_question",
+      "width": 252,
+      "label": "social_question",
+      "tag": "ficha social",
+      "row": 0,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "key",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "section",
+          "type": "text"
+        },
+        {
+          "name": "answer_type",
+          "type": "text"
+        },
+        {
+          "name": "has_detail",
+          "type": "boolean"
+        },
+        {
+          "name": "is_sensitive",
+          "type": "boolean"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "social_answer",
+      "width": 252,
+      "label": "social_answer",
+      "tag": "ficha social",
+      "row": 1,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "question_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "social_question.id"
+        },
+        {
+          "name": "choice",
+          "type": "text"
+        },
+        {
+          "name": "number_value",
+          "type": "int"
+        },
+        {
+          "name": "text_value",
+          "type": "text"
+        },
+        {
+          "name": "date_value",
+          "type": "date"
+        },
+        {
+          "name": "date_precision",
+          "type": "text"
+        },
+        {
+          "name": "detail",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "valid_to",
+          "type": "timestamptz"
+        },
+        {
+          "name": "closed_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "change_reason",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "case_need",
+      "width": 252,
+      "label": "case_need",
+      "tag": "ficha social",
+      "row": 2,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "catalog_item_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "catalog_item.id"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "valid_to",
+          "type": "timestamptz"
+        },
+        {
+          "name": "closed_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "change_reason",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "case",
+      "width": 264,
+      "label": "case",
+      "tag": "referencia",
+      "row": 0,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "case_number",
+          "type": "text"
+        },
+        {
+          "name": "parent_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "previous_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "titular_person_id",
+          "type": "uuid"
+        },
+        {
+          "name": "intake_state_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_channel_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_window_type",
+          "type": "text"
+        },
+        {
+          "name": "intake_date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "id": "catalog_item",
+      "width": 244,
+      "label": "catalog_item",
+      "tag": "referencia",
+      "row": 1,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "catalog",
+          "type": "text"
+        },
+        {
+          "name": "key",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "legacy_code",
+          "type": "text"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean"
+        },
+        {
+          "name": "is_system",
+          "type": "boolean"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "country_id",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "id": "organization",
+      "width": 252,
+      "label": "organization",
+      "tag": "referencia",
+      "row": 2,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "key": "uk"
+        },
+        {
+          "name": "legal_name",
+          "type": "text"
+        },
+        {
+          "name": "display_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "folio_prefix",
+          "type": "text"
+        },
+        {
+          "name": "about_text",
+          "type": "text"
+        },
+        {
+          "name": "responsible_name",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "user_profile",
+      "width": 252,
+      "label": "user_profile",
+      "tag": "referencia",
+      "row": 3,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "full_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "status_value_axis_id",
+      "from": "status_value",
+      "to": "status_axis",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "case_status_case_id",
+      "from": "case_status",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "case_status_axis_id",
+      "from": "case_status",
+      "to": "status_axis",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "case_status_value_id",
+      "from": "case_status",
+      "to": "status_value",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "family_unit_family_type_id",
+      "from": "family_unit",
+      "to": "family_type",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "family_member_family_unit_id",
+      "from": "family_member",
+      "to": "family_unit",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "family_member_case_id",
+      "from": "family_member",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "family_member_family_role_item_id",
+      "from": "family_member",
+      "to": "catalog_item",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "social_answer_case_id",
+      "from": "social_answer",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "social_answer_question_id",
+      "from": "social_answer",
+      "to": "social_question",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "case_need_case_id",
+      "from": "case_need",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "case_need_catalog_item_id",
+      "from": "case_need",
+      "to": "catalog_item",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Estatus historizado",
+      "items": [
+        "Cada eje (jurídico, estancia, albergue, expediente, etapa) guarda su valor vigente y el histórico.",
+        "Cambiar de estatus cierra el vigente (valid_to) y abre otro con motivo obligatorio."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Familia paralela",
+      "items": [
+        "family_unit agrupa casos; family_member enlaza cada caso con su familia y su papel.",
+        "Un caso puede cambiar de familia sin perder historia."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Ficha social",
+      "items": [
+        "social_question es un catálogo editable; social_answer guarda cada respuesta con su vigencia.",
+        "case_need registra las necesidades detectadas contra catalog_item."
+      ]
+    }
+  ]
+}

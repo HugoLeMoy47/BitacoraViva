@@ -1,0 +1,944 @@
+{
+  "schema_version": 1,
+  "diagram_type": "erd",
+  "meta": {
+    "title": "Modelo de datos · Seguidor de tareas",
+    "locale": "es",
+    "output": "docs/diagramas/erd-tareas.html",
+    "quality_profile": "standard"
+  },
+  "layout": {
+    "mode": "grid",
+    "gapX": 80,
+    "gapY": 40
+  },
+  "entities": [
+    {
+      "id": "task_category",
+      "width": 260,
+      "label": "task_category",
+      "tag": "catálogos de tareas",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "key",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "work_area",
+      "width": 260,
+      "label": "work_area",
+      "tag": "catálogos de tareas",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "key",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "case_task_kind",
+      "width": 260,
+      "label": "case_task_kind",
+      "tag": "catálogos de tareas",
+      "row": 2,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "key",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "task_setting",
+      "width": 258,
+      "label": "task_setting",
+      "tag": "catálogos de tareas",
+      "row": 3,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": [
+            "fk",
+            "uk"
+          ],
+          "references": "organization.id"
+        },
+        {
+          "name": "shift_note_scope",
+          "type": "text"
+        },
+        {
+          "name": "shift_note_days",
+          "type": "int"
+        },
+        {
+          "name": "pool_max_unstarted",
+          "type": "int"
+        },
+        {
+          "name": "pool_release_days",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "routine_template",
+      "width": 260,
+      "label": "routine_template",
+      "tag": "tareas y rutinas",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "work_area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "work_area.id"
+        },
+        {
+          "name": "task_category_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "task_category.id"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "routine_template_item",
+      "width": 270,
+      "label": "routine_template_item",
+      "tag": "tareas y rutinas",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "routine_template_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "routine_template.id"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "details",
+          "type": "text"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "photo_required",
+          "type": "boolean"
+        },
+        {
+          "name": "work_area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "work_area.id"
+        },
+        {
+          "name": "task_category_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "task_category.id"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "task",
+      "width": 270,
+      "label": "task",
+      "tag": "tareas y rutinas",
+      "row": 2,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "details",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "photo_required",
+          "type": "boolean"
+        },
+        {
+          "name": "assigned_to",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "claimed_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "due_at",
+          "type": "date"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "done_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "task_category_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "task_category.id"
+        },
+        {
+          "name": "work_area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "work_area.id"
+        },
+        {
+          "name": "routine_template_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "routine_template.id"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "case_number",
+          "type": "text"
+        },
+        {
+          "name": "case_task_kind_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case_task_kind.id"
+        }
+      ]
+    },
+    {
+      "id": "task_evidence",
+      "width": 260,
+      "label": "task_evidence",
+      "tag": "tareas y rutinas",
+      "row": 3,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "task.id"
+        },
+        {
+          "name": "storage_path",
+          "type": "text",
+          "key": "uk"
+        },
+        {
+          "name": "mime_type",
+          "type": "text"
+        },
+        {
+          "name": "size_bytes",
+          "type": "int"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "shift_note",
+      "width": 260,
+      "label": "shift_note",
+      "tag": "turnos",
+      "row": 0,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "work_area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "work_area.id"
+        },
+        {
+          "name": "note_date",
+          "type": "date"
+        },
+        {
+          "name": "shift",
+          "type": "text"
+        },
+        {
+          "name": "body",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "archived_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "archived_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        }
+      ]
+    },
+    {
+      "id": "case",
+      "width": 264,
+      "label": "case",
+      "tag": "referencia",
+      "row": 0,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "case_number",
+          "type": "text"
+        },
+        {
+          "name": "parent_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "previous_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "titular_person_id",
+          "type": "uuid"
+        },
+        {
+          "name": "intake_state_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_channel_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_window_type",
+          "type": "text"
+        },
+        {
+          "name": "intake_date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "id": "organization",
+      "width": 252,
+      "label": "organization",
+      "tag": "referencia",
+      "row": 1,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "key": "uk"
+        },
+        {
+          "name": "legal_name",
+          "type": "text"
+        },
+        {
+          "name": "display_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "folio_prefix",
+          "type": "text"
+        },
+        {
+          "name": "about_text",
+          "type": "text"
+        },
+        {
+          "name": "responsible_name",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "user_profile",
+      "width": 252,
+      "label": "user_profile",
+      "tag": "referencia",
+      "row": 2,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "full_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "routine_template_work_area_id",
+      "from": "routine_template",
+      "to": "work_area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "routine_template_task_category_id",
+      "from": "routine_template",
+      "to": "task_category",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "routine_template_item_routine_template_id",
+      "from": "routine_template_item",
+      "to": "routine_template",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "routine_template_item_work_area_id",
+      "from": "routine_template_item",
+      "to": "work_area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "routine_template_item_task_category_id",
+      "from": "routine_template_item",
+      "to": "task_category",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "task_task_category_id",
+      "from": "task",
+      "to": "task_category",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "task_work_area_id",
+      "from": "task",
+      "to": "work_area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "task_routine_template_id",
+      "from": "task",
+      "to": "routine_template",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "task_case_id",
+      "from": "task",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "task_case_task_kind_id",
+      "from": "task",
+      "to": "case_task_kind",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "task_evidence_task_id",
+      "from": "task_evidence",
+      "to": "task",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "shift_note_work_area_id",
+      "from": "shift_note",
+      "to": "work_area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Aparte del expediente",
+      "items": [
+        "Quien solo tiene rol de tareas no recibe filas de personas ni de casos.",
+        "task.case_id liga una tarea a un caso solo para quien tiene permiso sobre ese caso."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Claves compuestas",
+      "items": [
+        "Las referencias llevan (id, organization_id): una tarea no puede apuntar a catálogos de otra organización."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Evidencia privada",
+      "items": [
+        "task_evidence guarda la ruta en un bucket privado (máximo 5 MB; jpeg, png o webp).",
+        "Archivar no borra: la tarea sigue en reportes y auditoría."
+      ]
+    }
+  ]
+}

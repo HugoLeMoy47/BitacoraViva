@@ -1,0 +1,974 @@
+{
+  "schema_version": 1,
+  "diagram_type": "erd",
+  "meta": {
+    "title": "Modelo de datos · Bitácora, consentimiento y ARCO",
+    "locale": "es",
+    "output": "docs/diagramas/erd-bitacora-privacidad.html",
+    "quality_profile": "standard"
+  },
+  "layout": {
+    "mode": "grid",
+    "gapX": 80,
+    "gapY": 40
+  },
+  "entities": [
+    {
+      "id": "journal_entry",
+      "width": 276,
+      "label": "journal_entry",
+      "tag": "bitácora",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "area.id"
+        },
+        {
+          "name": "author_user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "body",
+          "type": "text"
+        },
+        {
+          "name": "is_work_note",
+          "type": "boolean"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "visibility",
+          "type": "text"
+        },
+        {
+          "name": "superseded_by_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "journal_entry.id"
+        },
+        {
+          "name": "service_line_item_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "catalog_item.id"
+        },
+        {
+          "name": "source",
+          "type": "text"
+        },
+        {
+          "name": "source_author_label",
+          "type": "text"
+        },
+        {
+          "name": "import_batch_id",
+          "type": "uuid"
+        }
+      ]
+    },
+    {
+      "id": "sharing_event",
+      "width": 296,
+      "label": "sharing_event",
+      "tag": "bitácora",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "journal_entry_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "journal_entry.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "from_area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "area.id"
+        },
+        {
+          "name": "to_area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "area.id"
+        },
+        {
+          "name": "from_visibility",
+          "type": "text"
+        },
+        {
+          "name": "to_visibility",
+          "type": "text"
+        },
+        {
+          "name": "reason",
+          "type": "text"
+        },
+        {
+          "name": "shared_by_user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "shared_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "acknowledged_by_user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "acknowledged_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "attachment",
+      "width": 260,
+      "label": "attachment",
+      "tag": "bitácora",
+      "row": 2,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "journal_entry_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "journal_entry.id"
+        },
+        {
+          "name": "storage_path",
+          "type": "text"
+        },
+        {
+          "name": "file_name",
+          "type": "text"
+        },
+        {
+          "name": "mime_type",
+          "type": "text"
+        },
+        {
+          "name": "size_bytes",
+          "type": "bigint"
+        },
+        {
+          "name": "uploaded_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "uploaded_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "visibility",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "privacy_notice",
+      "width": 252,
+      "label": "privacy_notice",
+      "tag": "consentimiento",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "version",
+          "type": "text"
+        },
+        {
+          "name": "title",
+          "type": "text"
+        },
+        {
+          "name": "summary",
+          "type": "text"
+        },
+        {
+          "name": "full_text",
+          "type": "text"
+        },
+        {
+          "name": "effective_date",
+          "type": "date"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "consent_text",
+      "width": 252,
+      "label": "consent_text",
+      "tag": "consentimiento",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "version",
+          "type": "int"
+        },
+        {
+          "name": "title",
+          "type": "text"
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "required",
+          "type": "boolean"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "auth_users.id"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "consent",
+      "width": 276,
+      "label": "consent",
+      "tag": "consentimiento",
+      "row": 2,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "person_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "person.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "privacy_notice_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "privacy_notice.id"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "is_minor_assent",
+          "type": "boolean"
+        },
+        {
+          "name": "legal_guardian_name",
+          "type": "text"
+        },
+        {
+          "name": "legal_guardian_role",
+          "type": "text"
+        },
+        {
+          "name": "authority_letter_ref",
+          "type": "text"
+        },
+        {
+          "name": "granted_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "granted_by_user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "revoked_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "revoked_by_user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "revocation_reason",
+          "type": "text"
+        },
+        {
+          "name": "notes",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "consent_text_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "consent_text.id"
+        }
+      ]
+    },
+    {
+      "id": "arco_request",
+      "width": 324,
+      "label": "arco_request",
+      "tag": "derechos ARCO",
+      "row": 0,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "person_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "person.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "request_type",
+          "type": "text"
+        },
+        {
+          "name": "status",
+          "type": "text"
+        },
+        {
+          "name": "details",
+          "type": "text"
+        },
+        {
+          "name": "reason",
+          "type": "text"
+        },
+        {
+          "name": "requested_by_name",
+          "type": "text"
+        },
+        {
+          "name": "is_legal_representative",
+          "type": "boolean"
+        },
+        {
+          "name": "representative_relationship",
+          "type": "text"
+        },
+        {
+          "name": "received_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "handled_by_user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "resolved_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "resolution_notes",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "case",
+      "width": 264,
+      "label": "case",
+      "tag": "referencia",
+      "row": 0,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "case_number",
+          "type": "text"
+        },
+        {
+          "name": "parent_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "previous_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "titular_person_id",
+          "type": "uuid"
+        },
+        {
+          "name": "intake_state_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_channel_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_window_type",
+          "type": "text"
+        },
+        {
+          "name": "intake_date",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "id": "area",
+      "width": 276,
+      "label": "area",
+      "tag": "referencia",
+      "row": 1,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "code",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "is_general",
+          "type": "boolean"
+        },
+        {
+          "name": "is_default_intake",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "catalog_item",
+      "width": 244,
+      "label": "catalog_item",
+      "tag": "referencia",
+      "row": 2,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "catalog",
+          "type": "text"
+        },
+        {
+          "name": "key",
+          "type": "text"
+        },
+        {
+          "name": "label_es",
+          "type": "text"
+        },
+        {
+          "name": "legacy_code",
+          "type": "text"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean"
+        },
+        {
+          "name": "is_system",
+          "type": "boolean"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        },
+        {
+          "name": "country_id",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "id": "person",
+      "width": 314,
+      "label": "person",
+      "tag": "referencia",
+      "row": 3,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "given_name",
+          "type": "text"
+        },
+        {
+          "name": "paternal_family_name",
+          "type": "text"
+        },
+        {
+          "name": "maternal_family_name",
+          "type": "text"
+        },
+        {
+          "name": "preferred_name",
+          "type": "text"
+        },
+        {
+          "name": "birth_date",
+          "type": "date"
+        },
+        {
+          "name": "birth_date_is_estimated",
+          "type": "boolean"
+        },
+        {
+          "name": "sex_id",
+          "type": "int"
+        },
+        {
+          "name": "other_sex",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "organization",
+      "width": 252,
+      "label": "organization",
+      "tag": "referencia",
+      "row": 4,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "key": "uk"
+        },
+        {
+          "name": "legal_name",
+          "type": "text"
+        },
+        {
+          "name": "display_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "folio_prefix",
+          "type": "text"
+        },
+        {
+          "name": "about_text",
+          "type": "text"
+        },
+        {
+          "name": "responsible_name",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "user_profile",
+      "width": 252,
+      "label": "user_profile",
+      "tag": "referencia",
+      "row": 5,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "full_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "auth_users",
+      "width": 240,
+      "label": "auth.users",
+      "tag": "referencia",
+      "row": 6,
+      "col": 3,
+      "sublabel": "Supabase Auth",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "journal_entry_case_id",
+      "from": "journal_entry",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "journal_entry_area_id",
+      "from": "journal_entry",
+      "to": "area",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "journal_entry_service_line_item_id",
+      "from": "journal_entry",
+      "to": "catalog_item",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "sharing_event_journal_entry_id",
+      "from": "sharing_event",
+      "to": "journal_entry",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "sharing_event_case_id",
+      "from": "sharing_event",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "sharing_event_from_area_id",
+      "from": "sharing_event",
+      "to": "area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "label": "from_area_id"
+    },
+    {
+      "id": "sharing_event_to_area_id",
+      "from": "sharing_event",
+      "to": "area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "label": "to_area_id"
+    },
+    {
+      "id": "attachment_case_id",
+      "from": "attachment",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "attachment_journal_entry_id",
+      "from": "attachment",
+      "to": "journal_entry",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "consent_person_id",
+      "from": "consent",
+      "to": "person",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "consent_case_id",
+      "from": "consent",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "consent_privacy_notice_id",
+      "from": "consent",
+      "to": "privacy_notice",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "consent_consent_text_id",
+      "from": "consent",
+      "to": "consent_text",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "arco_request_person_id",
+      "from": "arco_request",
+      "to": "person",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "arco_request_case_id",
+      "from": "arco_request",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Bitácora inmutable y privada",
+      "items": [
+        "journal_entry nace area_private; una corrección crea otra entrada (superseded_by_id).",
+        "Compartir entre áreas exige motivo y deja un sharing_event que dirección reconoce."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Consentimiento",
+      "items": [
+        "consent registra el tipo (cuidado general, datos sensibles, compartición interna, uso secundario) y se revoca sin borrarse.",
+        "Sin consentimiento no se captura un campo sensible."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "ARCO",
+      "items": [
+        "arco_request registra acceso, rectificación, cancelación u oposición, con motivo obligatorio.",
+        "La cancelación se atiende por anonimización."
+      ]
+    }
+  ]
+}
