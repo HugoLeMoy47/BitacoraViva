@@ -2,7 +2,7 @@
 -- E14 fase 3 · Unidad familiar paralela
 --
 -- Decisiones del Product Owner (14 y 15 oct 2026): la agrupación familiar sale de un sistema de seguimiento paralelo
--- al folio de caso (p. ej. el «Número Único de Familia» de REDODEM), con su propio folio; **se mantiene paralela**:
+-- al folio de caso (p. ej. el «Número Único de Familia» de la red de albergues), con su propio folio; **se mantiene paralela**:
 -- no se mezcla con `parent_case_id` (el subfolio es otra cosa). El tipo de familia es un diccionario que editan
 -- dirección y el área de Trabajo Social y es **solo informativo y estadístico**: manda el marcador de vulnerabilidad,
 -- el tipo no se compara con él ni lo cambia.
@@ -49,7 +49,7 @@ drop trigger if exists trg_audit_family_type on public.family_type;
 create trigger trg_audit_family_type after insert or update on public.family_type
 for each row execute function public.fn_audit_trigger_fields();
 
--- Valores de la hoja de casos de CAFEMIN (lecturas confirmadas por el Product Owner); dirección y Trabajo Social los editan
+-- Valores de la hoja de casos de la organización piloto (lecturas confirmadas por el Product Owner); dirección y Trabajo Social los editan
 insert into public.family_type (organization_id, key, label_es, legacy_code, sort_order)
 select o.id, v.key, v.label_es, v.legacy_code, v.sort_order
 from public.organization o

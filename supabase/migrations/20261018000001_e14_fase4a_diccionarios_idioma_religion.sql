@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- E14 fase 4a · Diccionarios editables: idioma y religión (y siembra de documentos)
 --
--- Decisiones del Product Owner (17 oct 2026), a partir de los desplegables de la hoja de casos de CAFEMIN:
+-- Decisiones del Product Owner (17 oct 2026), a partir de los desplegables de la hoja de casos de la organización piloto:
 --  * Los diccionarios los editan dirección y el área de Trabajo Social (`can_manage_catalogs()`).
 --  * Idioma y religión pasan de texto libre a un **valor del diccionario + detalle** (la religión conserva su texto como
 --    detalle). Siguen siendo datos sensibles (D-14): solo con consentimiento sensible vigente (`BV408`).
@@ -75,7 +75,7 @@ drop trigger if exists trg_audit_catalog_item on public.catalog_item;
 create trigger trg_audit_catalog_item after insert or update on public.catalog_item
 for each row execute function public.fn_audit_trigger_fields();
 
--- Valores de la hoja de casos de CAFEMIN (idioma y religión), con el texto original en `legacy_code`
+-- Valores de la hoja de casos de la organización piloto (idioma y religión), con el texto original en `legacy_code`
 insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order)
 select o.id, v.catalog, v.key, v.label_es, v.legacy_code, v.is_system, v.sort_order
 from public.organization o

@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- E14 fase 5 · Derivados: grupos por edad configurables
 --
--- La hoja de casos de CAFEMIN trae «grupo por edad» (obligatorio) calculado por edad y sexo. Aquí se calcula SOLO por edad:
+-- La hoja de casos de la organización piloto trae «grupo por edad» (obligatorio) calculado por edad y sexo. Aquí se calcula SOLO por edad:
 -- el sexo es un dato sensible (D-14) y no debe condicionar un cálculo obligatorio. Edad, mes de cumpleaños y días de
 -- estancia son cálculos sobre datos que ya existen y se muestran en la pantalla del caso sin guardarse.
 --

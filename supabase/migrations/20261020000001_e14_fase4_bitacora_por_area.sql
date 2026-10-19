@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- E14 fase 4 · Bitácora por área
 --
--- Contexto: la hoja de casos de CAFEMIN lleva una columna por servicio (hospitalidad, proyecto de vida, salud física,
+-- Contexto: la hoja de casos de la organización piloto lleva una columna por servicio (hospitalidad, proyecto de vida, salud física,
 -- psicología, psicoterapia, psiquiatría, empleabilidad/trabajo externo, servicio interno, formación, escuela, jurídico),
 -- más textos de Trabajo Social (diagnóstico, entrevista, reunión de casos, llamadas de atención, ruta de atención integral).
 -- En el sistema todo eso son ENTRADAS DE BITÁCORA (inmutables, privadas del área por omisión), no campos.
