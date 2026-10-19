@@ -3989,6 +3989,76 @@ begin
     end;
 
     -- ============================================================================================
+    -- ===== E17 fase 4: logotipo de la organización (migración 20261102000001)
+    -- ===== Bucket `org-assets` (imágenes PNG, JPG o WebP de hasta 1 MB, sin SVG). Se sube a la carpeta de la propia organización con
+    -- ===== el permiso de configurar la organización; nunca se sobrescribe ni se borra (cada logotipo es un archivo nuevo). La
+    -- ===== función `fn_set_organization_logo` fija cuál es el vigente y exige que el archivo exista en la carpeta de la organización.
+    -- ============================================================================================
+    declare
+        LA constant text := 'aaaaaaaa-0000-0000-0000-00000000000a';
+        LB constant text := 'bbbbbbbb-0000-0000-0000-00000000000b';
+        F1 constant text := 'aaaaaaaa-0000-0000-0000-00000000000a/logo-11111111-1111-4111-8111-111111111111.png';
+        F2 constant text := 'aaaaaaaa-0000-0000-0000-00000000000a/logo-22222222-2222-4222-8222-222222222222.webp';
+        FB constant text := 'bbbbbbbb-0000-0000-0000-00000000000b/logo-33333333-3333-4333-8333-333333333333.png';
+        up text := $q$with i as (insert into storage.objects (bucket_id, name, owner_id) values ('org-assets', %L, %L) returning 1) select count(*)::text from i$q$;
+        setl text := $q$select count(*)::text from (select public.fn_set_organization_logo(%L)) x$q$;
+    begin
+        -- ----- El bucket
+        perform pg_temp.expect('E17f4: el bucket es público, de 1 MB y solo imágenes PNG, JPG o WebP', null, null,
+            $q$select (public and file_size_limit = 1048576 and allowed_mime_types @> array['image/png','image/jpeg','image/webp'] and cardinality(allowed_mime_types) = 3)::text from storage.buckets where id = 'org-assets'$q$, 'true');
+        perform pg_temp.expect('E17f4: la organización no tiene logotipo por omisión', CW, 'authenticated',
+            format($q$select (logo_path is null)::text from public.organization where id = %L::uuid$q$, LA), 'true');
+
+        -- ----- Quién puede subir y adónde
+        perform pg_temp.expect('E17f4 control positivo: la dirección sube un logotipo a la carpeta de su organización', DIR, 'authenticated', format(up, F1, DIR), '1');
+        perform pg_temp.expect('E17f4: el rol de solo lectura no sube → rechazo', VW, 'authenticated', format(up, 'aaaaaaaa-0000-0000-0000-00000000000a/logo-44444444-4444-4444-8444-444444444444.png', VW), 'ERR');
+        perform pg_temp.expect('E17f4: atención no sube', CW, 'authenticated', format(up, 'aaaaaaaa-0000-0000-0000-00000000000a/logo-55555555-5555-4555-8555-555555555555.png', CW), 'ERR');
+        perform pg_temp.expect('E17f4: anon no sube', null, 'anon', format(up, 'aaaaaaaa-0000-0000-0000-00000000000a/logo-66666666-6666-4666-8666-666666666666.png', DIR), 'ERR');
+        perform pg_temp.expect('E17f4: la dirección no sube a la carpeta de otra organización', DIR, 'authenticated', format(up, FB, DIR), 'ERR');
+        perform pg_temp.expect('E17f4: ni con un nombre que no sea logo-<id>.<png|jpg|webp> (SVG)', DIR, 'authenticated',
+            format(up, 'aaaaaaaa-0000-0000-0000-00000000000a/logo-77777777-7777-4777-8777-777777777777.svg', DIR), 'ERR');
+        perform pg_temp.expect('E17f4: ni un GIF', DIR, 'authenticated',
+            format(up, 'aaaaaaaa-0000-0000-0000-00000000000a/logo-88888888-8888-4888-8888-888888888888.gif', DIR), 'ERR');
+        perform pg_temp.expect('E17f4: ni un nombre cualquiera', DIR, 'authenticated', format(up, 'aaaaaaaa-0000-0000-0000-00000000000a/otro.png', DIR), 'ERR');
+        perform pg_temp.expect('E17f4: ni en la raíz del bucket', DIR, 'authenticated', format(up, 'logo-99999999-9999-4999-8999-999999999999.png', DIR), 'ERR');
+        perform pg_temp.expect('E17f4: la dirección no cambia un archivo ya subido (nunca se sobrescribe)', DIR, 'authenticated',
+            format($q$with u as (update storage.objects set name = name where bucket_id = 'org-assets' and name = %L returning 1) select count(*)::text from u$q$, F1), 'ERR|0');
+        perform pg_temp.expect('E17f4: ni lo borra', DIR, 'authenticated',
+            format($q$with d as (delete from storage.objects where bucket_id = 'org-assets' and name = %L returning 1) select count(*)::text from d$q$, F1), 'ERR|0');
+
+        -- ----- Fijar el logotipo vigente
+        perform pg_temp.expect('E17f4: atención no fija el logotipo → BV109', CW, 'authenticated', format(setl, F1), 'ERR:BV109');
+        perform pg_temp.expect('E17f4: el rol de solo lectura tampoco → BV109', VW, 'authenticated', format(setl, F1), 'ERR:BV109');
+        perform pg_temp.expect('E17f4: anon tampoco', null, 'anon', format(setl, F1), 'ERR');
+        perform pg_temp.expect('E17f4: un archivo que no existe → BV366', DIR, 'authenticated', format(setl, 'aaaaaaaa-0000-0000-0000-00000000000a/logo-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.png'), 'ERR:BV366');
+        insert into storage.objects (bucket_id, name) values ('org-assets', FB);
+        perform pg_temp.expect('E17f4: un archivo de otra organización, aunque exista → BV366', DIR, 'authenticated', format(setl, FB), 'ERR:BV366');
+        perform pg_temp.expect('E17f4: la ruta mal formada → BV366', DIR, 'authenticated', format(setl, 'cualquier/cosa.png'), 'ERR:BV366');
+        perform pg_temp.expect('E17f4: una ruta vacía → BV366', DIR, 'authenticated', format(setl, ''), 'ERR:BV366');
+        perform pg_temp.expect('E17f4 control positivo: la dirección fija el logotipo', DIR, 'authenticated', format(setl, F1), '1');
+        perform pg_temp.expect('E17f4: queda en la organización', CW, 'authenticated',
+            format($q$select logo_path from public.organization where id = %L::uuid$q$, LA), F1);
+        perform pg_temp.expect('E17f4: la otra organización no cambia', DIRB2, 'authenticated',
+            format($q$select (logo_path is null)::text from public.organization where id = %L::uuid$q$, LB), 'true');
+        perform pg_temp.expect('E17f4: el cambio deja huella en la auditoría', null, null,
+            $q$select (count(*) > 0)::text from public.audit_event where table_name = 'organization' and new_values::text like '%logo_path%'$q$, 'true');
+
+        -- ----- Cambiar de logotipo: uno nuevo (el anterior se conserva)
+        perform pg_temp.expect('E17f4: se sube uno nuevo', DIR, 'authenticated', format(up, F2, DIR), '1');
+        perform pg_temp.expect('E17f4: se fija el nuevo', DIR, 'authenticated', format(setl, F2), '1');
+        perform pg_temp.expect('E17f4: el anterior sigue guardado', null, null,
+            format($q$select count(*)::text from storage.objects where bucket_id = 'org-assets' and name = %L$q$, F1), '1');
+
+        -- ----- Quitarlo
+        perform pg_temp.expect('E17f4: atención no quita el logotipo → BV109', CW, 'authenticated', 'select count(*)::text from (select public.fn_clear_organization_logo()) x', 'ERR:BV109');
+        perform pg_temp.expect('E17f4 control positivo: la dirección lo quita', DIR, 'authenticated', 'select count(*)::text from (select public.fn_clear_organization_logo()) x', '1');
+        perform pg_temp.expect('E17f4: la organización queda sin logotipo', CW, 'authenticated',
+            format($q$select (logo_path is null)::text from public.organization where id = %L::uuid$q$, LA), 'true');
+        perform pg_temp.expect('E17f4: y el archivo no se borra', null, null,
+            format($q$select count(*)::text from storage.objects where bucket_id = 'org-assets' and name = %L$q$, F2), '1');
+    end;
+
+    -- ============================================================================================
     -- ===== D-24 tanda 4 (cierre): lo único que sigue por nombre de rol son las garantías del producto
     -- ===== Cualquier comprobación nueva por nombre de rol hace fallar esta prueba: hay que decidir si es una garantía (y
     -- ===== añadirla aquí, con su razón en la propuesta de E16 §9) o un permiso (y entonces es una capacidad).

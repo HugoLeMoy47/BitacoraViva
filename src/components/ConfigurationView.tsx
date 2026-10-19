@@ -6,6 +6,7 @@ import { ConsentText, ConsentType, Organization, PrivacyNotice, AuditChainVerifi
 import { Tabs } from './Tabs';
 import { DisabledReason, describedBy } from './DisabledReason';
 import { friendlyError } from '../lib/errors';
+import { LOGO_MAX_BYTES, LOGO_TYPES, logoPublicUrl, validateLogoFile } from '../lib/logo';
 
 // Configuración de la organización (E9). La plataforma ofrece el mecanismo (versionado, bloqueo,
 // auditoría); cada asociación declara su contenido y responde por él. Solo Dirección entra aquí
@@ -19,6 +20,8 @@ interface Props {
   onPublishNotice: (title: string, summary: string, fullText: string) => Result;
   onPublishConsentText: (type: ConsentType, title: string, description: string, required: boolean) => Result;
   onUpdateSecuritySettings?: (enforce: boolean) => Result;
+  onSetLogo?: (file: File) => Result;
+  onClearLogo?: () => Result;
 }
 
 // Consentimientos que se configuran. «internal_sharing» no se pide por separado (lo cubre el aviso general).
@@ -40,6 +43,8 @@ export const ConfigurationView: React.FC<Props> = ({
   onPublishNotice,
   onPublishConsentText,
   onUpdateSecuritySettings,
+  onSetLogo,
+  onClearLogo,
 }) => {
   const [tab, setTab] = useState<TabId>('identity');
   const [notices, setNotices] = useState<PrivacyNotice[] | null>(null);
@@ -93,7 +98,12 @@ export const ConfigurationView: React.FC<Props> = ({
           {loadError && (
             <p role="alert" className="mb-3 text-xs text-alerta-dark">{loadError}</p>
           )}
-          {tab === 'identity' && <IdentityForm organization={organization} busy={busy} onSave={onSaveIdentity} />}
+          {tab === 'identity' && (
+            <div className="space-y-6">
+              <LogoSection organization={organization} busy={busy} onSet={onSetLogo} onClear={onClearLogo} />
+              <IdentityForm organization={organization} busy={busy} onSave={onSaveIdentity} />
+            </div>
+          )}
           {tab === 'notice' && (
             <NoticeForm
               notices={notices}
@@ -539,3 +549,66 @@ const SecurityForm: React.FC<{
   );
 };
 
+// ---------------------------------------------------------------- Logotipo (E17 fase 4)
+// PNG, JPG o WebP de hasta 1 MB (sin SVG). Se elige, se ve la vista previa y se guarda; cada logotipo es un archivo nuevo y el
+// anterior se conserva. Se muestra en el encabezado de la aplicación; el inicio de sesión sigue con la marca de Bitácora Viva.
+const LogoSection: React.FC<{
+  organization: Organization | null;
+  busy: boolean;
+  onSet?: (file: File) => Promise<{ ok: boolean }>;
+  onClear?: () => Promise<{ ok: boolean }>;
+}> = ({ organization, busy, onSet, onClear }) => {
+  const uid = React.useId();
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const current = logoPublicUrl(organization?.logo_path);
+
+  useEffect(() => {
+    if (!file) { setPreview(null); return; }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const choose = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0] ?? null;
+    const p = picked ? validateLogoFile(picked) : null;
+    setProblem(p ? t(`config.logo.problem_${p}`) : null);
+    setFile(picked && !p ? picked : null);
+  };
+
+  const save = async () => {
+    if (!file || !onSet) return;
+    const r = await onSet(file);
+    if (r.ok) setFile(null);
+  };
+
+  const saveReason = !file ? t('config.logo.reason_choose') : null;
+
+  return (
+    <section aria-labelledby={`${uid}-t`} className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <h3 id={`${uid}-t`} className="text-sm font-bold text-carbon">{t('config.logo.title')}</h3>
+      <p className="text-sm text-gray-700">{t('config.logo.hint').replace('{mb}', String(LOGO_MAX_BYTES / (1024 * 1024)))}</p>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex h-16 min-w-16 items-center justify-center rounded-lg border border-gray-200 bg-white p-1">
+          {preview || current
+            ? <img src={preview ?? current ?? ''} alt={preview ? t('config.logo.preview_alt') : t('config.logo.current_alt')} className="max-h-14 max-w-[10rem] object-contain" />
+            : <span className="px-2 text-sm text-gray-700">{t('config.logo.none')}</span>}
+        </div>
+        <div className="space-y-2">
+          <label className={LABEL} htmlFor={`${uid}-f`}>{t('config.logo.choose')}</label>
+          <input id={`${uid}-f`} name={`${uid}-f`} type="file" accept={LOGO_TYPES.join(',')} onChange={choose} className="block text-sm text-gray-700 file:mr-3 file:min-h-11 file:rounded-lg file:border file:border-gray-300 file:bg-white file:px-3 file:text-sm file:font-semibold file:text-carbon" />
+        </div>
+      </div>
+      {problem && <p role="alert" className="text-sm font-semibold text-alerta-dark">{problem}</p>}
+      <DisabledReason id={`${uid}-r`} reason={saveReason} />
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={BTN} disabled={!file || busy || !onSet} onClick={save} {...describedBy(`${uid}-r`, saveReason)}>{t('config.logo.save')}</button>
+        {organization?.logo_path && onClear && (
+          <button type="button" className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-carbon hover:bg-gray-50 disabled:opacity-50" disabled={busy} onClick={() => void onClear()}>{t('config.logo.remove')}</button>
+        )}
+      </div>
+    </section>
+  );
+};

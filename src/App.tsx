@@ -42,6 +42,7 @@ import { AboutView } from './components/AboutView';
 import { DemoBanner } from './components/DemoBanner';
 import { ToastProvider, useToast } from './lib/toast';
 import { DbError, friendlyError } from './lib/errors';
+import { logoPublicUrl, uploadLogoFile } from './lib/logo';
 
 const errorMessage = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -258,6 +259,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
       <AppShell
         user={currentUser}
         organizationName={organization?.display_name ?? ''}
+        organizationLogoUrl={logoPublicUrl(organization?.logo_path)}
         route={current}
         allowed={allowed}
         caseCount={casesList.length}
@@ -317,6 +319,8 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onPublishNotice={(ti, su, fu) => run(() => configApi.publishPrivacyNotice(ti, su, fu), 'toast.config_notice')}
             onPublishConsentText={(ty, ti, de, re) => run(() => configApi.publishConsentText(ty, ti, de, re), 'toast.config_consent_text')}
             onUpdateSecuritySettings={(enforce) => run(() => configApi.updateSecuritySettings(enforce), 'toast.config_security')}
+            onSetLogo={(file) => run(async () => { await configApi.setLogo(await uploadLogoFile(organization?.id ?? '', file)); }, 'toast.config_logo')}
+            onClearLogo={() => run(() => configApi.clearLogo(), 'toast.config_logo_removed')}
           />
         )}
         {current === 'about' && <AboutView organization={organization} areasCount={data.areas.length} />}

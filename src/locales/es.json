@@ -1308,6 +1308,8 @@
     "config_notice": "Aviso de privacidad publicado como versión nueva.",
     "config_consent_text": "Texto de consentimiento publicado como versión nueva.",
     "config_security": "Ajustes de seguridad actualizados.",
+    "config_logo": "Logotipo guardado.",
+    "config_logo_removed": "Logotipo quitado.",
     "subfolio_created": "Subfolio creado."
   },
   "errors": {
@@ -1458,6 +1460,7 @@
       "bv363": "Esta área es la general o la de apertura de expedientes: elige primero otra y luego desactívala.",
       "bv364": "Solo un área activa puede ser la general o la de apertura de expedientes.",
       "bv365": "Indica el motivo: es obligatorio al desactivar un área.",
+      "bv366": "El logotipo no es válido: usa una imagen PNG, JPG o WebP de hasta 1 MB.",
       "bv334": "«La persona no quiso responder» no se combina con otras necesidades. Marca una cosa o la otra.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
@@ -1495,6 +1498,20 @@
     }
   },
   "config": {
+    "logo": {
+      "title": "Logotipo",
+      "hint": "Aparece en el encabezado de la aplicación. Imagen PNG, JPG o WebP de hasta {mb} MB (no se admite SVG). El inicio de sesión sigue mostrando la marca de Bitácora Viva.",
+      "choose": "Elegir una imagen",
+      "save": "Guardar el logotipo",
+      "remove": "Quitar el logotipo",
+      "none": "Sin logotipo",
+      "current_alt": "Logotipo actual de la organización",
+      "preview_alt": "Vista previa del logotipo elegido",
+      "reason_choose": "Elige primero una imagen.",
+      "problem_type": "Ese archivo no sirve: usa una imagen PNG, JPG o WebP.",
+      "problem_size": "La imagen pesa más de 1 MB: usa una más ligera.",
+      "problem_empty": "El archivo está vacío."
+    },
     "title": "Configuración de la organización",
     "subtitle": "Lo que declaras aquí aparece en el alta de expedientes, en el aviso de privacidad y en los extractos. Tu asociación responde por su contenido; la plataforma conserva cada versión y audita cada cambio.",
     "tabs_label": "Secciones de la configuración",

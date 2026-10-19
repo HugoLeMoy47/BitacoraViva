@@ -154,6 +154,8 @@ export interface Organization {
   responsible_address?: string | null;
   responsible_contact?: string | null;
   arco_contact?: string | null;
+  /** Ruta del logotipo vigente en el bucket `org-assets` (E17 fase 4) */
+  logo_path?: string | null;
   enforce_absolute_session_timeout?: boolean;
   created_at: string;
   updated_at: string;

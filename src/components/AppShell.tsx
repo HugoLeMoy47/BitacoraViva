@@ -52,6 +52,8 @@ const initials = (name: string) =>
 interface AppShellProps {
   user: SessionUser;
   organizationName: string;
+  /** Logotipo de la organización (E17 fase 4); sin él se muestra la marca de Bitácora Viva */
+  organizationLogoUrl?: string | null;
   route: RouteId | null;
   allowed: RouteId[];
   caseCount: number;
@@ -64,6 +66,7 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({
   user,
   organizationName,
+  organizationLogoUrl,
   route,
   allowed,
   caseCount,
@@ -126,12 +129,16 @@ export const AppShell: React.FC<AppShellProps> = ({
       <header className="sticky top-0 z-40 border-b-4 border-turquesa bg-carbon text-white">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-turquesa text-sm font-bold text-carbon"
-              aria-hidden="true"
-            >
-              BV
-            </span>
+            {organizationLogoUrl ? (
+              <img src={organizationLogoUrl} alt={organizationName} className="h-8 max-w-[7rem] shrink-0 rounded bg-white object-contain p-0.5" />
+            ) : (
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-turquesa text-sm font-bold text-carbon"
+                aria-hidden="true"
+              >
+                BV
+              </span>
+            )}
             <h1 className="truncate text-base font-bold tracking-tight">{t('app.title')}</h1>
             <DemoChip />
             <span className="hidden min-w-0 truncate text-sm text-gray-300 md:inline" translate="no">
