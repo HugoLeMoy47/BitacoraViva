@@ -1,0 +1,751 @@
+{
+  "schema_version": 1,
+  "diagram_type": "erd",
+  "meta": {
+    "title": "Modelo de datos · Identidad, permisos y auditoría",
+    "locale": "es",
+    "output": "docs/diagramas/erd-identidad.html",
+    "quality_profile": "standard"
+  },
+  "layout": {
+    "mode": "grid",
+    "gapX": 80,
+    "gapY": 40
+  },
+  "entities": [
+    {
+      "id": "organization",
+      "width": 374,
+      "label": "organization",
+      "tag": "identidad",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "slug",
+          "type": "text",
+          "key": "uk"
+        },
+        {
+          "name": "legal_name",
+          "type": "text"
+        },
+        {
+          "name": "display_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "folio_prefix",
+          "type": "text"
+        },
+        {
+          "name": "about_text",
+          "type": "text"
+        },
+        {
+          "name": "responsible_name",
+          "type": "text"
+        },
+        {
+          "name": "responsible_address",
+          "type": "text"
+        },
+        {
+          "name": "responsible_contact",
+          "type": "text"
+        },
+        {
+          "name": "arco_contact",
+          "type": "text"
+        },
+        {
+          "name": "enforce_absolute_session_timeout",
+          "type": "boolean"
+        },
+        {
+          "name": "logo_path",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "user_profile",
+      "width": 252,
+      "label": "user_profile",
+      "tag": "identidad",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": [
+            "pk",
+            "fk"
+          ],
+          "references": "auth_users.id"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "full_name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "auth_users",
+      "width": 240,
+      "label": "auth.users",
+      "tag": "identidad",
+      "row": 2,
+      "col": 0,
+      "sublabel": "Supabase Auth",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "user_invitation",
+      "width": 266,
+      "label": "user_invitation",
+      "tag": "identidad",
+      "row": 3,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "email",
+          "type": "text"
+        },
+        {
+          "name": "full_name",
+          "type": "text"
+        },
+        {
+          "name": "invited_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "invited_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "auth_users.id"
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "role",
+      "width": 252,
+      "label": "role",
+      "tag": "roles y permisos",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "name",
+          "type": "text",
+          "key": "pk"
+        },
+        {
+          "name": "description",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "user_role",
+      "width": 252,
+      "label": "user_role",
+      "tag": "roles y permisos",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "role_name",
+          "type": "text",
+          "key": "fk",
+          "references": "role.name"
+        },
+        {
+          "name": "area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "area.id"
+        },
+        {
+          "name": "granted_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "granted_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "revoked_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "revoked_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "grant_reason",
+          "type": "text"
+        },
+        {
+          "name": "revoke_reason",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "area",
+      "width": 276,
+      "label": "area",
+      "tag": "roles y permisos",
+      "row": 2,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "code",
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "type": "text"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "is_general",
+          "type": "boolean"
+        },
+        {
+          "name": "is_default_intake",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "capability",
+      "width": 240,
+      "label": "capability",
+      "tag": "roles y permisos",
+      "row": 3,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "code",
+          "type": "text",
+          "key": "pk"
+        },
+        {
+          "name": "description_es",
+          "type": "text"
+        },
+        {
+          "name": "sort_order",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "id": "capability_grant",
+      "width": 252,
+      "label": "capability_grant",
+      "tag": "roles y permisos",
+      "row": 4,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "capability_code",
+          "type": "text",
+          "key": "fk",
+          "references": "capability.code"
+        },
+        {
+          "name": "role_name",
+          "type": "text",
+          "key": "fk",
+          "references": "role.name"
+        },
+        {
+          "name": "area_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "area.id"
+        },
+        {
+          "name": "granted_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "granted_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "grant_reason",
+          "type": "text"
+        },
+        {
+          "name": "revoked_by",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "revoked_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "revoke_reason",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "audit_event",
+      "width": 252,
+      "label": "audit_event",
+      "tag": "auditoría y operación",
+      "row": 0,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "auth_users.id"
+        },
+        {
+          "name": "action",
+          "type": "text"
+        },
+        {
+          "name": "table_name",
+          "type": "text"
+        },
+        {
+          "name": "record_id",
+          "type": "uuid"
+        },
+        {
+          "name": "old_values",
+          "type": "jsonb"
+        },
+        {
+          "name": "new_values",
+          "type": "jsonb"
+        },
+        {
+          "name": "ip_address",
+          "type": "text"
+        },
+        {
+          "name": "user_agent",
+          "type": "text"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "seq",
+          "type": "bigint"
+        },
+        {
+          "name": "prev_hash",
+          "type": "text"
+        },
+        {
+          "name": "event_hash",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "authority_request",
+      "width": 276,
+      "label": "authority_request",
+      "tag": "auditoría y operación",
+      "row": 1,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "organization.id"
+        },
+        {
+          "name": "case_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "case.id"
+        },
+        {
+          "name": "authority_name",
+          "type": "text"
+        },
+        {
+          "name": "request_type",
+          "type": "text"
+        },
+        {
+          "name": "official_letter_ref",
+          "type": "text"
+        },
+        {
+          "name": "received_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "handled_by_user_id",
+          "type": "uuid",
+          "key": "fk",
+          "references": "user_profile.id"
+        },
+        {
+          "name": "response_summary",
+          "type": "text"
+        },
+        {
+          "name": "extract_delivered",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "app_config",
+      "width": 252,
+      "label": "app_config",
+      "tag": "auditoría y operación",
+      "row": 2,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "key",
+          "type": "text",
+          "key": "pk"
+        },
+        {
+          "name": "value",
+          "type": "text"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz"
+        }
+      ]
+    },
+    {
+      "id": "case",
+      "width": 264,
+      "label": "case",
+      "tag": "referencia",
+      "row": 0,
+      "col": 3,
+      "sublabel": "extracto; la tabla completa está en otro diagrama",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "key": "pk"
+        },
+        {
+          "name": "organization_id",
+          "type": "uuid"
+        },
+        {
+          "name": "case_number",
+          "type": "text"
+        },
+        {
+          "name": "parent_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "previous_case_id",
+          "type": "uuid"
+        },
+        {
+          "name": "titular_person_id",
+          "type": "uuid"
+        },
+        {
+          "name": "intake_state_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_channel_id",
+          "type": "int"
+        },
+        {
+          "name": "intake_window_type",
+          "type": "text"
+        },
+        {
+          "name": "intake_date",
+          "type": "date"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "user_profile_id",
+      "from": "user_profile",
+      "to": "auth_users",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "user_invitation_invited_by",
+      "from": "user_invitation",
+      "to": "user_profile",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "user_role_user_id",
+      "from": "user_role",
+      "to": "user_profile",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "label": "user_id"
+    },
+    {
+      "id": "user_role_role_name",
+      "from": "user_role",
+      "to": "role",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "user_role_area_id",
+      "from": "user_role",
+      "to": "area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "user_role_granted_by",
+      "from": "user_role",
+      "to": "user_profile",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true,
+      "label": "granted_by"
+    },
+    {
+      "id": "user_role_revoked_by",
+      "from": "user_role",
+      "to": "user_profile",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true,
+      "label": "revoked_by"
+    },
+    {
+      "id": "capability_grant_capability_code",
+      "from": "capability_grant",
+      "to": "capability",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "capability_grant_role_name",
+      "from": "capability_grant",
+      "to": "role",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "capability_grant_area_id",
+      "from": "capability_grant",
+      "to": "area",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    },
+    {
+      "id": "authority_request_case_id",
+      "from": "authority_request",
+      "to": "case",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "toOptional": true
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Aislamiento por organización",
+      "items": [
+        "Toda tabla de negocio lleva organization_id y RLS por fila.",
+        "user_profile cuelga de auth.users (Supabase Auth)."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Roles que se acumulan",
+      "items": [
+        "user_role guarda el rol y, si aplica, el área; se revoca sin borrar (revoked_at).",
+        "capability_grant concede una capacidad a un rol o a un área, nunca a ambos."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Auditoría append-only",
+      "items": [
+        "audit_event no admite UPDATE ni DELETE; encadena eventos con prev_hash y event_hash.",
+        "Solo director puede consultarla."
+      ]
+    }
+  ]
+}

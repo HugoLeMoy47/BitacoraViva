@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "diagram_type": "tree",
+  "meta": {
+    "title": "Bitácora Viva · Mapa del producto",
+    "subtitle": "Capacidades agrupadas por módulo. Cada una pertenece a un solo padre; las líneas muestran contención, no llamadas.",
+    "locale": "es",
+    "output": "docs/diagramas/producto.html",
+    "quality_profile": "showcase"
+  },
+  "layout": { "direction": "right" },
+  "nodes": [
+    { "id": "producto", "label": "Bitácora Viva", "sublabel": "Atención humanitaria con rastro y dignidad" },
+
+    { "id": "casos", "label": "Gestión de casos", "parent": "producto", "sublabel": "El núcleo" },
+    { "id": "persona", "label": "Ficha de persona", "parent": "casos", "sublabel": "Documentos y fechas flexibles" },
+    { "id": "folio", "label": "Folio y subfolio", "parent": "casos", "sublabel": "Infancias acompañadas" },
+    { "id": "bitacora", "label": "Bitácora por área", "parent": "casos", "sublabel": "Privada; compartir con motivo" },
+    { "id": "estatus", "label": "Estatus multieje", "parent": "casos", "sublabel": "Historizado" },
+    { "id": "familia", "label": "Familia y ficha social", "parent": "casos" },
+    { "id": "consentimiento", "label": "Consentimiento y ARCO", "parent": "casos", "sublabel": "Anonimizar, no borrar" },
+
+    { "id": "tareas", "label": "Seguidor de tareas", "parent": "producto", "sublabel": "Voluntariado y coordinación" },
+    { "id": "tablero", "label": "Tablero y pool", "parent": "tareas" },
+    { "id": "rutinas", "label": "Rutinas y turnos", "parent": "tareas", "sublabel": "Notas de turno" },
+    { "id": "evidencia", "label": "Evidencia fotográfica", "parent": "tareas", "sublabel": "Bucket privado" },
+    { "id": "reportes", "label": "Reportes y CSV", "parent": "tareas" },
+
+    { "id": "monitoreo", "label": "Monitoreo y evaluación", "parent": "producto" },
+    { "id": "indicadores", "label": "Indicadores agregados", "parent": "monitoreo", "sublabel": "Umbral de agregación n ≥ 5" },
+
+    { "id": "administracion", "label": "Administración", "parent": "producto", "sublabel": "Por organización" },
+    { "id": "equipo", "label": "Equipo e invitaciones", "parent": "administracion" },
+    { "id": "permisos", "label": "Roles y permisos", "parent": "administracion", "sublabel": "Cuadrícula con excepciones por área" },
+    { "id": "areas", "label": "Áreas administrables", "parent": "administracion" },
+    { "id": "diccionarios", "label": "Catálogos y diccionarios", "parent": "administracion" },
+    { "id": "identidad", "label": "Identidad de la organización", "parent": "administracion", "sublabel": "Logotipo y aviso de privacidad" },
+
+    { "id": "transversal", "label": "Seguridad transversal", "parent": "producto" },
+    { "id": "rls", "label": "RLS en toda tabla de negocio", "parent": "transversal" },
+    { "id": "auditoria", "label": "Auditoría encadenada", "parent": "transversal", "sublabel": "Append-only, 5 años" },
+
+    { "id": "erp", "label": "ERP de recursos", "parent": "producto", "sublabel": "Pospuesto, fuera del MVP" }
+  ]
+}

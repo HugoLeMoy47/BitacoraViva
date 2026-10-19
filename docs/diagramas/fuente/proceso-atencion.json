@@ -1,0 +1,177 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Bitácora Viva · Proceso de atención de un caso",
+    "locale": "es",
+    "output": "docs/diagramas/proceso-atencion.html",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "persona",
+      "label": "Persona atendida"
+    },
+    {
+      "id": "direccion",
+      "label": "Dirección (director)"
+    },
+    {
+      "id": "ingreso",
+      "label": "Ingreso (intake_officer)"
+    },
+    {
+      "id": "area",
+      "label": "Área de atención (caseworker)"
+    }
+  ],
+  "mainPath": [
+    "llega",
+    "consiente",
+    "abre",
+    "bitacora",
+    "comparte",
+    "bandeja"
+  ],
+  "nodes": [
+    {
+      "id": "llega",
+      "col": 0,
+      "lane": "persona",
+      "type": "external",
+      "label": "Llega",
+      "sublabel": "pide atención"
+    },
+    {
+      "id": "consiente",
+      "lane": "ingreso",
+      "col": 1,
+      "type": "security",
+      "label": "Aviso y consentimiento",
+      "sublabel": "sensible solo si es expreso"
+    },
+    {
+      "id": "abre",
+      "lane": "ingreso",
+      "col": 2,
+      "type": "backend",
+      "label": "Abrir caso",
+      "sublabel": "persona, folio y estatus inicial"
+    },
+    {
+      "id": "bitacora",
+      "lane": "area",
+      "col": 3,
+      "type": "database",
+      "label": "Bitácora",
+      "sublabel": "nace privada al área",
+      "tag": "inmutable"
+    },
+    {
+      "id": "comparte",
+      "lane": "area",
+      "col": 4,
+      "type": "security",
+      "label": "Compartir",
+      "sublabel": "con motivo obligatorio"
+    },
+    {
+      "id": "estatus",
+      "lane": "area",
+      "col": 5,
+      "type": "backend",
+      "label": "Cambiar estatus",
+      "sublabel": "cierra el vigente; egreso con motivo"
+    },
+    {
+      "id": "bandeja",
+      "lane": "direccion",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Bandeja directiva",
+      "sublabel": "dirección reconoce lo compartido"
+    },
+    {
+      "id": "arco",
+      "lane": "persona",
+      "col": 5,
+      "type": "external",
+      "label": "Pide derecho ARCO",
+      "sublabel": "acceso, rectificar, cancelar, oponerse"
+    },
+    {
+      "id": "resuelve",
+      "lane": "direccion",
+      "col": 5,
+      "type": "security",
+      "label": "Resolver ARCO",
+      "sublabel": "con motivo; cancelar anonimiza",
+      "tag": "solo director"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "llega",
+      "to": "consiente",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e2",
+      "from": "consiente",
+      "to": "abre",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e3",
+      "from": "abre",
+      "to": "bitacora",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e4",
+      "from": "bitacora",
+      "to": "comparte",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e5",
+      "from": "comparte",
+      "to": "bandeja",
+      "label": "si comparte",
+      "variant": "security"
+    },
+    {
+      "id": "e6",
+      "from": "comparte",
+      "to": "estatus",
+      "label": "continúa"
+    },
+    {
+      "id": "e7",
+      "from": "arco",
+      "to": "resuelve",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Reglas que el proceso hace cumplir",
+      "items": [
+        "La bitácora nace area_private y no se edita ni se borra.",
+        "Compartir sin motivo no existe: la base lo rechaza.",
+        "El estatus no se sobrescribe; cada cambio guarda motivo y vigencia."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Quién interviene",
+      "items": [
+        "Ingreso abre el expediente; el área lo atiende.",
+        "Dirección reconoce lo compartido y resuelve ARCO.",
+        "La persona atendida nunca opera el sistema (flujo asistido)."
+      ]
+    }
+  ]
+}

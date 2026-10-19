@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Bitácora Viva · Arquitectura",
+    "locale": "es",
+    "output": "docs/diagramas/arquitectura.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "users", "type": "external", "label": "Personas usuarias", "sublabel": "Navegador, móvil o escritorio", "pos": [40, 200], "size": [130, 64] },
+    { "id": "cf", "type": "cloud", "label": "Cloudflare Workers", "sublabel": "Solo activos estáticos", "pos": [240, 200], "size": [150, 64], "tag": "sin código de Worker" },
+    { "id": "spa", "type": "frontend", "label": "SPA React + Vite", "sublabel": "supabase-js · clave anon", "pos": [500, 182], "size": [160, 100], "tag": "no decide permisos" },
+    { "id": "auth", "type": "security", "label": "Supabase Auth", "sublabel": "Sesión y JWT", "pos": [800, 40], "size": [150, 64], "tag": "MFA director: D-13" },
+    { "id": "pg", "type": "database", "label": "Postgres + RLS", "sublabel": "Tablas, fn_* y disparadores", "pos": [800, 200], "size": [150, 64], "tag": "la seguridad vive aquí" },
+    { "id": "audit", "type": "database", "label": "audit_event", "sublabel": "Append-only, hash encadenado", "pos": [1050, 200], "size": [150, 64] },
+    { "id": "edge", "type": "backend", "label": "Función invite-user", "sublabel": "Deno · service_role solo aquí", "pos": [800, 360], "size": [150, 64] },
+    { "id": "storage", "type": "database", "label": "Storage privado", "sublabel": "task-evidence · org-assets", "pos": [1050, 360], "size": [150, 64] },
+    { "id": "actions", "type": "cloud", "label": "GitHub Actions", "sublabel": "CI y despliegue", "pos": [240, 360], "size": [150, 64], "tag": "entorno production" },
+    { "id": "po", "type": "external", "label": "Product Owner", "sublabel": "Aprueba el despliegue", "pos": [40, 360], "size": [130, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Proyecto Supabase (RLS por organización)", "wraps": ["auth", "pg", "audit", "edge", "storage"] }
+  ],
+  "connections": [
+    { "id": "users-cf", "from": "users", "to": "cf", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "cf-spa", "from": "cf", "to": "spa", "label": "sirve dist/" },
+    { "id": "po-actions", "from": "po", "to": "actions", "label": "aprueba", "variant": "security" },
+    { "id": "actions-cf", "from": "actions", "to": "cf", "label": "wrangler deploy", "variant": "dashed" },
+    { "id": "spa-auth", "from": "spa", "to": "auth", "label": "inicia sesión", "variant": "security", "fromSide": "right", "toSide": "left" },
+    { "id": "auth-pg", "from": "auth", "to": "pg", "label": "auth.uid() en RLS", "variant": "security" },
+    { "id": "spa-pg", "from": "spa", "to": "pg", "label": "lee bajo RLS · llama fn_*", "variant": "emphasis" },
+    { "id": "pg-audit", "from": "pg", "to": "audit", "label": "disparador" },
+    { "id": "spa-edge", "from": "spa", "to": "edge", "label": "invitar persona", "fromSide": "right", "toSide": "left" },
+    { "id": "edge-pg", "from": "edge", "to": "pg", "label": "fn_prepare / fn_complete", "variant": "security" },
+    { "id": "spa-storage", "from": "spa", "to": "storage", "label": "fotos y logotipo (URL firmada)", "variant": "dashed", "fromSide": "bottom", "toSide": "bottom", "via": [[580, 480], [1125, 480]] }
+  ],
+  "cards": [
+    { "dot": "rose", "title": "Seguridad", "items": ["service_role nunca llega al navegador ni al repositorio.", "La interfaz solo llama funciones; ningún rol de aplicación escribe directo ni borra.", "Toda escritura deja un evento de auditoría por disparador."] },
+    { "dot": "cyan", "title": "Sin servidor propio", "items": ["El navegador habla directo con Supabase (ADR-0003).", "Render quedó previsto y sin uso (ADR-0006).", "Una sola pieza de servidor: invite-user (ADR-0010)."] },
+    { "dot": "emerald", "title": "Despliegue", "items": ["El CI corre verificación estática, pruebas de RLS y auditoría de interfaz.", "Publicar el Worker espera la aprobación del Product Owner.", "Las migraciones se aplican con db push y confirmación."] }
+  ]
+}
