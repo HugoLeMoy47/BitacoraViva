@@ -112,7 +112,9 @@ export const CaseTasksPanel: React.FC<CaseTasksPanelProps> = ({ caseId, caseNumb
           type="button"
           onClick={openCreate}
           disabled={kinds.length === 0}
-          aria-describedby={kinds.length === 0 ? `${uid}-sin-tipos` : undefined}
+          // Mientras carga el botón está ocupado (no es una prohibición); si la carga falla o no hay tipos, el motivo se dice
+          aria-busy={tasks === null && !failed}
+          aria-describedby={kinds.length === 0 ? (failed ? `${uid}-fallo` : tasks === null ? undefined : `${uid}-sin-tipos`) : undefined}
           className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-turquesa px-4 text-sm font-semibold text-carbon hover:bg-turquesa-hover disabled:opacity-50"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
@@ -122,7 +124,7 @@ export const CaseTasksPanel: React.FC<CaseTasksPanelProps> = ({ caseId, caseNumb
       {tasks !== null && kinds.length === 0 && <p id={`${uid}-sin-tipos`} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{t('tasks.case.no_kinds')}</p>}
 
       {failed ? (
-        <p className="rounded-lg border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-600">{t('tasks.case.load_failed')}</p>
+        <p id={`${uid}-fallo`} className="rounded-lg border border-dashed border-gray-300 px-3 py-6 text-center text-sm text-gray-600">{t('tasks.case.load_failed')}</p>
       ) : tasks === null ? (
         <p className="py-6 text-center text-sm text-gray-600">{t('session.loading')}</p>
       ) : tasks.length === 0 ? (
