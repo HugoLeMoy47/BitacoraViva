@@ -718,6 +718,13 @@ export const api = {
   setUserActive: (userId: string, active: boolean, reason?: string) =>
     rpc('fn_set_user_active', { p_user_id: userId, p_active: active, p_reason: reason?.trim() || null }),
 
+  // Áreas (E17 fase 3): con el permiso de administrar áreas; la base valida nombre, marcas y motivo. Nunca se borran.
+  createArea: (name: string) => rpc<string>('fn_create_area', { p_name: name }),
+  renameArea: (areaId: string, name: string) => rpc('fn_rename_area', { p_area_id: areaId, p_name: name }),
+  setAreaActive: (areaId: string, active: boolean, reason?: string) =>
+    rpc('fn_set_area_active', { p_area_id: areaId, p_active: active, p_reason: reason?.trim() || null }),
+  setDefaultArea: (kind: 'general' | 'default_intake', areaId: string) => rpc('fn_set_default_area', { p_kind: kind, p_area_id: areaId }),
+
   // Permisos (E16 fase B): solo la dirección cambia permisos; la base valida, exige motivo al revocar y deja auditoría
   grantCapability: (capability: string, roleName: string | null, areaId: string | null, reason?: string) =>
     rpc<string>('fn_grant_capability', { p_capability_code: capability, p_role_name: roleName, p_area_id: areaId, p_reason: reason?.trim() || null }),

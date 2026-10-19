@@ -2,37 +2,9 @@ import React, { useDeferredValue, useMemo, useState } from 'react';
 import { FileText } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { formatDate, formatDateTime } from '../lib/format';
-import { Area, AuditEvent, AuthorityRequest } from '../types/database';
+import { AuditEvent, AuthorityRequest } from '../types/database';
 
 // Pantallas de administración y gobierno (sólo Dirección; la base impone el acceso con RLS).
-
-export const AreasView: React.FC<{ areas: Area[] }> = ({ areas }) => (
-  <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-    <div className="border-b border-gray-200 px-5 py-4">
-      <h2 className="text-base font-bold text-carbon">{t('dashboard.areas_title')}</h2>
-    </div>
-    <ul className="divide-y divide-gray-100">
-      {areas.map((area) => (
-        <li key={area.id} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50">
-          <div className="flex min-w-0 items-center gap-3">
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-claro text-xs font-bold text-turquesa-dark"
-              aria-hidden="true"
-            >
-              {area.name.substring(0, 2).toUpperCase()}
-            </span>
-            <div className="min-w-0">
-              <h3 className="truncate text-sm font-semibold text-carbon">{area.name}</h3>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-            {t('dashboard.active_badge')}
-          </span>
-        </li>
-      ))}
-    </ul>
-  </section>
-);
 
 const AUDIT_PAGE = 50;
 

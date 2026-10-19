@@ -7,8 +7,6 @@
 // Cuatro roles de casos y dos que sólo operan en tareas (ADR-0007). Una persona puede tener varios.
 export type RoleName = 'viewer' | 'caseworker' | 'intake_officer' | 'director' | 'task_manager' | 'volunteer';
 
-export type AreaCode = 'legal' | 'psicologia' | 'trabajo_social' | 'medica' | 'coordinacion';
-
 export type AuditAction = 
   | 'INSERT' 
   | 'UPDATE' 
@@ -191,9 +189,14 @@ export interface UserRole {
 export interface Area {
   id: string;
   organization_id: string;
-  code: AreaCode;
+  /** Código interno estable (no cambia al renombrar) */
+  code: string;
   name: string;
   active: boolean;
+  /** Área general: donde escribe en la bitácora quien no tiene área (una por organización) */
+  is_general: boolean;
+  /** La que se propone al abrir un expediente (una por organización) */
+  is_default_intake: boolean;
   created_at: string;
 }
 

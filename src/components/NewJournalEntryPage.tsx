@@ -48,12 +48,12 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
   const serviceLines = catalogItems.filter((i) => i.catalog === 'service_line' && i.is_active);
   const { user } = useSession();
   // Escribir a nombre de un área exige ser de esa área; Dirección, de cualquiera. Sin área asignada
-  // (ingreso) solo coordinación. La base lo exige igual; aquí solo se ofrece lo que se puede hacer.
+  // (ingreso) solo el área general. La base lo exige igual; aquí solo se ofrece lo que se puede hacer.
   const areas = user?.roles.includes('director')
     ? allAreas
     : user && user.areaIds.length > 0
       ? allAreas.filter((a) => user.areaIds.includes(a.id))
-      : allAreas.filter((a) => a.code === 'coordinacion');
+      : allAreas.filter((a) => a.is_general);
 
   const saved = drafts.get(caseData.id);
   const [step, setStep] = useState<'compose' | 'preview'>('compose');
@@ -61,7 +61,7 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
   const [areaId, setAreaId] = useState<string>(
     saved?.areaId ||
       (assignedAreaId && areas.some((a) => a.id === assignedAreaId) ? assignedAreaId : '') ||
-      areas.find((a) => a.code === 'trabajo_social')?.id ||
+      areas.find((a) => a.is_default_intake)?.id ||
       areas[0]?.id ||
       ''
   );

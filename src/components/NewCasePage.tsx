@@ -236,7 +236,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       entry_route_id: routeCode ? Number(routeCode) : null,
       entry_date_str: null,
       dates,
-      assigned_area_id: areas.find((a) => a.code === 'trabajo_social')?.id ?? null,
+      // El área que se propone al abrir un expediente la elige la dirección (antes era Trabajo Social fijo)
+      assigned_area_id: areas.find((a) => a.is_default_intake)?.id ?? null,
       vulnerability_codes: sensitiveGranted ? selectedVulnerabilities : [],
       consents: buildConsents(),
       education_level_item_id: educationItemId || null,

@@ -3558,7 +3558,7 @@ begin
         hasc text := $q$select public.has_capability(%L)::text$q$;
         c text;
         gid text;
-        u_area text := $q$with u as (update public.area set name = name where id = %L::uuid returning 1) select count(*)::text from u$q$;
+        u_area text := $q$select count(*)::text from (select public.fn_rename_area(%1$L::uuid, (select name from public.area where id = %1$L::uuid))) x$q$;
         u_axis text := $q$with u as (update public.status_axis set sort_order = sort_order where id = 'aaaaaaaa-2000-0000-0000-000000000005' returning 1) select count(*)::text from u$q$;
         u_val text := $q$with u as (update public.status_value set sort_order = sort_order where id = 'aaaaaaaa-2100-0000-0000-000000000001' returning 1) select count(*)::text from u$q$;
         u_cat text := $q$with u as (update public.task_category set label_es = label_es where archived_at is null returning 1) select (count(*) > 0)::text from u$q$;
@@ -3576,7 +3576,7 @@ begin
         end loop;
 
         -- ----- Antes de delegar, ingreso no administra nada
-        perform pg_temp.expect('D-24 t2: ingreso no cambia áreas', INT, 'authenticated', format(u_area, AR_TS), 'ERR|0');
+        perform pg_temp.expect('D-24 t2: ingreso no cambia áreas', INT, 'authenticated', format(u_area, AR_TS), 'ERR:BV359');
         perform pg_temp.expect('D-24 t2: ingreso no cambia ejes de estatus', INT, 'authenticated', u_axis, 'ERR|0');
         perform pg_temp.expect('D-24 t2: ingreso no cambia valores de estatus', INT, 'authenticated', u_val, 'ERR|0');
         perform pg_temp.expect('D-24 t2: ingreso no cambia categorías de tareas', INT, 'authenticated', u_cat, 'ERR|false');
@@ -3601,7 +3601,7 @@ begin
         perform pg_temp.expect('D-24 t2: ahora ingreso cambia tipos de tarea de expediente', INT, 'authenticated', u_kind, 'true');
         perform pg_temp.expect('D-24 t2: ahora ingreso crea una categoría de tareas', INT, 'authenticated', i_cat, '1');
         perform pg_temp.expect('D-24 t2: ahora ingreso cambia los ajustes de operación', INT, 'authenticated', setting, '1');
-        perform pg_temp.expect('D-24 t2: la delegación no cruza organizaciones (área de B)', INT, 'authenticated', format(u_area, AR_B), '0');
+        perform pg_temp.expect('D-24 t2: la delegación no cruza organizaciones (área de B)', INT, 'authenticated', format(u_area, AR_B), 'ERR:BV362');
         perform pg_temp.expect('D-24 t2: delegar administración no da gestión del equipo', INT, 'authenticated', format(hasc, 'manage_team'), 'false');
         perform pg_temp.expect('D-24 t2: ni deja cambiar permisos → BV353', INT, 'authenticated',
             format(grantc, 'manage_areas', format('%L', 'viewer'), 'null', null), 'ERR:BV353');
@@ -3609,7 +3609,7 @@ begin
         -- ----- Revocar devuelve la restricción
         gid := (select id::text from public.capability_grant where capability_code = 'manage_areas' and role_name = 'intake_officer' and revoked_at is null and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'::uuid);
         perform pg_temp.expect('D-24 t2 control positivo: se revoca con motivo', DIR, 'authenticated', format(revokec, gid, 'Prueba terminada'), '1');
-        perform pg_temp.expect('D-24 t2: ingreso vuelve a no cambiar áreas', INT, 'authenticated', format(u_area, AR_TS), 'ERR|0');
+        perform pg_temp.expect('D-24 t2: ingreso vuelve a no cambiar áreas', INT, 'authenticated', format(u_area, AR_TS), 'ERR:BV359');
         perform pg_temp.expect('D-24 t2: pero conserva lo que no se revocó (estatus)', INT, 'authenticated', u_val, '1');
 
         -- ----- Delegar a un ÁREA: Trabajo Social recibe los catálogos de tareas
@@ -3629,8 +3629,8 @@ begin
 
         -- ----- Quien nunca recibió nada sigue sin poder
         perform pg_temp.expect('D-24 t2: el rol de solo lectura no cambia estatus', VW, 'authenticated', u_val, 'ERR|0');
-        perform pg_temp.expect('D-24 t2: sin rol no se cambia nada', NR, 'authenticated', format(u_area, AR_TS), 'ERR|0');
-        perform pg_temp.expect('D-24 t2: anon no cambia áreas', null, 'anon', format(u_area, AR_TS), 'ERR|0');
+        perform pg_temp.expect('D-24 t2: sin rol no se cambia nada', NR, 'authenticated', format(u_area, AR_TS), 'ERR:BV359');
+        perform pg_temp.expect('D-24 t2: anon no cambia áreas', null, 'anon', format(u_area, AR_TS), 'ERR');
     end;
 
     -- ============================================================================================
@@ -3876,6 +3876,116 @@ begin
         update public.user_profile set active = false where id = INT::uuid;
         perform pg_temp.expect('E17: la cuenta desactivada ya no tiene capacidades', DIR, 'authenticated', format(capcount, INT), '0');
         update public.user_profile set active = true where id = INT::uuid;
+    end;
+
+    -- ============================================================================================
+    -- ===== E17 fase 3: áreas administrables (migración 20261101000001)
+    -- ===== Crear, renombrar, desactivar y reactivar áreas (nunca borrar) y elegir cuál es el «área general» (donde escribe quien
+    -- ===== no tiene área) y cuál se propone al abrir un expediente. Se quita el límite de cinco códigos fijos. Todo por funciones,
+    -- ===== con la capacidad de administrar áreas.
+    -- ============================================================================================
+    declare
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        AR_LG constant text := 'aaaaaaaa-1000-0000-0000-000000000002';
+        AR_B  constant text := 'bbbbbbbb-1000-0000-0000-000000000001';
+        mk text := $q$select count(*)::text from (select public.fn_create_area(%L)) x$q$;
+        ren text := $q$select count(*)::text from (select public.fn_rename_area(%L::uuid, %L)) x$q$;
+        act text := $q$select count(*)::text from (select public.fn_set_area_active(%L::uuid, %L::boolean, %L)) x$q$;
+        dflt text := $q$select count(*)::text from (select public.fn_set_default_area(%L, %L::uuid)) x$q$;
+        wj text := $q$select count(*)::text from (select public.fn_create_journal_entry(%L::uuid, 'note', 'x', now(), false, %L::uuid)) x$q$;
+        PSI text;
+        COORD text;
+    begin
+        -- ----- Marcas por omisión (las áreas con los códigos históricos nacen marcadas)
+        perform pg_temp.expect('E17f3: Trabajo Social es el área por omisión al abrir un expediente', DIR, 'authenticated',
+            format($q$select is_default_intake::text from public.area where id = %L::uuid$q$, AR_TS), 'true');
+        perform pg_temp.expect('E17f3: Jurídico no lo es', DIR, 'authenticated',
+            format($q$select is_default_intake::text from public.area where id = %L::uuid$q$, AR_LG), 'false');
+        perform pg_temp.expect('E17f3: todo el personal con rol puede leer las marcas (las necesita la interfaz)', CW, 'authenticated',
+            format($q$select count(*)::text from public.area where id = %L::uuid and is_default_intake$q$, AR_TS), '1');
+
+        -- ----- Quién puede administrar áreas
+        perform pg_temp.expect('E17f3: atención no crea áreas → BV359', CW, 'authenticated', format(mk, 'Psicología'), 'ERR:BV359');
+        perform pg_temp.expect('E17f3: ingreso no crea áreas → BV359', INT, 'authenticated', format(mk, 'Psicología'), 'ERR:BV359');
+        perform pg_temp.expect('E17f3: anon no crea áreas', null, 'anon', format(mk, 'Psicología'), 'ERR');
+        perform pg_temp.expect('E17f3: atención no renombra → BV359', CW, 'authenticated', format(ren, AR_TS, 'Otro'), 'ERR:BV359');
+        perform pg_temp.expect('E17f3: atención no desactiva → BV359', CW, 'authenticated', format(act, AR_LG, 'false', 'x'), 'ERR:BV359');
+        perform pg_temp.expect('E17f3: atención no cambia las marcas → BV359', CW, 'authenticated', format(dflt, 'default_intake', AR_LG), 'ERR:BV359');
+
+        -- ----- Crear
+        perform pg_temp.expect('E17f3: un nombre vacío → BV360', DIR, 'authenticated', format(mk, '   '), 'ERR:BV360');
+        perform pg_temp.expect('E17f3: un nombre de más de 80 caracteres → BV360', DIR, 'authenticated', format(mk, repeat('x', 81)), 'ERR:BV360');
+        perform pg_temp.expect('E17f3: un nombre que ya existe → BV361', DIR, 'authenticated', format(mk, 'ts a'), 'ERR:BV361');
+        perform pg_temp.expect('E17f3 control positivo: la dirección crea un área', DIR, 'authenticated', format(mk, '  Psicología '), '1');
+        PSI := (select id::text from public.area where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'::uuid and name = 'Psicología');
+        perform pg_temp.expect('E17f3: nace activa, sin marcas, con un código interno sin acentos ni espacios', DIR, 'authenticated',
+            format($q$select (code = 'psicologia' and active and not is_general and not is_default_intake)::text from public.area where id = %L::uuid$q$, PSI), 'true');
+        perform pg_temp.expect('E17f3: otra con el mismo código interno recibe un sufijo', DIR, 'authenticated', format(mk, 'Psicologia'), '1');
+        perform pg_temp.expect('E17f3: y su código no choca', DIR, 'authenticated',
+            $q$select count(*)::text from public.area where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and code = 'psicologia_2'$q$, '1');
+        perform pg_temp.expect('E17f3: la dirección de otra organización puede usar el mismo nombre', DIRB2, 'authenticated', format(mk, 'Psicología'), '1');
+        perform pg_temp.expect('E17f3: y cae en su organización', null, null,
+            $q$select count(*)::text from public.area where organization_id = 'bbbbbbbb-0000-0000-0000-00000000000b' and name = 'Psicología'$q$, '1');
+
+        -- ----- Renombrar
+        perform pg_temp.expect('E17f3: renombrar a un nombre que ya existe → BV361', DIR, 'authenticated', format(ren, PSI, 'Legal A'), 'ERR:BV361');
+        perform pg_temp.expect('E17f3: renombrar a un nombre vacío → BV360', DIR, 'authenticated', format(ren, PSI, ' '), 'ERR:BV360');
+        perform pg_temp.expect('E17f3: el área de otra organización → BV362', DIR, 'authenticated', format(ren, AR_B, 'Mía'), 'ERR:BV362');
+        perform pg_temp.expect('E17f3: un área que no existe → BV362', DIR, 'authenticated', format(ren, '00000000-0000-0000-0000-0000000000cc', 'X'), 'ERR:BV362');
+        perform pg_temp.expect('E17f3 control positivo: se renombra', DIR, 'authenticated', format(ren, PSI, 'Psicología clínica'), '1');
+        perform pg_temp.expect('E17f3: el código interno no cambia', DIR, 'authenticated',
+            format($q$select code from public.area where id = %L::uuid$q$, PSI), 'psicologia');
+        perform pg_temp.expect('E17f3: renombrar al mismo nombre (otras mayúsculas) no choca consigo misma', DIR, 'authenticated', format(ren, PSI, 'PSICOLOGÍA CLÍNICA'), '1');
+
+        -- ----- Desactivar y reactivar (nunca borrar)
+        perform pg_temp.expect('E17f3: desactivar sin motivo → BV365', DIR, 'authenticated', format(act, PSI, 'false', null), 'ERR:BV365');
+        perform pg_temp.expect('E17f3: no se desactiva el área por omisión al abrir un expediente → BV363', DIR, 'authenticated', format(act, AR_TS, 'false', 'x'), 'ERR:BV363');
+        perform pg_temp.expect('E17f3 control positivo: se desactiva con motivo', DIR, 'authenticated', format(act, PSI, 'false', 'Ya no se usa'), '1');
+        perform pg_temp.expect('E17f3: queda inactiva, no borrada', DIR, 'authenticated', format($q$select (not active)::text from public.area where id = %L::uuid$q$, PSI), 'true');
+        perform pg_temp.expect('E17f3: el motivo queda en la auditoría', null, null,
+            format($q$select count(*)::text from public.audit_event where table_name = 'area' and record_id = %L::uuid and new_values ->> 'reason' = 'Ya no se usa'$q$, PSI), '1');
+        perform pg_temp.expect('E17f3: a un área inactiva no se le dan roles nuevos → BV344', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_grant_role(%L::uuid, 'caseworker', %L::uuid, null)) x$q$, NR, PSI), 'ERR:BV344');
+        perform pg_temp.expect('E17f3: un área inactiva no puede ser la de apertura → BV364', DIR, 'authenticated', format(dflt, 'default_intake', PSI), 'ERR:BV364');
+        perform pg_temp.expect('E17f3 control positivo: se reactiva (el motivo es opcional)', DIR, 'authenticated', format(act, PSI, 'true', null), '1');
+
+        -- ----- Elegir el área por omisión y el área general (solo una de cada una por organización)
+        perform pg_temp.expect('E17f3: un tipo de marca que no existe → BV362', DIR, 'authenticated', format(dflt, 'otra', AR_LG), 'ERR:BV362');
+        perform pg_temp.expect('E17f3: el área de otra organización → BV362', DIR, 'authenticated', format(dflt, 'default_intake', AR_B), 'ERR:BV362');
+        perform pg_temp.expect('E17f3 control positivo: Jurídico pasa a ser el área por omisión', DIR, 'authenticated', format(dflt, 'default_intake', AR_LG), '1');
+        perform pg_temp.expect('E17f3: y Trabajo Social deja de serlo (solo hay una)', DIR, 'authenticated',
+            $q$select string_agg(code, ',' order by code) from public.area where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a' and is_default_intake$q$, 'legal');
+        perform pg_temp.expect('E17f3: la otra organización conserva la suya', DIRB2, 'authenticated',
+            $q$select count(*)::text from public.area where organization_id = 'bbbbbbbb-0000-0000-0000-00000000000b' and is_default_intake$q$, '1');
+        perform pg_temp.expect('E17f3: ahora sí se puede desactivar Trabajo Social (ya no es la de apertura)', DIR, 'authenticated', format(act, AR_TS, 'false', 'Prueba'), '1');
+        perform pg_temp.expect('E17f3: y reactivar', DIR, 'authenticated', format(act, AR_TS, 'true', null), '1');
+        perform pg_temp.expect('E17f3: dos marcas «por omisión» en la misma organización no caben (índice único)', null, null,
+            format($q$with u as (update public.area set is_default_intake = true where id = %L::uuid returning 1) select count(*)::text from u$q$, AR_TS), 'ERR:23505');
+
+        -- ----- El área general: donde escribe quien no tiene área (antes, el código «coordinacion» fijo)
+        perform pg_temp.expect('E17f3: un área con el código histórico «coordinacion» nace como área general si no hay otra', null, null,
+            $q$with i as (insert into public.area (organization_id, code, name) values ('aaaaaaaa-0000-0000-0000-00000000000a', 'coordinacion', 'Coordinación A') returning is_general) select is_general::text from i$q$, 'true');
+        COORD := (select id::text from public.area where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'::uuid and code = 'coordinacion');
+        perform pg_temp.expect('E17f3: ingreso (sin área) escribe a nombre del área general', INT, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', COORD), '1');
+        perform pg_temp.expect('E17f3: pero no a nombre de otra área → BV118', INT, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_TS), 'ERR:BV118');
+        perform pg_temp.expect('E17f3 control positivo: la dirección elige a Jurídico como área general', DIR, 'authenticated', format(dflt, 'general', AR_LG), '1');
+        perform pg_temp.expect('E17f3: ahora ingreso escribe a nombre de Jurídico', INT, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', AR_LG), '1');
+        perform pg_temp.expect('E17f3: y ya no a nombre de la anterior → BV118', INT, 'authenticated',
+            format(wj, 'aaaaaaaa-5000-0000-0000-000000000001', COORD), 'ERR:BV118');
+        perform pg_temp.expect('E17f3: no se desactiva el área general → BV363', DIR, 'authenticated', format(act, AR_LG, 'false', 'x'), 'ERR:BV363');
+
+        -- ----- Ya no se escribe directo, ni se borra
+        perform pg_temp.expect('E17f3: la dirección no inserta áreas por la API directa', DIR, 'authenticated',
+            $q$with i as (insert into public.area (organization_id, code, name) values ('aaaaaaaa-0000-0000-0000-00000000000a', 'directa', 'Directa') returning 1) select count(*)::text from i$q$, 'ERR');
+        perform pg_temp.expect('E17f3: ni las cambia', DIR, 'authenticated',
+            format($q$with u as (update public.area set name = 'Directa' where id = %L::uuid returning 1) select count(*)::text from u$q$, AR_TS), 'ERR|0');
+        perform pg_temp.expect('E17f3: ni las borra', DIR, 'authenticated',
+            format($q$with d as (delete from public.area where id = %L::uuid returning 1) select count(*)::text from d$q$, AR_TS), 'ERR');
+        perform pg_temp.expect('E17f3: el código interno ya no está limitado a cinco valores, pero sí tiene forma válida', null, null,
+            $q$with i as (insert into public.area (organization_id, code, name) values ('aaaaaaaa-0000-0000-0000-00000000000a', 'Código Malo', 'x') returning 1) select count(*)::text from i$q$, 'ERR:23514');
     end;
 
     -- ============================================================================================

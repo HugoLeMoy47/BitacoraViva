@@ -34,7 +34,8 @@ import { LoginView } from './components/LoginView';
 import { WelcomePage, isWelcomeUrl } from './components/WelcomePage';
 import { IndicatorsView } from './components/IndicatorsView';
 import { OperationsDashboard } from './components/OperationsDashboard';
-import { AreasView, AuditView, AuthorityView } from './components/AdminViews';
+import { AuditView, AuthorityView } from './components/AdminViews';
+import { AreasView } from './components/AreasView';
 import { ConfigurationView } from './components/ConfigurationView';
 import { TasksView } from './components/TasksView';
 import { AboutView } from './components/AboutView';
@@ -248,7 +249,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const caseNumberOf = (id: string) => casesList.find((c) => c.id === id)?.case_number ?? null;
 
   return (
-    <CatalogProvider value={{ areas: data.areas, statusAxes: data.statusAxes, statusValues: data.statusValues, documentTypes: data.documentTypes, geoStates: data.geoStates, intakeChannels: data.intakeChannels, entryRoutes: data.entryRoutes, familyTypes: data.familyTypes, familyUnits: data.familyUnits, catalogItems: data.catalogItems, ageBands: data.ageBands, socialQuestions: data.socialQuestions, organizationName: organization?.legal_name ?? '', organizationInfo: { responsibleName: organization?.responsible_name ?? '', responsibleAddress: organization?.responsible_address ?? '', arcoContact: organization?.arco_contact ?? '' }, userNames: data.userNames }}>
+    <CatalogProvider value={{ areas: data.areas.filter((a) => a.active), statusAxes: data.statusAxes, statusValues: data.statusValues, documentTypes: data.documentTypes, geoStates: data.geoStates, intakeChannels: data.intakeChannels, entryRoutes: data.entryRoutes, familyTypes: data.familyTypes, familyUnits: data.familyUnits, catalogItems: data.catalogItems, ageBands: data.ageBands, socialQuestions: data.socialQuestions, organizationName: organization?.legal_name ?? '', organizationInfo: { responsibleName: organization?.responsible_name ?? '', responsibleAddress: organization?.responsible_address ?? '', arcoContact: organization?.arco_contact ?? '' }, userNames: data.userNames }}>
       {pending > 0 && (
         <div role="status" className="fixed left-1/2 top-16 z-[55] -translate-x-1/2 rounded-full bg-carbon px-4 py-1.5 text-sm font-semibold text-white shadow-lg">
           {t('toast.saving')}
@@ -303,7 +304,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
 
         {current === 'tasks' && <TasksView user={currentUser} section={route.id === 'tasks' ? route.param : null} sub={route.id === 'tasks' ? route.sub : null} query={route.id === 'tasks' ? route.query : ''} />}
 
-        {current === 'areas' && <AreasView areas={data.areas} />}
+        {current === 'areas' && <AreasView areas={data.areas} onChanged={async () => { await reload(); }} />}
         {current === 'dictionaries' && <DictionariesView onChanged={async () => { await reload(); }} />}
         {current === 'team' && <TeamView currentUserId={currentUser.profile.id} canEditPermissions={isDirector} />}
         {current === 'audit' && <AuditView events={data.auditEvents} userNames={data.userNames} />}

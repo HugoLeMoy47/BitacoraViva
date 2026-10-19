@@ -493,6 +493,23 @@ try {
         record(role.key, vp.name, '(bienvenida: elegir contraseña)', await welcome.evaluate(`(${pageAudit})(${JSON.stringify({ touch: vp.touch, mobile: vp.width < 768 })})`));
         await welcome.close();
 
+        // Áreas (E17 fase 3): el formulario de crear y el panel de una área
+        await page.evaluate(() => { location.hash = '#/areas'; });
+        await page.waitForTimeout(1200);
+        const createArea = page.getByRole('button', { name: 'Crear un área', exact: true });
+        if (await createArea.count()) {
+          await createArea.click();
+          await page.waitForTimeout(400);
+          record(role.key, vp.name, 'areas/crear formulario', await auditNow());
+          await createArea.click();
+        }
+        const areaButton = page.locator('main table tbody tr button:visible, main ul li button:visible').first();
+        if (await areaButton.count()) {
+          await areaButton.click();
+          await page.waitForTimeout(600);
+          record(role.key, vp.name, 'areas/panel del área', await auditNow());
+        }
+
         // Diccionarios (E14): cada pestaña
         await page.evaluate(() => { location.hash = '#/diccionarios'; });
         await page.waitForTimeout(1200);
