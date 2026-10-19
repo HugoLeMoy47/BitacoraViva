@@ -3724,7 +3724,10 @@ begin
         inv2 text;
         gid text;
         i int;
+        inv_before int;
     begin
+        -- La demo puede tener invitaciones reales: las pruebas se comparan contra lo que ya había
+        inv_before := (select count(*) from public.user_invitation);
         -- ----- Quién puede invitar
         perform pg_temp.expect('E16C: atención no invita → BV346', CW, 'authenticated', format(prep, 'nueva@tst-a.invalid', 'Nueva Persona'), 'ERR:BV346');
         perform pg_temp.expect('E16C: el rol de solo lectura no invita → BV346', VW, 'authenticated', format(prep, 'nueva@tst-a.invalid', 'Nueva Persona'), 'ERR:BV346');
@@ -3739,7 +3742,7 @@ begin
         perform pg_temp.expect('E16C: un correo que ya tiene cuenta en la organización → BV356', DIR, 'authenticated', format(prep, 'cw@tst-a.invalid', 'Otra'), 'ERR:BV356');
         perform pg_temp.expect('E16C: ni con otras mayúsculas → BV356', DIR, 'authenticated', format(prep, 'CW@Tst-A.invalid', 'Otra'), 'ERR:BV356');
         perform pg_temp.expect('E16C: un correo de otra organización responde igual (no revela de quién es) → BV356', DIR, 'authenticated', format(prep, 'dir@tst-b.invalid', 'Otra'), 'ERR:BV356');
-        perform pg_temp.expect('E16C: nada de lo rechazado dejó invitaciones', null, null, 'select count(*)::text from public.user_invitation', '0');
+        perform pg_temp.expect('E16C: nada de lo rechazado dejó invitaciones', null, null, format('select (count(*) = %s)::text from public.user_invitation', inv_before), 'true');
 
         -- ----- Invitar (control positivo); el correo se guarda en minúsculas y la organización sale de la sesión
         perform pg_temp.expect('E16C control positivo: la dirección prepara una invitación', DIR, 'authenticated',
@@ -3817,6 +3820,62 @@ begin
         perform pg_temp.expect('E16C: el tope es por persona: otra dirección sigue pudiendo', DIR, 'authenticated', format(prep_resend, 'otra.persona@tst-a.invalid', 'Otra Persona'), 'false');
         update public.user_invitation set invited_at = now() - interval '2 hours' where invited_by = DIRA2::uuid;
         perform pg_temp.expect('E16C: con las invitaciones de hace dos horas, vuelve a poder', DIRA2, 'authenticated', format(prep_resend, 'tope22@tst-a.invalid', 'Persona 22'), 'false');
+    end;
+
+    -- ============================================================================================
+    -- ===== E17 fase 1: lectura para la tabla de «Equipo» (migración 20261031000001)
+    -- ===== fn_team_access(): si cada persona ya aceptó su invitación. fn_user_capabilities(persona): qué puede hacer y por qué.
+    -- ===== Solo quien gestiona el equipo; la organización sale de la sesión.
+    -- ============================================================================================
+    declare
+        acc text := $q$select count(*)::text from public.fn_team_access() where user_id = %L::uuid and accepted = %L::boolean$q$;
+        capsof text := $q$select coalesce(string_agg(capability_code || ':' || source_kind || ':' || coalesce(role_name, area_id::text, ''), ',' order by capability_code, source_kind), '') from public.fn_user_capabilities(%L::uuid)$q$;
+        capcount text := $q$select count(*)::text from public.fn_user_capabilities(%L::uuid)$q$;
+        AR_TS constant text := 'aaaaaaaa-1000-0000-0000-000000000001';
+        who text;
+        c text;
+        expected text;
+    begin
+        -- ----- fn_team_access
+        perform pg_temp.expect('E17: atención no consulta el estado del equipo → BV346', CW, 'authenticated', 'select count(*)::text from public.fn_team_access()', 'ERR:BV346');
+        perform pg_temp.expect('E17: anon tampoco', null, 'anon', 'select count(*)::text from public.fn_team_access()', 'ERR');
+        perform pg_temp.expect('E17: la dirección ve una fila por cada persona de su organización', DIR, 'authenticated',
+            $q$select (count(*) = (select count(*) from public.user_profile where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'))::text from public.fn_team_access()$q$, 'true');
+        perform pg_temp.expect('E17: y no ve a las personas de otra organización', DIR, 'authenticated',
+            $q$select count(*)::text from public.fn_team_access() where user_id in (select id from public.user_profile where organization_id = 'bbbbbbbb-0000-0000-0000-00000000000b')$q$, '0');
+        perform pg_temp.expect('E17: una cuenta que nunca confirmó ni puso contraseña aparece como pendiente', DIR, 'authenticated', format(acc, CW, 'false'), '1');
+        update auth.users set email_confirmed_at = now() where id = CW::uuid;
+        perform pg_temp.expect('E17: al confirmar su correo aparece como aceptada', DIR, 'authenticated', format(acc, CW, 'true'), '1');
+        update auth.users set email_confirmed_at = null, encrypted_password = 'x' where id = INT::uuid;
+        perform pg_temp.expect('E17: con contraseña puesta también cuenta como aceptada', DIR, 'authenticated', format(acc, INT, 'true'), '1');
+        perform pg_temp.expect('E17: la dirección de otra organización solo ve la suya', DIRB2, 'authenticated',
+            $q$select count(*)::text from public.fn_team_access() where user_id in (select id from public.user_profile where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a')$q$, '0');
+
+        -- ----- fn_user_capabilities
+        perform pg_temp.expect('E17: atención no consulta lo que puede una persona → BV346', CW, 'authenticated', format(capcount, DIR), 'ERR:BV346');
+        perform pg_temp.expect('E17: anon tampoco', null, 'anon', format(capcount, DIR), 'ERR');
+        perform pg_temp.expect('E17: una persona de otra organización → BV347', DIR, 'authenticated', format(capcount, DIRB), 'ERR:BV347');
+        perform pg_temp.expect('E17: una cuenta que no existe → BV347', DIR, 'authenticated', format(capcount, '00000000-0000-0000-0000-0000000000bb'), 'ERR:BV347');
+        -- Lo que muestra coincide con lo que la base exige a cada cuenta (has_capability, evaluado COMO esa cuenta)
+        foreach who in array array[DIR, CW, INT, VW, NR] loop
+            expected := '';
+            foreach c in array array(select code from public.capability order by code) loop
+                if pg_temp.run_as(who, 'authenticated', format($q$select public.has_capability(%L)::text$q$, c)) = 'true' then
+                    expected := expected || case when expected = '' then '' else ',' end || c;
+                end if;
+            end loop;
+            perform pg_temp.expect('E17: lo que muestra para ' || who || ' coincide con lo que la base le exige', DIR, 'authenticated',
+                format($q$select coalesce(string_agg(distinct capability_code, ',' order by capability_code), '-') from public.fn_user_capabilities(%L::uuid)$q$, who), case when expected = '' then '-' else expected end);
+        end loop;
+        perform pg_temp.expect('E17: a Trabajo Social le llega diccionarios por su área', DIR, 'authenticated',
+            format($q$select exists (select 1 from public.fn_user_capabilities(%L::uuid) where capability_code = 'manage_catalogs' and source_kind = 'area' and area_id = %L::uuid)::text$q$, CW, AR_TS), 'true');
+        perform pg_temp.expect('E17: a ingreso le llegan sus permisos por su rol', DIR, 'authenticated',
+            format($q$select exists (select 1 from public.fn_user_capabilities(%L::uuid) where capability_code = 'open_cases' and source_kind = 'role' and role_name = 'intake_officer')::text$q$, INT), 'true');
+        perform pg_temp.expect('E17: a la dirección le llegan por el rol de dirección (o por la salvaguarda, que también es de dirección)', DIR, 'authenticated',
+            format($q$select (count(*) > 0 and bool_and(role_name = 'director'))::text from public.fn_user_capabilities(%L::uuid)$q$, DIR), 'true');
+        update public.user_profile set active = false where id = INT::uuid;
+        perform pg_temp.expect('E17: la cuenta desactivada ya no tiene capacidades', DIR, 'authenticated', format(capcount, INT), '0');
+        update public.user_profile set active = true where id = INT::uuid;
     end;
 
     -- ============================================================================================

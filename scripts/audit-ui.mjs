@@ -342,7 +342,11 @@ async function checkModalOpening(page, opener, label, audit) {
 }
 
 const findings = [];
-const record = (role, vp, route, items) => items.forEach((f) => findings.push({ role, vp, route, ...f }));
+// Con AUDIT_DEBUG=1 se lista cada pantalla revisada (sirve para comprobar que una pantalla nueva sí se visitó)
+const record = (role, vp, route, items) => {
+  if (process.env.AUDIT_DEBUG) console.log('  pantalla →', role, vp, route);
+  items.forEach((f) => findings.push({ role, vp, route, ...f }));
+};
 
 let browser;
 try {
@@ -459,12 +463,29 @@ try {
 
         // Invitar a una persona (E16 fase C): el formulario abierto, y la pantalla de bienvenida del enlace del correo
         // (con la sesión de Dirección ya abierta muestra el formulario de contraseña; sin ella, el aviso de enlace vencido)
+        // El bucle anterior termina en la última pestaña (Permisos): se vuelve a la primera (Equipo)
+        if (teamTabs > 0) { await page.locator('main [role=tab]').first().click(); await page.waitForTimeout(500); }
         const inviteButton = page.getByRole('button', { name: 'Invitar a una persona', exact: true });
         if (await inviteButton.count()) {
           await inviteButton.click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'equipo/invitar formulario', await auditNow());
           await inviteButton.click();
+        }
+        // Equipo (E17): la persona elegida abre su panel; «Dar un rol» con un rol que pregunta el área
+        const personButton = page.locator('main table tbody tr button:visible, main ul li button:has-text("@"):visible').first();
+        if (await personButton.count()) {
+          await personButton.click();
+          await page.waitForTimeout(700);
+          record(role.key, vp.name, 'equipo/panel de la persona', await auditNow());
+          const grantButton = page.getByRole('button', { name: 'Dar un rol', exact: true });
+          if (await grantButton.count()) {
+            await grantButton.click();
+            await page.waitForTimeout(400);
+            await page.locator('main aside select').first().selectOption('caseworker').catch(() => {});
+            await page.waitForTimeout(400);
+            record(role.key, vp.name, 'equipo/dar un rol (con área y vista previa)', await auditNow());
+          }
         }
         const welcome = await ctx.newPage();
         await welcome.goto(BASE + '/?bienvenida=1', { waitUntil: 'networkidle' });
