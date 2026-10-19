@@ -1,23 +1,64 @@
+<div align="center">
+
 # Bitácora Viva
 
-Plataforma de gestión de casos de atención humanitaria para el tercer sector (albergues, casas del migrante), multi-organización desde el diseño. Este repositorio es **el código**. La fuente de verdad del producto (Ethos, glosario, modelo de datos, backlog, deudas técnicas, decisiones) está en la **memoria documental**:
+**Gestión de casos de atención humanitaria para el tercer sector, con privacidad por diseño y rastro de cada acción.**
+
+[![CI](https://github.com/HugoLeMoy47/BitacoraViva/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/HugoLeMoy47/BitacoraViva/actions/workflows/ci.yml)
+[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
+![Entorno: demo](https://img.shields.io/badge/entorno-demo-orange)
+![React 19](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?logo=supabase&logoColor=white)
+
+</div>
+
+Plataforma para albergues y casas del migrante, **multi-organización desde el diseño**: varias asociaciones usan lo mismo sin ver los datos de las demás. Cuatro módulos: gestión de casos (el núcleo), seguidor de tareas, monitoreo y evaluación, y ERP de recursos (pospuesto).
+
+> [!WARNING]
+> **Entorno actual: DEMO.** Todos los datos son ficticios. No se debe capturar información de personas reales hasta cerrar la lista de bloqueo (`20_arquitectura/privacidad-y-cumplimiento.md` §4, en la memoria documental).
+
+Este repositorio es **el código**. La fuente de verdad del producto (Ethos, glosario, modelo de datos, backlog, deudas técnicas, decisiones) está en la **memoria documental**, una carpeta de OneDrive:
 
 - En equipo nekosurf: `D:\hugol\OneDrive\07_Freejolitos\50_Productos\BitacoraViva`
 - En equipo nekoblue: `C:\Users\hugol\OneDrive\07_Freejolitos\50_Productos\BitacoraViva`
 
-> **Entorno actual: DEMO.** Todos los datos son ficticios. No se debe capturar información de personas reales hasta cerrar la lista de bloqueo (`20_arquitectura/privacidad-y-cumplimiento.md` §4).
+## Contenido
 
-## Por dónde empezar
+- [Arquitectura](#arquitectura)
+- [Documentación](#documentación)
+- [Stack y requisitos](#stack-y-requisitos)
+- [Puesta en marcha](#puesta-en-marcha)
+- [Verificaciones automáticas](#verificaciones-automáticas)
+- [Pruebas de seguridad de la base](#pruebas-de-seguridad-de-la-base)
+- [Auditoría de interfaz](#auditoría-de-interfaz)
+- [Base de datos](#base-de-datos)
+- [Integración continua, ramas y despliegue](#integración-continua-ramas-y-despliegue)
+- [Seguidor de tareas (E7)](#seguidor-de-tareas-e7)
+- [Estructura](#estructura)
+- [Estado y decisiones](#estado-y-decisiones)
+- [Licencia](#licencia)
 
-1. **[`docs/arquitectura-en-una-pagina.md`](docs/arquitectura-en-una-pagina.md)** — qué es el producto, cómo se arman sus piezas y dónde está cada cosa. Diez minutos.
-2. **`CLAUDE.md`** de este repositorio y `30_entrega/handoff-agente-desarrollo.md` (memoria documental) — las **diez reglas duras**. Si el repositorio y la memoria documental divergen, manda la memoria documental.
-3. **[`supabase/README.md`](supabase/README.md)** — la base de datos: cómo se prueba y un índice de qué introdujo cada migración.
+## Arquitectura
+
+![Arquitectura de Bitácora Viva: el navegador habla directo con Supabase; la seguridad vive en Postgres con RLS](docs/img/arquitectura.png)
+
+El navegador habla **directo con Supabase** con una clave pública; no hay servidor propio de aplicación. Toda la seguridad vive en la base de datos (RLS y funciones), la única pieza de servidor es la función `invite-user`, y Cloudflare solo sirve archivos estáticos. Este y otros ocho diagramas (procesos, mapa del producto, modelo de datos) están en [`docs/diagramas/`](docs/diagramas/README.md): son HTML interactivos, ábrelos en el navegador tras clonar el repositorio.
+
+## Documentación
+
+1. **[`docs/arquitectura-en-una-pagina.md`](docs/arquitectura-en-una-pagina.md)**: qué es el producto, cómo se arman sus piezas y dónde está cada cosa. Diez minutos.
+2. **[`CLAUDE.md`](CLAUDE.md)** y `30_entrega/handoff-agente-desarrollo.md` (memoria documental): las **diez reglas duras**. Si el repositorio y la memoria documental divergen, manda la memoria documental.
+3. **[`supabase/README.md`](supabase/README.md)**: la base de datos, cómo se prueba y un índice de qué introdujo cada migración.
+4. **[`docs/diagramas/`](docs/diagramas/README.md)**: arquitectura, procesos, mapa del producto y modelo de datos.
 
 Esta página solo explica **cómo correrlo y operarlo**; no repite el producto.
 
-## Stack
+## Stack y requisitos
 
 React 19 · TypeScript · Vite · Tailwind · Supabase (Postgres + Auth + Storage, con RLS) · frontend servido por un Worker de Cloudflare (archivos estáticos).
+
+Requisitos: Node.js 22 (la versión del CI) y npm. Para el auditor de interfaz, Microsoft Edge o Google Chrome instalado.
 
 ## Puesta en marcha
 
@@ -163,3 +204,7 @@ docs/                     mapa del producto y la arquitectura
 ## Estado y decisiones
 
 El estado del producto frente al MVP, al backlog y a los controles de privacidad, y las decisiones vigentes, están en la memoria documental: empieza por su `README.md` (índice) y por `40_bitacora/guia-de-decisiones.md`.
+
+## Licencia
+
+[MIT](LICENSE).

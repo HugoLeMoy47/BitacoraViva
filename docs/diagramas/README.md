@@ -28,3 +28,11 @@ for n in erd-identidad erd-persona-caso erd-estatus-familia erd-bitacora-privaci
 Los demás se editan a mano en `fuente/*.json` y se validan con `bash docs/diagramas/fin.sh <tipo> <nombre> showcase` (tipo: `architecture`, `workflow` o `tree`). `fin.sh` usa la skill instalada en `~/.claude/skills/archify` y pasa las cuatro compuertas (validar, entregar, revisar, navegador).
 
 Para pedir un diagrama nuevo basta con decirle a Claude Code «usa Archify para dibujar…».
+
+## Imagen del README
+
+GitHub no ejecuta HTML, así que el README muestra `docs/img/arquitectura.png`. Se rehace tras cambiar la arquitectura:
+
+```bash
+node docs/diagramas/exportar-png.mjs
+```
