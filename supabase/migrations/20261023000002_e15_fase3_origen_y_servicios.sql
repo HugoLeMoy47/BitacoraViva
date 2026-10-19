@@ -1,7 +1,7 @@
 -- ==============================================================================
--- E15 fase 3 · Registro de origen (KOBO / REDODEM) y «Servicio social»
+-- E15 fase 3 · Registro de origen (KOBO / red de albergues) y «Servicio social»
 --
--- Decisión del Product Owner (22 oct 2026): de KOBO y REDODEM se guarda **solo lo que no se repite** en la ficha, como dato
+-- Decisión del Product Owner (22 oct 2026): de KOBO y la red de albergues se guarda **solo lo que no se repite** en la ficha, como dato
 -- informativo; y se podrá informar por origen más adelante (deuda D-23, no se construye ahora).
 --
 -- Cómo
@@ -36,7 +36,7 @@ select o.id, v.key, v.label_es, 'origin', v.answer_type, false, v.is_sensitive, 
 from public.organization o
 cross join (values
     ('origin_population_type', 'Tipo de población (registro de origen)', 'text', true, 1),
-    ('origin_registered_on', 'Fecha de registro de origen (REDODEM)', 'date', false, 2),
+    ('origin_registered_on', 'Fecha de registro de origen (red de albergues)', 'date', false, 2),
     ('origin_registered_by', 'Quién hizo el registro de origen', 'text', false, 3)
 ) as v(key, label_es, answer_type, is_sensitive, sort_order)
 on conflict (organization_id, key) do nothing;

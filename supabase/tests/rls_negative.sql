@@ -2420,7 +2420,7 @@ begin
 
     -- ============================================================================================
     -- ===== E14 fase 3: unidad familiar paralela (migración 20261017000001)
-    -- ===== Folio de familia del sistema de seguimiento paralelo (p. ej. REDODEM), tipo de familia (catálogo que editan
+    -- ===== Folio de familia del sistema de seguimiento paralelo (p. ej. el de una red de albergues), tipo de familia (catálogo que editan
     -- ===== dirección y Trabajo Social, solo informativo) y consecutivo de la persona dentro de la familia. No toca el
     -- ===== folio de caso ni `parent_case_id`: el subfolio y la familia son cosas distintas.
     -- ============================================================================================
@@ -3187,7 +3187,7 @@ begin
     end;
 
     -- ============================================================================================
-    -- ===== E15 fase 3: registro de origen (KOBO / REDODEM) y «Servicio social» (migración 20261023000002)
+    -- ===== E15 fase 3: registro de origen (KOBO / red de albergues) y «Servicio social» (migración 20261023000002)
     -- ===== El registro de origen son preguntas de la ficha social en una sección propia, solo informativas; de KOBO solo se
     -- ===== guarda lo que no se repite en la ficha. «Servicio social» es una línea de servicio nueva de la bitácora.
     -- ============================================================================================

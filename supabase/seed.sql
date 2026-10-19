@@ -208,7 +208,7 @@ end $$;
 
 -- ==============================================================================
 -- 5b. Tipos de documento de la persona (E14 fase 1). PROVISIONALES: dirección los edita y la lista real
--- de la hoja de casos de CAFEMIN se homologa después.
+-- de la hoja de casos de la organización piloto se homologa después.
 -- ==============================================================================
 insert into public.document_type (organization_id, key, label_es, sort_order) values
     ('00000000-0000-0000-0000-000000000001', 'curp', 'CURP', 1),
@@ -236,7 +236,7 @@ insert into public.entry_route (organization_id, code, label_es, sort_order) val
     ('00000000-0000-0000-0000-000000000001', 3, 'Terrestre', 3)
 on conflict (organization_id, code) do nothing;
 
--- 5d. Tipos de familia (E14 fase 3): lecturas de la hoja de casos de CAFEMIN confirmadas por el Product Owner.
+-- 5d. Tipos de familia (E14 fase 3): lecturas de la hoja de casos de la organización piloto confirmadas por el Product Owner.
 -- Dirección y Trabajo Social los editan; solo informan.
 insert into public.family_type (organization_id, key, label_es, legacy_code, sort_order) values
     ('00000000-0000-0000-0000-000000000001', 'nuclear', 'Familia nuclear', 'FAM-NUCL', 1),
@@ -247,7 +247,7 @@ insert into public.family_type (organization_id, key, label_es, legacy_code, sor
     ('00000000-0000-0000-0000-000000000001', 'extended', 'Familia extensa', 'FAM-EXTENSA', 6)
 on conflict (organization_id, key) do nothing;
 
--- 5f. Necesidades específicas (E14 fase 4b): casillas de la hoja de casos de CAFEMIN, más el valor del sistema
+-- 5f. Necesidades específicas (E14 fase 4b): casillas de la hoja de casos de la organización piloto, más el valor del sistema
 -- «La persona no quiso responder». Dirección y Trabajo Social las editan.
 insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
     ('00000000-0000-0000-0000-000000000001', 'specific_need', 'caregiver_alone', 'Cuidador sola(o)', 'CUIDADOR SOLA (O)', false, 1),
@@ -276,11 +276,11 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, is_sys
     ('00000000-0000-0000-0000-000000000001', 'family_role', 'other', 'Otro', false, 4)
 on conflict (organization_id, catalog, key) do nothing;
 
--- 5k. Registro de origen (E15 fase 3): lo que no se repite de KOBO / REDODEM, como preguntas de la ficha social, y la línea de servicio
+-- 5k. Registro de origen (E15 fase 3): lo que no se repite de KOBO / red de albergues, como preguntas de la ficha social, y la línea de servicio
 -- «Servicio social». Solo informativo (informes por origen: deuda D-23).
 insert into public.social_question (organization_id, key, label_es, section, answer_type, has_detail, is_sensitive, sort_order) values
     ('00000000-0000-0000-0000-000000000001', 'origin_population_type', 'Tipo de población (registro de origen)', 'origin', 'text', false, true, 1),
-    ('00000000-0000-0000-0000-000000000001', 'origin_registered_on', 'Fecha de registro de origen (REDODEM)', 'origin', 'date', false, false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'origin_registered_on', 'Fecha de registro de origen (red de albergues)', 'origin', 'date', false, false, 2),
     ('00000000-0000-0000-0000-000000000001', 'origin_registered_by', 'Quién hizo el registro de origen', 'origin', 'text', false, false, 3)
 on conflict (organization_id, key) do nothing;
 insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
@@ -373,7 +373,7 @@ from (values
 ) as v(label_es, min_age, sort_order)
 where not exists (select 1 from public.age_band a where a.organization_id = '00000000-0000-0000-0000-000000000001');
 
--- 5g. Líneas de servicio (E14 fase 4): las once columnas de la hoja de casos de CAFEMIN; dirección y Trabajo Social las editan.
+-- 5g. Líneas de servicio (E14 fase 4): las once columnas de la hoja de casos de la organización piloto; dirección y Trabajo Social las editan.
 insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
     ('00000000-0000-0000-0000-000000000001', 'service_line', 'hospitality', 'Hospitalidad', 'HOSPITALIDAD', false, 1),
     ('00000000-0000-0000-0000-000000000001', 'service_line', 'life_project', 'Proyecto de vida', 'PROYECTO DE VIDA', false, 2),
@@ -388,7 +388,7 @@ insert into public.catalog_item (organization_id, catalog, key, label_es, legacy
     ('00000000-0000-0000-0000-000000000001', 'service_line', 'legal', 'Jurídico', 'JURÍDICO', false, 11)
 on conflict (organization_id, catalog, key) do nothing;
 
--- 5e. Diccionarios editables (E14 fase 4a): idioma y religión de la hoja de casos de CAFEMIN, más el valor del sistema
+-- 5e. Diccionarios editables (E14 fase 4a): idioma y religión de la hoja de casos de la organización piloto, más el valor del sistema
 -- «La persona no quiso responder». Dirección y Trabajo Social los editan. Tipo de documento «TRP» de la hoja.
 insert into public.catalog_item (organization_id, catalog, key, label_es, legacy_code, is_system, sort_order) values
     ('00000000-0000-0000-0000-000000000001', 'language', 'spanish', 'Español', 'ESPAÑOL', false, 1),

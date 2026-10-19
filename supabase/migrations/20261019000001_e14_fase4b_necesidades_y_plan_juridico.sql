@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- E14 fase 4b · Necesidades específicas (casillas) y plan al ingreso
 --
--- Decisiones del Product Owner (17 oct 2026), a partir de los desplegables de la hoja de casos de CAFEMIN:
+-- Decisiones del Product Owner (17 oct 2026), a partir de los desplegables de la hoja de casos de la organización piloto:
 --  * «Necesidades específicas» es una lista de **casillas** con lo que se marca, de un diccionario que editan dirección y
 --    Trabajo Social; se busca una mejor integración con su uso más adelante (no se vincula automáticamente a los marcadores).
 --    Son datos sensibles (D-14): solo con consentimiento sensible vigente (`BV408`), salvo «La persona no quiso responder»,

@@ -26,7 +26,7 @@ Una prueba nueva se escribe **antes** que la migración (en rojo) y se ve pasar 
 
 ## Índice de migraciones
 
-Una línea por migración. «E#» es la épica del backlog; «E14» es el empalme con la hoja de casos de CAFEMIN.
+Una línea por migración. «E#» es la épica del backlog; «E14» es el empalme con la hoja de casos de la organización piloto.
 
 ### Fundación y núcleo (14 sep – 2 oct)
 | Migración | Qué introduce |
@@ -77,7 +77,7 @@ Una línea por migración. «E#» es la épica del backlog; «E14» es el empalm
 | `20261014000001_errores_con_codigo` | Errores de dominio con código estable `BVnnn` (E13 fase 1) |
 | `20261014000002_cybersec_hardening` | Auditoría encadenada SHA-256, lecturas auditadas, matriz de campos sensibles (ADR-0009) |
 
-### Empalme con la hoja de casos de CAFEMIN (E14, 15 – 21 oct)
+### Empalme con la hoja de casos de la organización piloto (E14, 15 – 21 oct)
 | Migración | Qué introduce |
 |---|---|
 | `20261015000001_e14_fase1_persona_documentos` | Documentos de la persona, religión, detalle de marcadores, referencia heredada |

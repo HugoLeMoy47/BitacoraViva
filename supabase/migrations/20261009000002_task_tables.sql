@@ -4,7 +4,7 @@
 -- Plan: 30_entrega/plan-ciclo-integracion-e7-seguidor-de-tareas.md · Fase 1 (BV-7.2, BV-7.3)
 -- Nombres: 00_gobernanza/glosario.md §4-bis · Entidades: 20_arquitectura/modelo-de-datos.md §5-bis
 --
--- Es el ESTADO FINAL del CAFEMIN Task Tracker reescrito con las reglas duras de Bitácora
+-- Es el ESTADO FINAL del Seguidor de tareas original reescrito con las reglas duras de Bitácora
 -- Viva, no una copia de sus 14 migraciones (no hay datos que migrar: la demo es ficticia).
 --
 -- Lo que cambia respecto del tracker y por qué

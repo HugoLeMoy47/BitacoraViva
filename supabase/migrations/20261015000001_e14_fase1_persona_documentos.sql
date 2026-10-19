@@ -1,7 +1,7 @@
 -- ==============================================================================
--- E14 fase 1 · Persona y documentos (empalme con la hoja de casos de CAFEMIN)
+-- E14 fase 1 · Persona y documentos (empalme con la hoja de casos de la organización piloto)
 --
--- Qué agrega (decisiones del Product Owner del 14 oct 2026, 30_entrega/equivalencias-hoja-de-casos-cafemin.md):
+-- Qué agrega (decisiones del Product Owner del 14 oct 2026, 30_entrega/la guía de equivalencias de la hoja de casos):
 --  * Documentos de la persona: catálogo de tipos por organización (`document_type`, lo administran
 --    dirección y el área de Trabajo Social, decisión del PO del 15 oct 2026 para todo catálogo) y los documentos mismos (`person_document`: tipo + número abierto). Incluye CURP y NUE.
 --    Lo corregido o quitado se CIERRA con motivo (`valid_to`); nada se borra ni se sobrescribe.

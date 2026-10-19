@@ -131,7 +131,7 @@ La herramienta de Supabase está fijada en `package.json` para que CI y equipo u
 
 ## Seguidor de tareas (E7)
 
-Integrado desde *CAFEMIN Task Tracker* (se absorbió el código, no hay fork). Rutas bajo `#/tareas`; los reportes llevan en la URL su estado (filtros por identificador; **la búsqueda por texto nunca viaja en el enlace**).
+Integrado desde el *Seguidor de tareas* original de una casa de acogida (se absorbió el código, no hay fork). Rutas bajo `#/tareas`; los reportes llevan en la URL su estado (filtros por identificador; **la búsqueda por texto nunca viaja en el enlace**).
 
 - **Roles:** `task_manager` y `volunteer` conviven con los cuatro de casos (los roles se acumulan, ADR-0007). Sin rol de casos no se lee ni una fila de `person` ni de `case`.
 - **Baja lógica:** ninguna tabla de tareas admite `DELETE`; archivar es definitivo. Toda escritura deja `audit_event`.

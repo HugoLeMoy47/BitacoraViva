@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- E14 fase 2 · Las cuatro fechas del caso, con precisión flexible
 --
--- Decisión del Product Owner (14 y 15 oct 2026): la hoja de casos de CAFEMIN captura cuatro fechas y el sistema
+-- Decisión del Product Owner (14 y 15 oct 2026): la hoja de casos de la organización piloto captura cuatro fechas y el sistema
 -- debe poder guardarlas todas, aunque estén incompletas (solo mes o solo año):
 --   nation_entry  ingreso a la nación        nation_exit  egreso de la nación
 --   shelter_entry ingreso al albergue        shelter_exit egreso del albergue
