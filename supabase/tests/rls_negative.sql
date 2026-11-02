@@ -4307,6 +4307,23 @@ begin
             $q$with d as (delete from storage.objects where bucket_id = 'dossier-photos' returning 1) select count(*)::text from d$q$, 'ERR|0');
         perform pg_temp.expect('IYE: se retira la autorización (con motivo)', INT, 'authenticated', format(fn_auth, c_yes, 'false', 'false', 'null', 'Retirada'), '1');
         perform pg_temp.expect('IYE: retirada la autorización, se pide la subida de nuevo → BV402', INT, 'authenticated', format(reqc, c_yes), 'BV402');
+
+        -- ===== Anonimizar (ADR-0001) también limpia lo que agregó este ciclo: segundo teléfono (identificador directo), su etiqueta y
+        -- ===== los documentos con que se identifica. El país ISO queda: es esqueleto estadístico, igual que el id del estándar.
+        id_a := pg_temp.run_as(INT, 'authenticated', format(ncis, ', p_secondary_phone => ''+504 9999 0000'', p_secondary_phone_label => ''whatsapp'', p_identity_documents => array[''passport'']::text[], p_nationality_iso => ''HN'''));
+        c_null := (select titular_person_id::text from public."case" where id = id_a::uuid);
+        perform pg_temp.expect('IYE (control): antes de anonimizar la persona tiene teléfono, etiqueta, documentos y país', null, null,
+            format($q$select (secondary_phone is not null and secondary_phone_label is not null and identity_documents_presented is not null and nationality_iso = 'HN')::text from public.person where id = %L::uuid$q$, c_null), 'true');
+        perform pg_temp.expect('IYE: la dirección anonimiza a la persona', DIR, 'authenticated',
+            format($q$select count(*)::text from (select public.fn_anonymize_person(%L::uuid, 'Prueba')) x$q$, c_null), '1');
+        perform pg_temp.expect('IYE (negativa): anonimizada, no queda el segundo teléfono ni su etiqueta', null, null,
+            format($q$select (secondary_phone is null and secondary_phone_label is null)::text from public.person where id = %L::uuid$q$, c_null), 'true');
+        perform pg_temp.expect('IYE (negativa): ni los documentos con que se identificaba', null, null,
+            format($q$select (identity_documents_presented is null)::text from public.person where id = %L::uuid$q$, c_null), 'true');
+        perform pg_temp.expect('IYE: el país ISO se conserva (esqueleto estadístico)', null, null,
+            format($q$select nationality_iso from public.person where id = %L::uuid$q$, c_null), 'HN');
+        perform pg_temp.expect('IYE (negativa): a una persona anonimizada no se le agregan datos de contacto → BV507', INT, 'authenticated',
+            format(fix, c_null, '+504 1', 'familiar', 'null::text[]', null, 'null', null, null), 'ERR:BV507');
     end;
 
     -- ============================================================================================
