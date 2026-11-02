@@ -384,14 +384,14 @@ try {
         record(role.key, vp.name, 'expediente/dos columnas', await auditNow());
         const identityAccordion = page.locator('main details', { hasText: /Ver datos de identidad y estatus/ }).first();
         if (vp.width < 1024 && (await identityAccordion.count())) {
-          await identityAccordion.locator('summary').click();
+          await identityAccordion.locator(':scope > summary').click();
           await page.waitForTimeout(400);
           record(role.key, vp.name, 'expediente/acordeón de identidad (celular)', await auditNow());
         }
         // «Más del expediente»: cada sección se abre y se revisa
         const moreCount = await page.locator('main section[aria-labelledby="caso-mas"] > details').count();
         for (let i = 0; i < moreCount; i++) {
-          await page.locator('main section[aria-labelledby="caso-mas"] > details').nth(i).locator('summary').click();
+          await page.locator('main section[aria-labelledby="caso-mas"] > details').nth(i).locator(':scope > summary').click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'expediente/sección ' + (i + 1), await auditNow());
         }
@@ -581,7 +581,7 @@ try {
         record(role.key, vp.name, 'expediente/dos columnas (rol sin Dirección)', await auditNow());
         const nMore = await page.locator('main section[aria-labelledby="caso-mas"] > details').count();
         for (let k = 0; k < nMore; k++) {
-          await page.locator('main section[aria-labelledby="caso-mas"] > details').nth(k).locator('summary').click();
+          await page.locator('main section[aria-labelledby="caso-mas"] > details').nth(k).locator(':scope > summary').click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'expediente/sección ' + (k + 1) + ' (rol sin Dirección)', await auditNow());
         }

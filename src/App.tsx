@@ -208,7 +208,22 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     run(async () => {
       const current = casesList.find((c) => c.titular_person_id === personId)?.person;
       if (!current) throw new DbError('Persona no encontrada.', 'BV202');
-      await api.rectifyPerson({ ...current, ...updates }, reason);
+      // Lo básico (nombre, fecha, teléfono, correo) y lo de contacto, documentos y país van por funciones distintas de la base;
+      // solo se llama a la que corresponde a lo que cambió
+      const BASE = ['given_name', 'paternal_family_name', 'maternal_family_name', 'preferred_name', 'birth_date', 'birth_date_is_estimated', 'phone_number', 'email'];
+      const CONTACT = ['secondary_phone', 'secondary_phone_label', 'identity_documents_presented', 'nationality_iso'];
+      const merged = { ...current, ...updates };
+      if (BASE.some((k) => k in updates)) await api.rectifyPerson(merged, reason);
+      if (CONTACT.some((k) => k in updates)) {
+        await api.rectifyPersonContact(personId, {
+          secondary_phone: merged.secondary_phone ?? null,
+          secondary_phone_label: merged.secondary_phone_label ?? null,
+          identity_documents: merged.identity_documents_presented ?? null,
+          nationality_iso: merged.nationality_iso ?? null,
+          nationality_country_id: merged.nationality_country_id ?? null,
+          other_nationality: merged.other_nationality ?? null,
+        }, reason);
+      }
     }, 'toast.rectified');
 
   const handleAnonymizePerson = (personId: string, reason: string) =>

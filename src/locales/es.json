@@ -488,7 +488,8 @@
       "CONSENT_REVOKED": "Consentimiento revocado",
       "ARCO_ACCESS_EXTRACT_ISSUED": "Extracto de acceso ARCO emitido",
       "EVIDENCE_ACCESS": "Acceso a evidencia",
-      "READ_CASE": "Lectura de expediente"
+      "READ_CASE": "Lectura de expediente",
+      "ACCESS_DENIED": "Intento denegado"
     }
   },
   "authority_requests": {
@@ -1100,6 +1101,7 @@
     "reserved_director": "Reservado a Dirección",
     "reserved_intake_director": "Reservado a Ingreso y Dirección",
     "rectify_page": {
+      "section_contact": "Contacto, documentos y país",
       "back_to_case": "Volver al caso {folio}",
       "section_data": "Datos de la persona",
       "no_changes": "No cambiaste ningún dato: modifica al menos uno para poder guardar.",

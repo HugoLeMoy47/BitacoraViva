@@ -4,6 +4,10 @@ import { t } from '../lib/i18n';
 import { CaseWithDetails, Person } from '../types/database';
 import { DisabledReason, describedBy } from './DisabledReason';
 import { DiscardConfirm, useBeforeUnloadGuard } from './LeaveGuard';
+import { useCatalog } from '../lib/catalog';
+import { countryName, legacyCountryId } from '../lib/countries';
+import { isDisabledByNone, toggleIdentityDocument, toSubmit } from '../lib/identityDocuments';
+import { CountryPicker } from './CountryPicker';
 
 // Derecho de rectificación (ARCO), como PÁGINA (no modal): son ocho campos y un motivo. Los campos vienen con lo
 // que hoy está registrado, así que se ve qué se corrige. Guardar exige al menos un cambio y el motivo.
@@ -29,10 +33,17 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
   const [birthEstimated, setBirthEstimated] = useState(person.birth_date_is_estimated);
   const [phone, setPhone] = useState(person.phone_number || '');
   const [email, setEmail] = useState(person.email || '');
+  // Contacto, documentos y país (ciclo «Ingreso y expediente»)
+  const { catalogItems } = useCatalog();
+  const identityDocItems = catalogItems.filter((i) => i.catalog === 'identity_document' && (i.is_active || (person.identity_documents_presented ?? []).includes(i.key))).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const [phone2, setPhone2] = useState(person.secondary_phone || '');
+  const [phone2Label, setPhone2Label] = useState<string>(person.secondary_phone_label || '');
+  const [docs, setDocs] = useState<string[]>(person.identity_documents_presented ?? []);
+  const [iso, setIso] = useState(person.nationality_iso || '');
   const [reason, setReason] = useState('');
   const [confirmingLeave, setConfirmingLeave] = useState(false);
 
-  const changed =
+  const baseChanged =
     givenName.trim() !== person.given_name ||
     paternalName.trim() !== person.paternal_family_name ||
     maternalName.trim() !== (person.maternal_family_name || '') ||
@@ -41,6 +52,12 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
     birthEstimated !== person.birth_date_is_estimated ||
     phone.trim() !== (person.phone_number || '') ||
     email.trim() !== (person.email || '');
+  const contactChanged =
+    phone2.trim() !== (person.secondary_phone || '') ||
+    (phone2.trim() !== '' && phone2Label !== (person.secondary_phone_label || '')) ||
+    (toSubmit(docs) ?? []).join(',') !== [...(person.identity_documents_presented ?? [])].sort().join(',') ||
+    iso !== (person.nationality_iso || '');
+  const changed = baseChanged || contactChanged;
   const dirty = changed || reason.trim() !== '';
   useBeforeUnloadGuard(dirty);
   const leave = () => (dirty ? setConfirmingLeave(true) : onCancel());
@@ -62,14 +79,25 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
     if (saveReason) return;
     onRectify(
       {
-        given_name: givenName.trim(),
-        paternal_family_name: paternalName.trim(),
-        maternal_family_name: maternalName.trim() || null,
-        preferred_name: preferredName.trim() || null,
-        birth_date: birthDate,
-        birth_date_is_estimated: birthEstimated,
-        phone_number: phone.trim() || null,
-        email: email.trim() || null,
+        // Solo viaja lo que cambió: lo básico y lo de contacto se corrigen por funciones distintas de la base
+        ...(baseChanged ? {
+          given_name: givenName.trim(),
+          paternal_family_name: paternalName.trim(),
+          maternal_family_name: maternalName.trim() || null,
+          preferred_name: preferredName.trim() || null,
+          birth_date: birthDate,
+          birth_date_is_estimated: birthEstimated,
+          phone_number: phone.trim() || null,
+          email: email.trim() || null,
+        } : {}),
+        ...(contactChanged ? {
+          secondary_phone: phone2.trim() || null,
+          secondary_phone_label: phone2.trim() && phone2Label ? (phone2Label as Person['secondary_phone_label']) : null,
+          identity_documents_presented: toSubmit(docs),
+          nationality_iso: iso || null,
+          nationality_country_id: legacyCountryId(iso),
+          other_nationality: countryName(iso),
+        } : {}),
       },
       reason.trim()
     );
@@ -152,6 +180,49 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
                 )}
               </div>
             </div>
+          </fieldset>
+
+          <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
+            <legend className="px-1 text-base font-bold text-carbon">{t('arco.rectify_page.section_contact')}</legend>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+                <label className={LABEL} htmlFor="rectif-phone2">{t('intake.field_phone2')}</label>
+                <input id="rectif-phone2" autoComplete="off" disabled={!sensitiveGranted} type="text" maxLength={30} value={phone2}
+                  onChange={(e) => { setPhone2(e.target.value); if (!e.target.value.trim()) setPhone2Label(''); }}
+                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`} />
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="rectif-phone2-label">{t('intake.field_phone2_label')}</label>
+                <select id="rectif-phone2-label" autoComplete="off" disabled={!sensitiveGranted || !phone2.trim()} value={phone2Label} onChange={(e) => setPhone2Label(e.target.value)}
+                  className={`${INPUT} disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}>
+                  <option value="">{t('common.not_recorded')}</option>
+                  {(['familiar', 'whatsapp', 'propio', 'acompanante', 'otro'] as const).map((k) => <option key={k} value={k}>{t(`intake.phone2_labels.${k}`)}</option>)}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <CountryPicker label={t('intake.field_nationality')} value={iso} disabled={!sensitiveGranted} onChange={setIso} />
+                {!sensitiveGranted && (
+                  <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    {t('intake.consent.sensitive_disabled_notice')}
+                  </span>
+                )}
+              </div>
+            </div>
+            <fieldset>
+              <legend className={LABEL}>{t('intake.field_identity_docs')}</legend>
+              <p className="mb-1 text-xs text-gray-700">{t('intake.identity_docs_hint')}</p>
+              <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                {identityDocItems.map((d) => {
+                  const off = isDisabledByNone(docs, d.key);
+                  return (
+                    <label key={d.id} className={`flex min-h-11 items-start gap-2 text-sm ${off ? 'cursor-not-allowed text-gray-600' : 'cursor-pointer text-carbon'}`}>
+                      <input type="checkbox" checked={docs.includes(d.key)} disabled={off} onChange={() => setDocs((prev) => toggleIdentityDocument(prev, d.key))} className="mt-0.5 h-5 w-5 shrink-0 accent-turquesa" />
+                      <span>{d.label_es}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
           </fieldset>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5">

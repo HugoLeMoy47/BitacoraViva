@@ -283,10 +283,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const docKeys = caseData.person.identity_documents_presented ?? null;
   const docLabel = (k: string) => catalogItems.find((i) => i.catalog === 'identity_document' && i.key === k)?.label_es ?? k;
   const activeMarkers = caseData.vulnerabilities;
-  const identityColumn = (
+  // Se dibuja dos veces (acordeón de celular y columna de escritorio): cada una con su prefijo para que no se repitan los id
+  const identityColumn = (idp: string) => (
     <>
-      <section aria-labelledby="caso-ficha" className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
-        <h3 id="caso-ficha" className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.sheet.title')}</h3>
+      <section aria-labelledby={`${idp}-ficha`} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+        <h3 id={`${idp}-ficha`} className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.sheet.title')}</h3>
         <dl className="space-y-2 text-sm">
           <div>
             <dt className="text-gray-700">{t('cases.sheet.docs')}</dt>
@@ -315,8 +316,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         </dl>
       </section>
 
-      <section aria-labelledby="caso-estatus" className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
-        <h3 id="caso-estatus" className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.status_now')}</h3>
+      <section aria-labelledby={`${idp}-estatus`} className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
+        <h3 id={`${idp}-estatus`} className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.status_now')}</h3>
         <ul className="space-y-1.5 text-sm">
           {statusAxes.map((axis) => (
             <li key={axis.id} className="flex flex-wrap items-baseline justify-between gap-2">
@@ -327,8 +328,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         </ul>
       </section>
 
-      <section aria-labelledby="caso-alertas" className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
-        <h3 id="caso-alertas" className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.alerts')}</h3>
+      <section aria-labelledby={`${idp}-alertas`} className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
+        <h3 id={`${idp}-alertas`} className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.alerts')}</h3>
         {activeMarkers.length === 0 ? (
           <p className="text-sm text-gray-700">{t('cases.alerts_none')}</p>
         ) : (
@@ -448,9 +449,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold text-carbon">
             {t('cases.mobile_summary').replace('{folio}', caseData.case_number)}
           </summary>
-          <div className="space-y-4 p-4">{identityColumn}</div>
+          <div className="space-y-4 p-4">{identityColumn('movil')}</div>
         </details>
-        <div className="hidden space-y-4 lg:sticky lg:top-20 lg:block">{identityColumn}</div>
+        <div className="hidden space-y-4 lg:sticky lg:top-20 lg:block">{identityColumn('caso')}</div>
 
         <div className="min-w-0 space-y-4">
           {canWriteJournal && !caseData.person.is_anonymized && (

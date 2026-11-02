@@ -544,6 +544,26 @@ export const api = {
       p_nna_responsibility: i.nna_responsibility_accepted ?? null,
     }),
 
+  /** Corregir lo registrado de una persona: segundo teléfono, documentos con que se identifica y país (ISO). Cambiar algo ya registrado pide motivo. */
+  rectifyPersonContact: (personId: string, c: {
+    secondary_phone: string | null;
+    secondary_phone_label: string | null;
+    identity_documents: string[] | null;
+    nationality_iso: string | null;
+    nationality_country_id: number | null;
+    other_nationality: string | null;
+  }, reason: string) =>
+    rpc('fn_rectify_person_contact', {
+      p_person_id: personId,
+      p_secondary_phone: c.secondary_phone,
+      p_secondary_phone_label: c.secondary_phone_label,
+      p_identity_documents: c.identity_documents,
+      p_nationality_iso: c.nationality_iso,
+      p_nationality_country_id: c.nationality_country_id,
+      p_other_nationality: c.other_nationality,
+      p_reason: reason.trim() || null,
+    }),
+
   /** Autorizaciones firmadas en físico de un caso; cambiar una ya registrada pide motivo y deja auditoría */
   setCaseAuthorizations: (caseId: string, photo: boolean, coexistence: boolean, nna: boolean | null, reason?: string) =>
     rpc('fn_set_case_authorizations', { p_case_id: caseId, p_photo_consent: photo, p_coexistence_rules: coexistence, p_nna_responsibility: nna, p_reason: reason?.trim() || null }),

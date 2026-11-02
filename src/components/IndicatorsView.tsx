@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, BarChart3, EyeOff, ShieldCheck } from 'lucide-react
 import { t } from '../lib/i18n';
 import { api, AggregateMetrics, AggregateMetricRow } from '../lib/data';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
+import { countryName } from '../lib/countries';
 import { VulnerabilityMarkerCode } from '../types/database';
 import { TrendChart, TrendPoint } from './TrendChart';
 import { friendlyError } from '../lib/errors';
@@ -45,6 +46,9 @@ function bucketLabel(metric: string, bucket: string): string {
       return bucket === 'sin_dato' ? t('indicators.age_none') : bucket;
     case 'vulnerability':
       return VULNERABILITY_CATALOG[bucket as VulnerabilityMarkerCode]?.label || bucket;
+    case 'nationality':
+      // El grupo llega como código de país ISO 3166-1; los registros anteriores sin código conservan el texto que tenían
+      return countryName(bucket) ?? bucket;
     default:
       return bucket;
   }

@@ -4082,6 +4082,8 @@ begin
         ctx text := $q$select count(*)::text from (select public.fn_set_organization_default_intake_context(%L)) x$q$;
         fn_auth text := $q$select count(*)::text from (select public.fn_set_case_authorizations(%L::uuid, %s, %s, %s, %L)) x$q$;
         reqp text := $q$select count(*)::text from (select public.fn_request_dossier_photo_upload(%L::uuid)) x$q$;
+        fix text := $q$select count(*)::text from (select public.fn_rectify_person_contact(%L::uuid, %L, %L, %s, %L, %s, %L, %L)) x$q$;
+        reqc text := $q$select coalesce(public.fn_request_dossier_photo_upload(%L::uuid) ->> 'code', 'OK')$q$;
         upl text := $q$with i as (insert into storage.objects (bucket_id, name, owner_id) values ('dossier-photos', %L, %L) returning 1) select count(*)::text from i$q$;
         isid text := $q$select (%L ~ '^[0-9a-f-]{36}$')::text$q$;
         n0 int;
@@ -4208,12 +4210,72 @@ begin
         perform pg_temp.expect('IYE: el cambio deja huella con su motivo', null, null,
             format($q$select count(*)::text from public.audit_event where table_name = 'case' and record_id = %L::uuid and new_values ->> 'reason' = 'Se retiró la autorización'$q$, c_null), '1');
 
+        -- ===== Parte 2 (migración 20261104000001): indicadores por ISO y corregir lo registrado
+        id_a := pg_temp.run_as(INT, 'authenticated', format(ncis, ', p_nationality_iso => ''SV'''));
+        perform pg_temp.expect('IYE2: un alta con país ISO funciona', null, null, format(isid, id_a), 'true');
+        perform pg_temp.expect('IYE2: el indicador de nacionalidad agrupa por ISO', null, null,
+            format($q$select (count(*) > 0)::text from public.fn_metric_rows(%L::uuid, date '2000-01-01', current_date + 1) where metric = 'nationality' and bucket = 'SV'$q$, LA), 'true');
+
+        -- Corregir: segundo teléfono, documentos y país de una persona ya creada
+        id_a := pg_temp.run_as(INT, 'authenticated', format(ncis, ''));
+        id_b := pg_temp.run_as(INT, 'authenticated', format(nci, ''));
+        perform pg_temp.expect('IYE2: se crearon dos personas para corregir', null, null, format(isid, id_a), 'true');
+        perform pg_temp.expect('IYE2: se crearon dos personas para corregir (sin consentimiento sensible)', null, null, format(isid, id_b), 'true');
+        c_null := (select titular_person_id::text from public."case" where id = id_a::uuid);
+        c_yes := (select titular_person_id::text from public."case" where id = id_b::uuid);
+        perform pg_temp.expect('IYE2: el rol de solo lectura no corrige → BV119', VW, 'authenticated',
+            format(fix, c_null, '+504 1', 'familiar', 'array[''passport'']::text[]', 'SV', 93, 'El Salvador', null), 'ERR:BV119');
+        perform pg_temp.expect('IYE2: anon tampoco', null, 'anon', format(fix, c_null, '+504 1', 'familiar', 'array[''passport'']::text[]', 'SV', 1, 'El Salvador', null), 'ERR');
+        perform pg_temp.expect('IYE2 control positivo: agregar teléfono, documento y país por primera vez no pide motivo', INT, 'authenticated',
+            format(fix, c_null, '+504 9999 0000', 'whatsapp', 'array[''passport'', ''curp'']::text[]', 'SV', 1, 'El Salvador', null), '1');
+        perform pg_temp.expect('IYE2: queda guardado', null, null,
+            format($q$select secondary_phone || ' / ' || secondary_phone_label || ' / ' || identity_documents_presented::text || ' / ' || nationality_iso || ' / ' || nationality_country_id::text || ' / ' || other_nationality from public.person where id = %L::uuid$q$, c_null),
+            '+504 9999 0000 / whatsapp / {curp,passport} / SV / 1 / El Salvador');
+        perform pg_temp.expect('IYE2: cambiar algo ya registrado sin motivo → BV304', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''passport'', ''curp'']::text[]', 'SV', 1, 'El Salvador', null), 'ERR:BV304');
+        perform pg_temp.expect('IYE2: con motivo se cambia', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''passport'', ''curp'']::text[]', 'SV', 1, 'El Salvador', 'Número equivocado'), '1');
+        perform pg_temp.expect('IYE2: la corrección deja auditoría con campos y motivo', null, null,
+            format($q$select count(*)::text from public.audit_event where table_name = 'person' and record_id = %L::uuid and new_values ->> 'reason' = 'Número equivocado' and new_values -> 'changed_fields' @> '"secondary_phone"'::jsonb$q$, c_null), '1');
+        perform pg_temp.expect('IYE2: sin cambios no hace nada ni pide motivo', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''passport'', ''curp'']::text[]', 'SV', 1, 'El Salvador', null), '1');
+        perform pg_temp.expect('IYE2 (negativa): «ninguno» con otro documento → BV367', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''none'', ''passport'']::text[]', 'SV', 1, 'El Salvador', 'x'), 'ERR:BV367');
+        perform pg_temp.expect('IYE2: un documento desconocido → BV367', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''zzz'']::text[]', 'SV', 1, 'El Salvador', 'x'), 'ERR:BV367');
+        perform pg_temp.expect('IYE2: una etiqueta sin número → BV368', INT, 'authenticated',
+            format(fix, c_null, null, 'familiar', 'array[''passport'']::text[]', 'SV', 1, 'El Salvador', 'x'), 'ERR:BV368');
+        perform pg_temp.expect('IYE2: un país mal formado → BV369', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''passport'']::text[]', 'sv', 1, 'El Salvador', 'x'), 'ERR:BV369');
+        perform pg_temp.expect('IYE2: un id del estándar que no corresponde al país → BV369', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''passport'']::text[]', 'SV', 93, 'El Salvador', 'x'), 'ERR:BV369');
+        perform pg_temp.expect('IYE2: sin nombre del país → BV369', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''passport'']::text[]', 'SV', 1, null, 'x'), 'ERR:BV369');
+        perform pg_temp.expect('IYE2: Honduras conserva su id del estándar (93)', INT, 'authenticated',
+            format(fix, c_null, '+504 1111', 'whatsapp', 'array[''passport'']::text[]', 'HN', 93, 'Honduras', 'Corrección de país'), '1');
+        perform pg_temp.expect('IYE2 (negativa): sin consentimiento sensible no se agrega un teléfono → BV402', INT, 'authenticated',
+            format(fix, c_yes, '+504 2222', 'familiar', 'null::text[]', null, 'null', null, null), 'ERR:BV402');
+        perform pg_temp.expect('IYE2 (negativa): ni un país → BV402', INT, 'authenticated',
+            format(fix, c_yes, null, null, 'null::text[]', 'SV', 1, 'El Salvador', null), 'ERR:BV402');
+        perform pg_temp.expect('IYE2: pero los documentos no son sensibles: se pueden registrar', INT, 'authenticated',
+            format(fix, c_yes, null, null, 'array[''none'']::text[]', null, 'null', null, null), '1');
+        perform pg_temp.expect('IYE2: quitar un valor sí se puede sin consentimiento, con motivo', INT, 'authenticated',
+            format(fix, c_null, null, null, 'array[''passport'']::text[]', null, 'null', null, 'Se retira el dato'), '1');
+        perform pg_temp.expect('IYE2: y queda vacío (No registrado)', null, null,
+            format($q$select (secondary_phone is null and secondary_phone_label is null and nationality_iso is null and nationality_country_id is null and other_nationality is null)::text from public.person where id = %L::uuid$q$, c_null), 'true');
+        perform pg_temp.expect('IYE2: la persona de otra organización no se toca', DIRB2, 'authenticated',
+            format(fix, c_null, null, null, 'null::text[]', null, 'null', null, 'x'), 'ERR');
+
         -- ===== Fotografía: compuerta por consentimiento (Ethos E-01)
         perform pg_temp.expect('IYE: el bucket es privado, solo webp y de 256 KB', null, null,
             $q$select (not public and file_size_limit = 262144 and allowed_mime_types = array['image/webp'])::text from storage.buckets where id = 'dossier-photos'$q$, 'true');
         c_yes := pg_temp.run_as(INT, 'authenticated', format(nci, ', p_photo_consent => false'));
-        perform pg_temp.expect('IYE (negativa): con la fotografía en «no» no se pide la subida → BV402', INT, 'authenticated', format(reqp, c_yes), 'ERR:BV402');
-        perform pg_temp.expect('IYE (negativa): sin la autorización registrada tampoco → BV402', INT, 'authenticated', format(reqp, id_b), 'ERR:BV402');
+        perform pg_temp.expect('IYE (negativa): con la fotografía en «no» la solicitud se DENIEGA con BV402 (responde, no aborta)', INT, 'authenticated', format(reqc, c_yes), 'BV402');
+        perform pg_temp.expect('IYE (negativa): sin la autorización registrada tampoco → BV402', INT, 'authenticated', format(reqc, id_b), 'BV402');
+        perform pg_temp.expect('IYE: cada intento denegado deja constancia en la auditoría (escenario 3)', null, null,
+            format($q$select count(*)::text from public.audit_event where action = 'ACCESS_DENIED' and table_name = 'case' and record_id = %L::uuid and new_values ->> 'code' = 'BV402'$q$, c_yes), '1');
+        perform pg_temp.expect('IYE: y el intento sobre el otro caso también', null, null,
+            format($q$select count(*)::text from public.audit_event where action = 'ACCESS_DENIED' and record_id = %L::uuid$q$, id_b), '1');
         perform pg_temp.expect('IYE: el rol de solo lectura no pide subidas → BV113', VW, 'authenticated', format(reqp, c_yes), 'ERR:BV113');
         perform pg_temp.expect('IYE: anon tampoco', null, 'anon', format(reqp, c_yes), 'ERR');
         perform pg_temp.expect('IYE: el almacenamiento también rechaza la subida sin autorización', INT, 'authenticated',
@@ -4221,9 +4283,9 @@ begin
         perform pg_temp.expect('IYE: se registra la autorización de fotografía (primera vez, sin motivo no; ya era «no»: con motivo)', INT, 'authenticated',
             format(fn_auth, c_yes, 'true', 'false', 'null', 'Se firmó después'), '1');
         perform pg_temp.expect('IYE control positivo: con ella se entrega la ruta de subida', INT, 'authenticated',
-            format($q$select (public.fn_request_dossier_photo_upload(%L::uuid) ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/photo-[0-9a-f-]{36}\.webp$')::text$q$, c_yes), 'true');
+            format($q$select (public.fn_request_dossier_photo_upload(%L::uuid) ->> 'path' ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/photo-[0-9a-f-]{36}\.webp$')::text$q$, c_yes), 'true');
         perform pg_temp.expect('IYE: y la ruta es de su organización y su caso', INT, 'authenticated',
-            format($q$select (public.fn_request_dossier_photo_upload(%L::uuid) like %L)::text$q$, c_yes, LA || '/' || c_yes || '/photo-%'), 'true');
+            format($q$select (public.fn_request_dossier_photo_upload(%L::uuid) ->> 'path' like %L)::text$q$, c_yes, LA || '/' || c_yes || '/photo-%'), 'true');
         perform pg_temp.expect('IYE control positivo: el almacenamiento acepta la subida a la carpeta del caso', INT, 'authenticated',
             format(upl, LA || '/' || c_yes || '/photo-22222222-2222-4222-8222-222222222222.webp', INT), '1');
         perform pg_temp.expect('IYE: no acepta otro formato (png)', INT, 'authenticated',
@@ -4244,7 +4306,7 @@ begin
         perform pg_temp.expect('IYE: ni se borra', INT, 'authenticated',
             $q$with d as (delete from storage.objects where bucket_id = 'dossier-photos' returning 1) select count(*)::text from d$q$, 'ERR|0');
         perform pg_temp.expect('IYE: se retira la autorización (con motivo)', INT, 'authenticated', format(fn_auth, c_yes, 'false', 'false', 'null', 'Retirada'), '1');
-        perform pg_temp.expect('IYE: retirada la autorización, se pide la subida de nuevo → BV402', INT, 'authenticated', format(reqp, c_yes), 'ERR:BV402');
+        perform pg_temp.expect('IYE: retirada la autorización, se pide la subida de nuevo → BV402', INT, 'authenticated', format(reqc, c_yes), 'BV402');
     end;
 
     -- ============================================================================================
