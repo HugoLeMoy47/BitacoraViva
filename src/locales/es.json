@@ -96,6 +96,33 @@
     "total_roles": "Roles de la plataforma"
   },
   "cases": {
+    "mobile_summary": "Ver datos de identidad y estatus (Folio {folio})",
+    "sheet": {
+      "title": "Ficha básica",
+      "docs": "Documentos presentados",
+      "phone1": "Teléfono 1",
+      "phone2": "Teléfono 2",
+      "nationality": "Nacionalidad",
+      "intake": "Ingreso"
+    },
+    "status_now": "Estatus vigente",
+    "alerts": "Alertas de vulnerabilidad",
+    "alerts_none": "Sin marcadores de vulnerabilidad registrados.",
+    "more": "Más del expediente",
+    "authorizations": {
+      "title": "Autorizaciones firmadas en físico",
+      "hint": "Fotografía de identificación visual, acuerdos de convivencia y responsabilidad sobre niñas, niños y adolescentes. Sin la de fotografía no se puede subir ninguna foto.",
+      "photo": "Fotografía de identificación visual",
+      "coexistence": "Acuerdos de convivencia",
+      "nna": "Responsabilidad sobre niñez y adolescencia",
+      "nna_na": "No aplica o no registrado",
+      "register": "Registrar autorizaciones",
+      "edit": "Cambiar autorizaciones",
+      "save": "Guardar autorizaciones",
+      "saved": "Autorizaciones guardadas.",
+      "reason": "Motivo (obligatorio si cambias algo ya registrado)",
+      "reason_same": "Cambia alguna autorización para poder guardar."
+    },
     "title": "Expedientes humanitarios",
     "subtitle": "Ficha sociodemográfica estandarizada (MAP-OIM v3) y máquina de 5 ejes de estatus",
     "search_placeholder": "Buscar por folio, folio anterior, nombre, nacionalidad o marcador…",
@@ -760,6 +787,16 @@
     "why_stay": "Se necesita el ingreso y, si ya salió, la salida, ambos con el día exacto"
   },
   "journal": {
+    "quick": {
+      "title": "Captura rápida de bitácora",
+      "area": "Área",
+      "service_line": "Línea de servicio (opcional)",
+      "body": "Nota",
+      "save": "Guardar nota en bitácora",
+      "full_form": "Abrir el formulario completo",
+      "reason_body": "Escribe la nota para poder guardarla.",
+      "no_area": "No tienes un área en la que escribir en esta bitácora: pide a la dirección que te asigne una."
+    },
     "tab_title": "Bitácora de intervenciones",
     "btn_new_entry": "+ Nueva entrada de bitácora",
     "filter_all": "Todas las notas",

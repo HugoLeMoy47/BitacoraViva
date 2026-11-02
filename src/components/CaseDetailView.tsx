@@ -18,13 +18,11 @@ import {
   ShieldAlert, 
   Clock, 
   AlertCircle, 
-  Layers, 
   FileText, 
   Users, 
   ChevronRight, 
   Send, 
   Lock,
-  BookOpen,
   Share2,
   Plus,
   Shield,
@@ -35,8 +33,7 @@ import {
   Edit3,
   Trash2,
   CheckCircle2,
-  Scale,
-  ListChecks
+  Scale
 } from 'lucide-react';
 import { t, tStored } from '../lib/i18n';
 import { 
@@ -61,7 +58,8 @@ import { ArcoAccessExtractModal } from './ArcoAccessExtractModal';
 import { ArcoReceiptModal, computeArcoDocket, computeBusinessDaysDeadline } from './ArcoReceiptModal';
 import { formatDate, formatDateTime, formatTime } from '../lib/format';
 import { ModalShell } from './ModalShell';
-import { Tabs } from './Tabs';
+import { QuickJournalCapture } from './QuickJournalCapture';
+import { CaseAuthorizationsPanel } from './CaseAuthorizationsPanel';
 import { CaseTasksPanel } from './CaseTasksPanel';
 import { StatusHistory } from './StatusHistory';
 import { DisabledReason, describedBy } from './DisabledReason';
@@ -151,7 +149,6 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const toast = useToast();
   const { statusAxes, statusValues, organizationName, organizationInfo, geoStates, intakeChannels, entryRoutes, catalogItems } = useCatalog();
   const legalValues = statusValues.legal_status ?? [];
-  const [activeTab, setActiveTab] = useState<'axes' | 'journal' | 'summary' | 'vulnerabilities' | 'subfolios' | 'privacy' | 'tasks'>(initialTab ?? 'axes');
   // E14 fase 1: datos cortos que se editan en un modal de un solo campo
   const [field, setField] = useState<null | { kind: 'religion' } | { kind: 'language' } | { kind: 'plan' } | { kind: 'legacy' } | { kind: 'marker'; code: VulnerabilityMarkerCode }>(null);
   const [transitioningAxis, setTransitioningAxis] = useState<StatusAxisCode | null>(null);
@@ -282,6 +279,71 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     setTransitioningAxis(null);
   };
 
+  // Columna persistente: ficha básica, estatus vigente y alertas de vulnerabilidad (lo que se consulta todo el día)
+  const docKeys = caseData.person.identity_documents_presented ?? null;
+  const docLabel = (k: string) => catalogItems.find((i) => i.catalog === 'identity_document' && i.key === k)?.label_es ?? k;
+  const activeMarkers = caseData.vulnerabilities;
+  const identityColumn = (
+    <>
+      <section aria-labelledby="caso-ficha" className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+        <h3 id="caso-ficha" className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.sheet.title')}</h3>
+        <dl className="space-y-2 text-sm">
+          <div>
+            <dt className="text-gray-700">{t('cases.sheet.docs')}</dt>
+            <dd className="font-semibold text-carbon">
+              {docKeys == null ? t('common.not_recorded') : (
+                <ul className="mt-1 flex flex-wrap gap-1.5">
+                  {docKeys.map((k) => <li key={k} className="rounded-md bg-claro px-2 py-0.5 text-xs font-semibold text-carbon">{docLabel(k)}</li>)}
+                </ul>
+              )}
+            </dd>
+          </div>
+          <div><dt className="text-gray-700">{t('cases.sheet.phone1')}</dt><dd className="font-semibold text-carbon">{freeTextOrNull(caseData.person.phone_number) ?? t('common.not_recorded')}</dd></div>
+          <div>
+            <dt className="text-gray-700">{t('cases.sheet.phone2')}</dt>
+            <dd className="font-semibold text-carbon">
+              {freeTextOrNull(caseData.person.secondary_phone)
+                ? `${caseData.person.secondary_phone}${caseData.person.secondary_phone_label ? ` (${t(`intake.phone2_labels.${caseData.person.secondary_phone_label}`)})` : ''}`
+                : t('common.not_recorded')}
+            </dd>
+          </div>
+          <div><dt className="text-gray-700">{t('cases.sheet.nationality')}</dt><dd className="font-semibold text-carbon">{countryLabel(caseData.person.nationality_country_id, caseData.person.other_nationality) ?? t('common.not_recorded')}</dd></div>
+          <div>
+            <dt className="text-gray-700">{t('cases.sheet.intake')}</dt>
+            <dd className="font-semibold text-carbon">{formatDate(caseData.opened_at)} ({t(`indicators.window.${caseData.intake_window_type}`)})</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="caso-estatus" className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
+        <h3 id="caso-estatus" className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.status_now')}</h3>
+        <ul className="space-y-1.5 text-sm">
+          {statusAxes.map((axis) => (
+            <li key={axis.id} className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-gray-700">{axis.label_es}</span>
+              <span className="font-semibold text-carbon">{caseData.statuses[axis.code]?.label || t('common.not_recorded')}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="caso-alertas" className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
+        <h3 id="caso-alertas" className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.alerts')}</h3>
+        {activeMarkers.length === 0 ? (
+          <p className="text-sm text-gray-700">{t('cases.alerts_none')}</p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {activeMarkers.map((m) => (
+              <li key={m.id} className="rounded-md bg-alerta-bg px-2 py-0.5 text-xs font-semibold text-alerta-dark">
+                {VULNERABILITY_CATALOG[m.marker_code]?.label ?? m.marker_code}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
+  );
+
   return (
     <div className="space-y-6">
       {/* Barra superior de navegación */}
@@ -380,957 +442,961 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
         </div>
       )}
 
-      {/* Secciones del expediente */}
-      <Tabs
-        ariaLabel={t('cases.sections')}
-        value={activeTab}
-        onChange={(id) => setActiveTab(id as typeof activeTab)}
-        items={[
-          { id: 'axes', label: t('cases.tabs_short.axes'), icon: <Layers className="h-4 w-4" aria-hidden="true" /> },
-          { id: 'journal', label: `${t('cases.tabs_short.journal')} (${journalEntries.length})`, icon: <BookOpen className="h-4 w-4" aria-hidden="true" /> },
-          { id: 'summary', label: t('cases.tabs_short.summary'), icon: <FileText className="h-4 w-4" aria-hidden="true" /> },
-          { id: 'vulnerabilities', label: `${t('cases.tabs_short.vulnerabilities')} (${caseData.vulnerabilities.length})`, icon: <AlertCircle className="h-4 w-4" aria-hidden="true" /> },
-          ...((caseData.subfolios && caseData.subfolios.length > 0) || canCreateSubfolio
-            ? [{ id: 'subfolios', label: `${t('cases.tabs_short.subfolios')} (${caseData.subfolios?.length ?? 0})`, icon: <Users className="h-4 w-4" aria-hidden="true" /> }]
-            : []),
-          ...(canLinkTasks ? [{ id: 'tasks', label: t('tasks.case.tab'), icon: <ListChecks className="h-4 w-4" aria-hidden="true" /> }] : []),
-          {
-            id: 'privacy',
-            label: t('cases.tabs_short.privacy'),
-            icon: <ShieldCheck className="h-4 w-4" aria-hidden="true" />,
-            badge: !hasSensitiveDataConsent ? (
-              <span className="h-2 w-2 rounded-full bg-amber-500" role="img" aria-label={t('arco.sensitive_alert_missing')} title={t('arco.sensitive_alert_missing')} />
-            ) : undefined,
-          },
-        ]}
-      />
+      {/* Dos columnas (ciclo «Ingreso y expediente»): identidad, estatus y alertas siempre a la vista; a la derecha, la vida del caso */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] lg:items-start">
+        <details className="rounded-2xl border border-gray-200 bg-white lg:hidden">
+          <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold text-carbon">
+            {t('cases.mobile_summary').replace('{folio}', caseData.case_number)}
+          </summary>
+          <div className="space-y-4 p-4">{identityColumn}</div>
+        </details>
+        <div className="hidden space-y-4 lg:sticky lg:top-20 lg:block">{identityColumn}</div>
 
-      {/* Tab 1: Los 5 Ejes de Estatus (Regla Dura 7 / ME-02) */}
-      {activeTab === 'axes' && (
-        <div className="space-y-4">
-          <div className="bg-claro/30 p-4 rounded-xl border border-turquesa/30 text-xs text-carbon">
-            <h3 className="font-bold text-turquesa-dark mb-1">{t('cases.axes_section_title')}</h3>
-            <p className="text-gray-600">
-              {t('cases.axes_section_desc')}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {statusAxes.map((axis) => {
-              const currentStatus = caseData.statuses[axis.code];
-              const isPrimary = axis.is_primary;
-
-              return (
-                <div
-                  key={axis.id}
-                  className={`bg-white rounded-2xl p-5 border flex flex-col justify-between shadow-sm transition hover:shadow-md ${
-                    isPrimary ? 'border-turquesa/60 ring-2 ring-turquesa/20' : 'border-gray-200'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                        {axis.label_es}
-                      </span>
-                      {isPrimary && (
-                        <span className="text-xs bg-turquesa/20 text-carbon font-extrabold px-2 py-0.5 rounded-full">
-                          {t('cases.axis_primary')}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="my-2">
-                      <h4 className="text-base font-bold text-carbon">
-                        {currentStatus?.label || t('cases.status_unassigned')}
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{t('cases.status_since')}: {formatDate(currentStatus?.valid_from)}</span>
-                      </p>
-                    </div>
-
-                    {currentStatus?.reason && (
-                      <div className="mt-3 p-3 bg-gray-50 rounded-xl text-xs text-gray-600 border border-gray-100">
-                        <span className="font-semibold text-gray-500 block mb-0.5">
-                          {t('cases.last_reason')}:
-                        </span>
-                        <p className="italic">"{tStored(currentStatus.reason)}"</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-end">
-                    <button
-                      onClick={() => handleOpenTransition(axis.code)}
-                      className="min-h-9 px-3 py-1.5 text-xs font-bold text-carbon bg-turquesa/20 hover:bg-turquesa hover:text-carbon rounded-lg transition"
-                    >
-                      {t('cases.btn_change_status')}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <StatusHistory caseId={caseData.id} />
-        </div>
-      )}
-
-      {/* Tab 2: Bitácora de Intervenciones (Épica E4) */}
-      {activeTab === 'journal' && (
-        <div className="space-y-4">
-          {/* Header de Bitácora */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200">
-            {/* Filtros */}
-            <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <button
-                onClick={() => setJournalFilter('all')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  journalFilter === 'all'
-                    ? 'bg-carbon text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {t('journal.filter_all')}
-              </button>
-              {assignedAreaCode && (
+        <div className="min-w-0 space-y-4">
+          {canWriteJournal && !caseData.person.is_anonymized && (
+            <QuickJournalCapture
+              caseId={caseData.id}
+              assignedAreaId={caseData.assigned_area_id ?? undefined}
+              isDirector={isDirector}
+              onSaved={async () => { await onDataChanged?.(); }}
+              onOpenFullForm={onStartJournalEntry}
+            />
+          )}
+          <div className="space-y-4">
+            {/* Header de Bitácora */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200">
+              {/* Filtros */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <button
-                  onClick={() => setJournalFilter('my_area')}
+                  onClick={() => setJournalFilter('all')}
                   className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                    journalFilter === 'my_area'
-                      ? 'bg-turquesa text-carbon shadow-sm'
+                    journalFilter === 'all'
+                      ? 'bg-carbon text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {t('journal.filter_my_area')}
+                  {t('journal.filter_all')}
                 </button>
-              )}
-              <button
-                onClick={() => setJournalFilter('shared')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  journalFilter === 'shared'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {t('journal.filter_shared')}
-              </button>
-              <button
-                onClick={() => setJournalFilter('work_notes')}
-                className={`px-3 py-1.5 rounded-lg font-bold transition ${
-                  journalFilter === 'work_notes'
-                    ? 'bg-amber-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {t('journal.filter_work_notes')}
-              </button>
-            </div>
-
-            {/* Botón de Nueva Entrada */}
-            {canWriteJournal && (
-              <button
-                onClick={onStartJournalEntry}
-                className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-carbon shadow-sm hover:opacity-90"
-              >
-                <Plus className="h-4 w-4" />
-                <span>{t('journal.btn_new_entry')}</span>
-              </button>
-            )}
-          </div>
-
-          {/* Lista de Entradas de Bitácora */}
-          {filteredJournalEntries.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-sm text-gray-500">
-              {t('journal.empty_state')}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredJournalEntries.map((entry) => {
-                const isSuperseded = !!entry.superseded_by_id;
-                const isExpanded = !!expandedSuperseded[entry.id];
-                const isShared = entry.visibility === 'shared';
-
-                return (
-                  <div
-                    key={entry.id}
-                    className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow ${
-                      isSuperseded
-                        ? 'border-gray-200 bg-gray-50/70 opacity-90'
-                        : isShared
-                        ? 'border-blue-200 ring-1 ring-blue-100'
-                        : 'border-gray-200'
+                {assignedAreaCode && (
+                  <button
+                    onClick={() => setJournalFilter('my_area')}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                      journalFilter === 'my_area'
+                        ? 'bg-turquesa text-carbon shadow-sm'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {/* Header de la Tarjeta */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
-                          {entry.area_name || entry.area_code}
-                        </span>
-                        <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa-dark">
-                          {t(`journal.types.${entry.entry_type_key}`)}
-                        </span>
-                        {entry.entry_type_key === 'warning' && warningNumbers.has(entry.id) && (
-                          <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
-                            {warningNumbers.get(entry.id)! <= 3
-                              ? t(`journal.warning_badge_${warningNumbers.get(entry.id)}`)
-                              : t('journal.warning_badge_n').replace('{n}', String(warningNumbers.get(entry.id)))}
-                          </span>
-                        )}
-                        {entry.service_line_item_id && (
-                          <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
-                            {itemLabel(catalogItems, entry.service_line_item_id, null)}
-                          </span>
-                        )}
-                        {entry.source === 'import' && (
-                          <span
-                            title={t('journal.imported_author').replace('{author}', entry.source_author_label ?? '')}
-                            className="rounded-md bg-violet-100 px-2.5 py-1 text-xs font-bold text-violet-800"
-                          >
-                            {t('journal.imported_badge')}
-                          </span>
-                        )}
+                    {t('journal.filter_my_area')}
+                  </button>
+                )}
+                <button
+                  onClick={() => setJournalFilter('shared')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                    journalFilter === 'shared'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('journal.filter_shared')}
+                </button>
+                <button
+                  onClick={() => setJournalFilter('work_notes')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                    journalFilter === 'work_notes'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {t('journal.filter_work_notes')}
+                </button>
+              </div>
 
-                        {entry.is_work_note && (
-                          <span
-                            title={t('journal.work_note_tooltip')}
-                            className="flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800"
-                          >
-                            <Shield className="h-3 w-3" />
-                            {t('journal.work_note_badge')}
-                          </span>
-                        )}
+              {/* Botón de Nueva Entrada */}
+              {canWriteJournal && (
+                <button
+                  onClick={onStartJournalEntry}
+                  className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-carbon shadow-sm hover:opacity-90"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>{t('journal.btn_new_entry')}</span>
+                </button>
+              )}
+            </div>
 
-                        {isShared ? (
-                          <span className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800">
-                            <Share2 className="h-3 w-3" />
-                            {t('journal.visibility_shared')} {entry.sharing_event?.to_area_name || 'otra área'}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                            <Lock className="h-3 w-3" />
-                            {t('journal.visibility_area_private')}
-                          </span>
-                        )}
-                      </div>
+            {/* Lista de Entradas de Bitácora */}
+            {filteredJournalEntries.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-sm text-gray-500">
+                {t('journal.empty_state')}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredJournalEntries.map((entry) => {
+                  const isSuperseded = !!entry.superseded_by_id;
+                  const isExpanded = !!expandedSuperseded[entry.id];
+                  const isShared = entry.visibility === 'shared';
 
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        <span title={`${t('journal.captured')} ${formatDateTime(entry.created_at)}`}>
-                          <strong>{t('journal.occurred_at')}</strong> {formatDate(entry.occurred_at)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Banner si la nota fue superada por fe de erratas */}
-                    {isSuperseded && (
-                      <div className="mt-3 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-4 w-4 text-amber-600" />
-                          <span>{t('journal.superseded_notice')}</span>
-                        </div>
-                        <button
-                          onClick={() => toggleSuperseded(entry.id)}
-                          className="flex min-h-9 items-center gap-1 px-2 font-bold text-amber-800 underline hover:text-amber-950"
-                        >
-                          {isExpanded ? (
-                            <>
-                              <EyeOff className="h-3.5 w-3.5" />
-                              <span>{t('journal.superseded_toggle_hide')}</span>
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="h-3.5 w-3.5" />
-                              <span>{t('journal.superseded_toggle_show')}</span>
-                            </>
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`rounded-2xl border bg-white p-5 shadow-sm transition hover:shadow ${
+                        isSuperseded
+                          ? 'border-gray-200 bg-gray-50/70 opacity-90'
+                          : isShared
+                          ? 'border-blue-200 ring-1 ring-blue-100'
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      {/* Header de la Tarjeta */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700">
+                            {entry.area_name || entry.area_code}
+                          </span>
+                          <span className="rounded-md bg-turquesa/10 px-2.5 py-1 text-xs font-semibold text-turquesa-dark">
+                            {t(`journal.types.${entry.entry_type_key}`)}
+                          </span>
+                          {entry.entry_type_key === 'warning' && warningNumbers.has(entry.id) && (
+                            <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">
+                              {warningNumbers.get(entry.id)! <= 3
+                                ? t(`journal.warning_badge_${warningNumbers.get(entry.id)}`)
+                                : t('journal.warning_badge_n').replace('{n}', String(warningNumbers.get(entry.id)))}
+                            </span>
                           )}
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Cuerpo de la intervención */}
-                    {(!isSuperseded || isExpanded) && (
-                      <div className={`mt-3.5 whitespace-pre-wrap text-sm leading-relaxed ${
-                        isSuperseded ? 'text-gray-500 line-through' : 'text-carbon'
-                      }`}>
-                        {entry.body}
-                      </div>
-                    )}
-
-                    {/* Footer y Acciones */}
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs text-gray-500">
-                      <div>
-                        <span>{t('journal.author_by')} <strong className="text-gray-700">{entry.author_name || 'Personal Operativo'}</strong></span>
-                        <span className="mx-2">·</span>
-                        <span>{t('journal.created_at')} {formatTime(entry.created_at)}</span>
-                      </div>
-
-                      {/* Botones de Acción (solo en entradas activas) */}
-                      {!isSuperseded && canWriteJournal && canActOnEntry(entry) && (
-                        <div className="flex items-center gap-2">
-                          {/* Botón de Fe de Erratas */}
-                          <button
-                            onClick={() => setClarifyingEntry(entry)}
-                            className="flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:text-carbon"
-                          >
-                            <CornerDownRight className="h-3 w-3 text-turquesa-dark" />
-                            <span>{t('journal.btn_clarify')}</span>
-                          </button>
-
-                          {/* Botón de Compartir si es privada */}
-                          {!isShared && !entry.is_work_note && (
-                            <button
-                              onClick={() => setSharingEntry(entry)}
-                              className="flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                          {entry.service_line_item_id && (
+                            <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                              {itemLabel(catalogItems, entry.service_line_item_id, null)}
+                            </span>
+                          )}
+                          {entry.source === 'import' && (
+                            <span
+                              title={t('journal.imported_author').replace('{author}', entry.source_author_label ?? '')}
+                              className="rounded-md bg-violet-100 px-2.5 py-1 text-xs font-bold text-violet-800"
                             >
-                              <Share2 className="h-3 w-3" />
-                              <span>{t('journal.btn_share')}</span>
-                            </button>
+                              {t('journal.imported_badge')}
+                            </span>
                           )}
+
                           {entry.is_work_note && (
-                            <span className="text-xs text-gray-500">{t('journal.work_note_no_share')}</span>
+                            <span
+                              title={t('journal.work_note_tooltip')}
+                              className="flex items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800"
+                            >
+                              <Shield className="h-3 w-3" />
+                              {t('journal.work_note_badge')}
+                            </span>
+                          )}
+
+                          {isShared ? (
+                            <span className="flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800">
+                              <Share2 className="h-3 w-3" />
+                              {t('journal.visibility_shared')} {entry.sharing_event?.to_area_name || 'otra área'}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              <Lock className="h-3 w-3" />
+                              {t('journal.visibility_area_private')}
+                            </span>
                           )}
                         </div>
+
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span title={`${t('journal.captured')} ${formatDateTime(entry.created_at)}`}>
+                            <strong>{t('journal.occurred_at')}</strong> {formatDate(entry.occurred_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Banner si la nota fue superada por fe de erratas */}
+                      {isSuperseded && (
+                        <div className="mt-3 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-900">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                            <span>{t('journal.superseded_notice')}</span>
+                          </div>
+                          <button
+                            onClick={() => toggleSuperseded(entry.id)}
+                            className="flex min-h-9 items-center gap-1 px-2 font-bold text-amber-800 underline hover:text-amber-950"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <EyeOff className="h-3.5 w-3.5" />
+                                <span>{t('journal.superseded_toggle_hide')}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>{t('journal.superseded_toggle_show')}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       )}
-                      {/* Sin acciones: se dice por qué, para que no parezca un fallo */}
-                      {!isSuperseded && canWriteJournal && !canActOnEntry(entry) && (
-                        <span className="text-xs text-gray-500">{t('journal.no_actions_hint')}</span>
+
+                      {/* Cuerpo de la intervención */}
+                      {(!isSuperseded || isExpanded) && (
+                        <div className={`mt-3.5 whitespace-pre-wrap text-sm leading-relaxed ${
+                          isSuperseded ? 'text-gray-500 line-through' : 'text-carbon'
+                        }`}>
+                          {entry.body}
+                        </div>
                       )}
+
+                      {/* Footer y Acciones */}
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-xs text-gray-500">
+                        <div>
+                          <span>{t('journal.author_by')} <strong className="text-gray-700">{entry.author_name || 'Personal Operativo'}</strong></span>
+                          <span className="mx-2">·</span>
+                          <span>{t('journal.created_at')} {formatTime(entry.created_at)}</span>
+                        </div>
+
+                        {/* Botones de Acción (solo en entradas activas) */}
+                        {!isSuperseded && canWriteJournal && canActOnEntry(entry) && (
+                          <div className="flex items-center gap-2">
+                            {/* Botón de Fe de Erratas */}
+                            <button
+                              onClick={() => setClarifyingEntry(entry)}
+                              className="flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 hover:text-carbon"
+                            >
+                              <CornerDownRight className="h-3 w-3 text-turquesa-dark" />
+                              <span>{t('journal.btn_clarify')}</span>
+                            </button>
+
+                            {/* Botón de Compartir si es privada */}
+                            {!isShared && !entry.is_work_note && (
+                              <button
+                                onClick={() => setSharingEntry(entry)}
+                                className="flex items-center gap-1 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                              >
+                                <Share2 className="h-3 w-3" />
+                                <span>{t('journal.btn_share')}</span>
+                              </button>
+                            )}
+                            {entry.is_work_note && (
+                              <span className="text-xs text-gray-500">{t('journal.work_note_no_share')}</span>
+                            )}
+                          </div>
+                        )}
+                        {/* Sin acciones: se dice por qué, para que no parezca un fallo */}
+                        {!isSuperseded && canWriteJournal && !canActOnEntry(entry) && (
+                          <span className="text-xs text-gray-500">{t('journal.no_actions_hint')}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tab 3: Resumen y Ficha Sociodemográfica MAP-OIM v3 */}
-      {activeTab === 'summary' && (
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
-          <div>
-            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
-              {t('cases.section_identity')}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_given_name')}</span>
-                <span className="font-semibold text-carbon text-sm">{caseData.person.given_name}</span>
+                  );
+                })}
               </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_family_names')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {caseData.person.paternal_family_name} {caseData.person.maternal_family_name || ''}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_preferred_name')}</span>
-                <span className="font-semibold text-turquesa-dark text-sm">
-                  {caseData.person.preferred_name || t('cases.not_specified')}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_birth_date')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {formatDate(caseData.person.birth_date)} {caseData.person.birth_date_is_estimated && `(${t('cases.estimated_birth')})`}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_nationality')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {countryLabel(caseData.person.nationality_country_id, caseData.person.other_nationality) ?? t('cases.not_specified')}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_language')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {itemLabel(catalogItems, caseData.person.primary_language_item_id, caseData.person.other_language) ?? t('cases.not_specified')}
-                </span>
-                {canEditExtra && (
-                  <button type="button" onClick={() => setField({ kind: 'language' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
-                    {caseData.person.primary_language_item_id || caseData.person.other_language ? t('case_extra.change') : t('diccionarios.language_register')}
-                  </button>
-                )}
-                {canEditExtra && !sensitiveOk && <p className="mt-1 text-sm text-gray-700">{t('diccionarios.only_no_response')}</p>}
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_phone')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {caseData.person.phone_number || t('cases.no_phone')}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('case_extra.religion_label')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {itemLabel(catalogItems, caseData.person.religion_item_id, caseData.person.religion_detail) ?? t('case_extra.religion_none')}
-                </span>
-                {canRectify && canEditExtra && (
-                  <button type="button" onClick={() => setField({ kind: 'religion' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
-                    {caseData.person.religion_item_id || caseData.person.religion_detail ? t('case_extra.change') : t('case_extra.religion_register')}
-                  </button>
-                )}
-                {canRectify && canEditExtra && !sensitiveOk && <p className="mt-1 text-sm text-gray-700">{t('diccionarios.only_no_response')}</p>}
-              </div>
-            </div>
-          </div>
-
-          <PersonDocumentsPanel
-            personId={caseData.titular_person_id}
-            documents={caseData.documents ?? []}
-            canEdit={canEditExtra}
-            onChanged={onDataChanged ?? (async () => {})}
-          />
-
-          <PersonProfilePanel
-            caseData={caseData}
-            canEdit={canEditExtra}
-            sensitiveOk={sensitiveOk}
-            onChanged={onDataChanged ?? (async () => {})}
-          />
-
-          <SocialFichaPanel
-            caseData={caseData}
-            canEdit={canEditExtra}
-            sensitiveOk={sensitiveOk}
-            onChanged={onDataChanged ?? (async () => {})}
-          />
-
-          <CaseNeedsPanel
-            caseId={caseData.id}
-            items={catalogItems.filter((i) => i.catalog === 'specific_need')}
-            currentIds={caseData.needs ?? []}
-            sensitiveOk={sensitiveOk}
-            canEdit={canEditExtra}
-            onChanged={onDataChanged ?? (async () => {})}
-          />
-
-          <CaseFamilyPanel
-            caseId={caseData.id}
-            family={caseData.family}
-            canEdit={canEditExtra}
-            onChanged={onDataChanged ?? (async () => {})}
-          />
-
-          <CaseDatesPanel
-            caseId={caseData.id}
-            dates={caseData.dates ?? []}
-            legacyEntryText={freeTextOrNull(caseData.entry_date_str)}
-            canEdit={canEditExtra}
-            onChanged={onDataChanged ?? (async () => {})}
-          />
-
-          <CaseDerivedPanel caseData={caseData} />
-
-          <div>
-            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
-              {t('cases.section_intake_context')}
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_window_type')}</span>
-                <span className="font-semibold text-carbon text-sm capitalize">{caseData.intake_window_type}</span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_family_travel')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {caseData.travels_with_family == null ? t('common.not_recorded') : caseData.travels_with_family ? t('common.yes') : t('common.no')}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_state')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {geoStates.find((s) => Number(s.cve_ent) === caseData.intake_state_id)?.name ?? t('common.not_recorded')}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_municipality')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  <MunicipalityName municipalityKey={caseData.intake_municipality_key} />
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_channel')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {intakeChannels.find((c) => c.code === caseData.intake_channel_id)?.label_es ?? t('common.not_recorded')}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('cases.field_route')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {entryRoutes.find((r) => r.code === caseData.entry_route_id)?.label_es ?? t('common.not_recorded')}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('plan.label')}</span>
-                <span className="font-semibold text-carbon text-sm">
-                  {legalValues.find((v) => v.id === caseData.intake_plan_value_id)?.label_es ?? t('common.not_recorded')}
-                </span>
-                {canEditExtra && (
-                  <button type="button" onClick={() => setField({ kind: 'plan' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
-                    {caseData.intake_plan_value_id ? t('case_extra.change') : t('plan.register')}
-                  </button>
-                )}
-              </div>
-              <div>
-                <span className="text-gray-500 block">{t('case_extra.legacy_label')}</span>
-                <span className="font-mono font-semibold text-carbon text-sm">
-                  {caseData.legacy_reference || t('case_extra.legacy_none')}
-                </span>
-                {canEditExtra && (
-                  <button type="button" onClick={() => setField({ kind: 'legacy' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
-                    {caseData.legacy_reference ? t('case_extra.change') : t('case_extra.legacy_register')}
-                  </button>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Tab 4: Marcadores de Vulnerabilidad (13 MAP-OIM v3) */}
-      {activeTab === 'vulnerabilities' && (
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
-          <div className="border-b pb-3">
-            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
-              {t('cases.tab_vulnerabilities')} ({caseData.vulnerabilities.length})
-            </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {t('cases.markers_subtitle')}
-            </p>
-          </div>
-
-          {caseData.vulnerabilities.length === 0 ? (
-            <div className="text-xs text-gray-500 italic p-4 text-center">
-              {t('cases.no_markers')}
+      {/* Más del expediente: lo que ya no necesita una pestaña para el trabajo diario */}
+      <section aria-labelledby="caso-mas" className="space-y-3">
+        <h3 id="caso-mas" className="text-sm font-bold uppercase tracking-wider text-gray-700">{t('cases.more')}</h3>
+        <MoreSection id="axes" title={t('cases.tabs_short.axes')} defaultOpen={false}>
+          <div className="space-y-4">
+            <div className="bg-claro/30 p-4 rounded-xl border border-turquesa/30 text-xs text-carbon">
+              <h3 className="font-bold text-turquesa-dark mb-1">{t('cases.axes_section_title')}</h3>
+              <p className="text-gray-600">
+                {t('cases.axes_section_desc')}
+              </p>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {caseData.vulnerabilities.map((v) => {
-                const def = VULNERABILITY_CATALOG[v.marker_code];
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {statusAxes.map((axis) => {
+                const currentStatus = caseData.statuses[axis.code];
+                const isPrimary = axis.is_primary;
+
                 return (
                   <div
-                    key={v.id}
-                    className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between"
+                    key={axis.id}
+                    className={`bg-white rounded-2xl p-5 border flex flex-col justify-between shadow-sm transition hover:shadow-md ${
+                      isPrimary ? 'border-turquesa/60 ring-2 ring-turquesa/20' : 'border-gray-200'
+                    }`}
                   >
                     <div>
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-alerta-dark flex-shrink-0" />
-                        <h4 className="text-xs font-bold text-carbon">
-                          {def?.label || v.marker_code}
-                        </h4>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                          {axis.label_es}
+                        </span>
+                        {isPrimary && (
+                          <span className="text-xs bg-turquesa/20 text-carbon font-extrabold px-2 py-0.5 rounded-full">
+                            {t('cases.axis_primary')}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {def?.description}
-                      </p>
-                      {v.notes && (
-                        <div className="mt-2 text-xs bg-white p-2.5 rounded border border-gray-200 italic text-gray-700">
-                          "{v.notes}"
+
+                      <div className="my-2">
+                        <h4 className="text-base font-bold text-carbon">
+                          {currentStatus?.label || t('cases.status_unassigned')}
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{t('cases.status_since')}: {formatDate(currentStatus?.valid_from)}</span>
+                        </p>
+                      </div>
+
+                      {currentStatus?.reason && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-xl text-xs text-gray-600 border border-gray-100">
+                          <span className="font-semibold text-gray-500 block mb-0.5">
+                            {t('cases.last_reason')}:
+                          </span>
+                          <p className="italic">"{tStored(currentStatus.reason)}"</p>
                         </div>
                       )}
-                      {canEditExtra && (sensitiveOk ? (
-                        <button type="button" onClick={() => setField({ kind: 'marker', code: v.marker_code })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
-                          {v.notes ? t('case_extra.marker_detail_edit') : t('case_extra.marker_detail_add')}
-                        </button>
-                      ) : (
-                        <p className="mt-2 text-sm text-gray-700">{t('case_extra.needs_sensitive_consent')}</p>
-                      ))}
                     </div>
-                    <div className="mt-3 pt-2 border-t border-gray-200/60 text-xs text-gray-500 flex items-center justify-between">
-                      <span>{t('cases.affirmed_by')} {v.affirmed_by_name ?? '—'}</span>
-                      <span>{formatDate(v.affirmed_at)}</span>
+
+                    <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-end">
+                      <button
+                        onClick={() => handleOpenTransition(axis.code)}
+                        className="min-h-9 px-3 py-1.5 text-xs font-bold text-carbon bg-turquesa/20 hover:bg-turquesa hover:text-carbon rounded-lg transition"
+                      >
+                        {t('cases.btn_change_status')}
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Tab 5: Subfolios Familiares */}
-      {activeTab === 'subfolios' && (
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
-          <div className="border-b pb-3">
-            <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
-              {t('cases.tab_subfolios')} ({caseData.subfolios?.length || 0})
-            </h3>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {t('cases.subfolios_subtitle')}
-            </p>
+            <StatusHistory caseId={caseData.id} />
           </div>
-
-          {(caseData.subfolios?.length ?? 0) === 0 && <p className="text-xs text-gray-600">{t('subfolio.no_subfolios')}</p>}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {caseData.subfolios?.map((sub) => (
-              <div
-                key={sub.id}
-                className="p-4 rounded-xl border border-gray-200 bg-white hover:border-turquesa transition flex items-center justify-between"
-              >
+        </MoreSection>
+        <MoreSection id="summary" title={t('cases.tabs_short.summary')} defaultOpen={false}>
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
+                {t('cases.section_identity')}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold bg-carbon text-white px-2 py-0.5 rounded">
-                      {sub.case_number}
-                    </span>
-                    <span className="text-xs font-bold text-carbon">
-                      {sub.person.given_name} {sub.person.paternal_family_name}
-                    </span>
-                  </div>
-                  <span className="text-xs text-gray-500 mt-1 block">
-                    {sub.person.preferred_name && `"${sub.person.preferred_name}" · `}
-                    {formatDate(sub.person.birth_date)} ({sub.statuses.engagement_status?.label})
+                  <span className="text-gray-500 block">{t('cases.field_given_name')}</span>
+                  <span className="font-semibold text-carbon text-sm">{caseData.person.given_name}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_family_names')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {caseData.person.paternal_family_name} {caseData.person.maternal_family_name || ''}
                   </span>
                 </div>
-                {onSelectSubfolio && (
-                  <button
-                    onClick={() => onSelectSubfolio(sub)}
-                    aria-label={`${t('cases.tab_subfolios')}: ${sub.case_number}`}
-                    className="p-2 text-carbon hover:text-turquesa-dark"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Tareas ligadas al caso (Épica E7, BV-7.16) */}
-      {activeTab === 'tasks' && canLinkTasks && <CaseTasksPanel caseId={caseData.id} caseNumber={caseData.case_number} />}
-
-      {/* Tab 6: Privacidad, Consentimientos y Derechos ARCO (Épica E5) */}
-      {activeTab === 'privacy' && (
-        <div className="space-y-6">
-          {/* Header Card */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-turquesa-dark" />
-                  <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
-                    {t('arco.section_consent_title')}
-                  </h3>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_preferred_name')}</span>
+                  <span className="font-semibold text-turquesa-dark text-sm">
+                    {caseData.person.preferred_name || t('cases.not_specified')}
+                  </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('arco.section_consent_desc')}
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_birth_date')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {formatDate(caseData.person.birth_date)} {caseData.person.birth_date_is_estimated && `(${t('cases.estimated_birth')})`}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_nationality')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {countryLabel(caseData.person.nationality_country_id, caseData.person.other_nationality) ?? t('cases.not_specified')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_language')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {itemLabel(catalogItems, caseData.person.primary_language_item_id, caseData.person.other_language) ?? t('cases.not_specified')}
+                  </span>
+                  {canEditExtra && (
+                    <button type="button" onClick={() => setField({ kind: 'language' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                      {caseData.person.primary_language_item_id || caseData.person.other_language ? t('case_extra.change') : t('diccionarios.language_register')}
+                    </button>
+                  )}
+                  {canEditExtra && !sensitiveOk && <p className="mt-1 text-sm text-gray-700">{t('diccionarios.only_no_response')}</p>}
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_phone')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {caseData.person.phone_number || t('cases.no_phone')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('case_extra.religion_label')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {itemLabel(catalogItems, caseData.person.religion_item_id, caseData.person.religion_detail) ?? t('case_extra.religion_none')}
+                  </span>
+                  {canRectify && canEditExtra && (
+                    <button type="button" onClick={() => setField({ kind: 'religion' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                      {caseData.person.religion_item_id || caseData.person.religion_detail ? t('case_extra.change') : t('case_extra.religion_register')}
+                    </button>
+                  )}
+                  {canRectify && canEditExtra && !sensitiveOk && <p className="mt-1 text-sm text-gray-700">{t('diccionarios.only_no_response')}</p>}
+                </div>
+              </div>
+            </div>
+
+            <PersonDocumentsPanel
+              personId={caseData.titular_person_id}
+              documents={caseData.documents ?? []}
+              canEdit={canEditExtra}
+              onChanged={onDataChanged ?? (async () => {})}
+            />
+
+            <PersonProfilePanel
+              caseData={caseData}
+              canEdit={canEditExtra}
+              sensitiveOk={sensitiveOk}
+              onChanged={onDataChanged ?? (async () => {})}
+            />
+
+            <SocialFichaPanel
+              caseData={caseData}
+              canEdit={canEditExtra}
+              sensitiveOk={sensitiveOk}
+              onChanged={onDataChanged ?? (async () => {})}
+            />
+
+            <CaseNeedsPanel
+              caseId={caseData.id}
+              items={catalogItems.filter((i) => i.catalog === 'specific_need')}
+              currentIds={caseData.needs ?? []}
+              sensitiveOk={sensitiveOk}
+              canEdit={canEditExtra}
+              onChanged={onDataChanged ?? (async () => {})}
+            />
+
+            <CaseFamilyPanel
+              caseId={caseData.id}
+              family={caseData.family}
+              canEdit={canEditExtra}
+              onChanged={onDataChanged ?? (async () => {})}
+            />
+
+            <CaseDatesPanel
+              caseId={caseData.id}
+              dates={caseData.dates ?? []}
+              legacyEntryText={freeTextOrNull(caseData.entry_date_str)}
+              canEdit={canEditExtra}
+              onChanged={onDataChanged ?? (async () => {})}
+            />
+
+            <CaseDerivedPanel caseData={caseData} />
+
+            <div>
+              <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
+                {t('cases.section_intake_context')}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_window_type')}</span>
+                  <span className="font-semibold text-carbon text-sm capitalize">{caseData.intake_window_type}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_family_travel')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {caseData.travels_with_family == null ? t('common.not_recorded') : caseData.travels_with_family ? t('common.yes') : t('common.no')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_state')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {geoStates.find((s) => Number(s.cve_ent) === caseData.intake_state_id)?.name ?? t('common.not_recorded')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_municipality')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    <MunicipalityName municipalityKey={caseData.intake_municipality_key} />
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_channel')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {intakeChannels.find((c) => c.code === caseData.intake_channel_id)?.label_es ?? t('common.not_recorded')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('cases.field_route')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {entryRoutes.find((r) => r.code === caseData.entry_route_id)?.label_es ?? t('common.not_recorded')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('plan.label')}</span>
+                  <span className="font-semibold text-carbon text-sm">
+                    {legalValues.find((v) => v.id === caseData.intake_plan_value_id)?.label_es ?? t('common.not_recorded')}
+                  </span>
+                  {canEditExtra && (
+                    <button type="button" onClick={() => setField({ kind: 'plan' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                      {caseData.intake_plan_value_id ? t('case_extra.change') : t('plan.register')}
+                    </button>
+                  )}
+                </div>
+                <div>
+                  <span className="text-gray-500 block">{t('case_extra.legacy_label')}</span>
+                  <span className="font-mono font-semibold text-carbon text-sm">
+                    {caseData.legacy_reference || t('case_extra.legacy_none')}
+                  </span>
+                  {canEditExtra && (
+                    <button type="button" onClick={() => setField({ kind: 'legacy' })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                      {caseData.legacy_reference ? t('case_extra.change') : t('case_extra.legacy_register')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </MoreSection>
+        <MoreSection id="vulnerabilities" title={`${t('cases.tabs_short.vulnerabilities')} (${caseData.vulnerabilities.length})`} defaultOpen={false}>
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+            <div className="border-b pb-3">
+              <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                {t('cases.tab_vulnerabilities')} ({caseData.vulnerabilities.length})
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {t('cases.markers_subtitle')}
+              </p>
+            </div>
+
+            {caseData.vulnerabilities.length === 0 ? (
+              <div className="text-xs text-gray-500 italic p-4 text-center">
+                {t('cases.no_markers')}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {caseData.vulnerabilities.map((v) => {
+                  const def = VULNERABILITY_CATALOG[v.marker_code];
+                  return (
+                    <div
+                      key={v.id}
+                      className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-alerta-dark flex-shrink-0" />
+                          <h4 className="text-xs font-bold text-carbon">
+                            {def?.label || v.marker_code}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {def?.description}
+                        </p>
+                        {v.notes && (
+                          <div className="mt-2 text-xs bg-white p-2.5 rounded border border-gray-200 italic text-gray-700">
+                            "{v.notes}"
+                          </div>
+                        )}
+                        {canEditExtra && (sensitiveOk ? (
+                          <button type="button" onClick={() => setField({ kind: 'marker', code: v.marker_code })} className="mt-1 inline-flex min-h-11 items-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50">
+                            {v.notes ? t('case_extra.marker_detail_edit') : t('case_extra.marker_detail_add')}
+                          </button>
+                        ) : (
+                          <p className="mt-2 text-sm text-gray-700">{t('case_extra.needs_sensitive_consent')}</p>
+                        ))}
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-gray-200/60 text-xs text-gray-500 flex items-center justify-between">
+                        <span>{t('cases.affirmed_by')} {v.affirmed_by_name ?? '—'}</span>
+                        <span>{formatDate(v.affirmed_at)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </MoreSection>
+        {((caseData.subfolios && caseData.subfolios.length > 0) || canCreateSubfolio) && (
+          <MoreSection id="subfolios" title={`${t('cases.tabs_short.subfolios')} (${caseData.subfolios?.length ?? 0})`} defaultOpen={false}>
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+              <div className="border-b pb-3">
+                <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                  {t('cases.tab_subfolios')} ({caseData.subfolios?.length || 0})
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {t('cases.subfolios_subtitle')}
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono bg-claro text-carbon px-2.5 py-1 rounded-full border border-turquesa/30 font-semibold">
-                  {t('arco.privacy_notice_badge')}
-                </span>
-                {canManageConsent && onSaveConsent && (
-                  <button
-                    onClick={onStartConsent}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-turquesa text-carbon hover:bg-turquesa-light transition flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('arco.btn_manage_consents')}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Alerta de Consentimiento para Datos Sensibles (Control P-06) */}
-            {!hasSensitiveDataConsent ? (
-              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-xs text-amber-900">
-                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold block mb-0.5">{t('arco.p06_active')}</span>
-                  <p>{t('arco.sensitive_alert_missing')}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="font-medium">{t('arco.sensitive_alert_ok')}</span>
-              </div>
-            )}
-
-            {/* Tarjetas de Consentimientos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              {(['general_care', 'sensitive_data', 'secondary_use_research'] as ConsentType[]).map((typeKey) => {
-                const consentItem = consents.find((c) => c.consent_type === typeKey);
-                const isGranted = consentItem?.status === 'granted';
-                const isOpposed = consentItem?.status === 'opposed';
-                const isRevoked = consentItem?.status === 'revoked';
-
-                return (
+              {(caseData.subfolios?.length ?? 0) === 0 && <p className="text-xs text-gray-600">{t('subfolio.no_subfolios')}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {caseData.subfolios?.map((sub) => (
                   <div
-                    key={typeKey}
-                    className={`p-4 rounded-xl border transition ${
-                      isGranted
-                        ? 'border-emerald-200 bg-emerald-50/20'
-                        : isOpposed
-                        ? 'border-amber-200 bg-amber-50/20'
-                        : 'border-gray-200 bg-gray-50/50'
-                    }`}
+                    key={sub.id}
+                    className="p-4 rounded-xl border border-gray-200 bg-white hover:border-turquesa transition flex items-center justify-between"
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="font-bold text-xs text-carbon">
-                        {t(`arco.consent_types.${typeKey}`)}
-                      </span>
-                      <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          isGranted
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            : isOpposed
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : isRevoked
-                            ? 'bg-red-100 text-red-800 border border-red-300'
-                            : 'bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        {consentItem ? t(`arco.consent_status.${consentItem.status}`) : t('arco.consent_pending')}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold bg-carbon text-white px-2 py-0.5 rounded">
+                          {sub.case_number}
+                        </span>
+                        <span className="text-xs font-bold text-carbon">
+                          {sub.person.given_name} {sub.person.paternal_family_name}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 mt-1 block">
+                        {sub.person.preferred_name && `"${sub.person.preferred_name}" · `}
+                        {formatDate(sub.person.birth_date)} ({sub.statuses.engagement_status?.label})
                       </span>
                     </div>
-
-                    {consentItem ? (
-                      <div className="text-xs text-gray-600 space-y-1 mt-2">
-                        {consentItem.is_minor_assent && (
-                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-semibold mb-1">
-                            <Scale className="w-3 h-3 text-amber-700" />
-                            <span>{t('arco.assent_label')}</span>
-                          </div>
-                        )}
-                        {consentItem.legal_guardian_name && (
-                          <p>
-                            <span className="font-medium text-gray-500">{t('arco.guardian_label')}</span> {consentItem.legal_guardian_name} ({consentItem.legal_guardian_role})
-                          </p>
-                        )}
-                        {consentItem.authority_letter_ref && (
-                          <p>
-                            <span className="font-medium text-gray-500">{t('arco.authority_ref_label')}</span> <span className="font-mono">{consentItem.authority_letter_ref}</span>
-                          </p>
-                        )}
-                        <p>
-                          <span className="font-medium text-gray-500">{t('arco.granted_at_label')}</span> {formatDate(consentItem.granted_at)}
-                        </p>
-                        {consentItem.notes && (
-                          <p className="italic text-gray-500 text-xs bg-white/70 p-1.5 rounded border border-gray-100 mt-1">
-                            "{consentItem.notes}"
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-500 italic mt-2">
-                        {t('arco.no_record')}
-                      </p>
+                    {onSelectSubfolio && (
+                      <button
+                        onClick={() => onSelectSubfolio(sub)}
+                        aria-label={`${t('cases.tab_subfolios')}: ${sub.case_number}`}
+                        className="p-2 text-carbon hover:text-turquesa-dark"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
                     )}
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
+          </MoreSection>
+        )}
+        {canLinkTasks && (
+          <MoreSection id="tasks" title={t('tasks.case.tab')} defaultOpen={false}>
+            <CaseTasksPanel caseId={caseData.id} caseNumber={caseData.case_number} />
+          </MoreSection>
+        )}
+        <MoreSection id="privacy" title={t('cases.tabs_short.privacy') as React.ReactNode} defaultOpen={initialTab === 'privacy'}>
+          <div className="space-y-6">
+            <CaseAuthorizationsPanel
+              caseId={caseData.id}
+              photo={caseData.photo_consent}
+              coexistence={caseData.coexistence_rules_accepted}
+              nna={caseData.nna_responsibility_accepted}
+              canEdit={canManageConsent && !caseData.person.is_anonymized && !!onDataChanged}
+              onChanged={async () => { await onDataChanged?.(); }}
+            />
 
-          {/* Sección: Ejercicio de Derechos ARCO */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-5">
-            <div className="border-b border-gray-100 pb-3">
-              <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
-                {t('arco.arco_section_title')}
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                {t('arco.arco_section_desc')}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Acceso */}
-              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
+            {/* Header Card */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 pb-4">
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
-                    <FileText className="w-4 h-4 text-turquesa-dark" />
-                    <span>{t('arco.right_access')}</span>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-turquesa-dark" />
+                    <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                      {t('arco.section_consent_title')}
+                    </h3>
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    {t('arco.access_desc')}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {t('arco.section_consent_desc')}
                   </p>
                 </div>
-                <DisabledReason id="arco-acceso" reason={isDirector ? null : t('arco.reserved_director')} />
-                <button
-                  onClick={() => setIsAccessExtractModalOpen(true)}
-                  disabled={!isDirector}
-                  {...describedBy('arco-acceso', isDirector ? null : 'x')}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
-                    isDirector
-                      ? 'bg-carbon text-white hover:bg-carbon-muted cursor-pointer'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={!isDirector ? t('arco.reserved_director') : undefined}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>{t('arco.btn_access')}</span>
-                </button>
-              </div>
 
-              {/* Rectificación */}
-              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
-                    <Edit3 className="w-4 h-4 text-turquesa-dark" />
-                    <span>{t('arco.right_rectification')}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    {t('arco.rectify_desc')}
-                  </p>
-                </div>
-                <DisabledReason id="arco-rectificar" reason={arcoReason(canRectify, 'arco.reserved_intake_director')} />
-                <button
-                  onClick={onStartRectify}
-                  disabled={!canRectify || caseData.person.is_anonymized}
-                  {...describedBy('arco-rectificar', arcoReason(canRectify, 'arco.reserved_intake_director'))}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
-                    canRectify && !caseData.person.is_anonymized
-                      ? 'bg-turquesa text-carbon hover:bg-turquesa-light cursor-pointer'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={!canRectify ? t('arco.reserved_intake_director') : undefined}
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>{t('arco.btn_rectify')}</span>
-                </button>
-              </div>
-
-              {/* Oposición */}
-              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
-                    <ShieldAlert className="w-4 h-4 text-amber-500" />
-                    <span>{t('arco.right_opposition')}</span>
-                  </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    {t('arco.oppose_desc')}
-                  </p>
-                </div>
-                <DisabledReason id="arco-oposicion" reason={arcoReason(isDirector, 'arco.reserved_director')} />
-                <button
-                  onClick={() => setIsOpposeModalOpen(true)}
-                  disabled={!isDirector || caseData.person.is_anonymized}
-                  {...describedBy('arco-oposicion', arcoReason(isDirector, 'arco.reserved_director'))}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
-                    isDirector && !caseData.person.is_anonymized
-                      ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300 cursor-pointer'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={!isDirector ? t('arco.reserved_director') : undefined}
-                >
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>{t('arco.btn_oppose')}</span>
-                </button>
-              </div>
-
-              {/* Cancelación / Anonimización */}
-              <div className="p-4 rounded-xl border border-red-200 bg-red-50/30 flex flex-col justify-between space-y-3">
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-700 mb-1">
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                    <span>{t('arco.right_cancellation')}</span>
-                  </div>
-                  <p className="text-xs text-red-700 leading-relaxed">
-                    {t('arco.cancel_desc')}
-                  </p>
-                </div>
-                <DisabledReason id="arco-anonimizar" reason={arcoReason(isDirector, 'arco.reserved_director')} />
-                <button
-                  onClick={() => setIsAnonymizeModalOpen(true)}
-                  disabled={!isDirector || caseData.person.is_anonymized}
-                  {...describedBy('arco-anonimizar', arcoReason(isDirector, 'arco.reserved_director'))}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition ${
-                    isDirector && !caseData.person.is_anonymized
-                      ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={!isDirector ? t('arco.reserved_director') : undefined}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>
-                    {caseData.person.is_anonymized ? t('arco.anonymized_label') : t('arco.btn_cancel')}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono bg-claro text-carbon px-2.5 py-1 rounded-full border border-turquesa/30 font-semibold">
+                    {t('arco.privacy_notice_badge')}
                   </span>
-                </button>
+                  {canManageConsent && onSaveConsent && (
+                    <button
+                      onClick={onStartConsent}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-turquesa text-carbon hover:bg-turquesa-light transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t('arco.btn_manage_consents')}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Alerta de Consentimiento para Datos Sensibles (Control P-06) */}
+              {!hasSensitiveDataConsent ? (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-xs text-amber-900">
+                  <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block mb-0.5">{t('arco.p06_active')}</span>
+                    <p>{t('arco.sensitive_alert_missing')}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-800">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-medium">{t('arco.sensitive_alert_ok')}</span>
+                </div>
+              )}
+
+              {/* Tarjetas de Consentimientos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {(['general_care', 'sensitive_data', 'secondary_use_research'] as ConsentType[]).map((typeKey) => {
+                  const consentItem = consents.find((c) => c.consent_type === typeKey);
+                  const isGranted = consentItem?.status === 'granted';
+                  const isOpposed = consentItem?.status === 'opposed';
+                  const isRevoked = consentItem?.status === 'revoked';
+
+                  return (
+                    <div
+                      key={typeKey}
+                      className={`p-4 rounded-xl border transition ${
+                        isGranted
+                          ? 'border-emerald-200 bg-emerald-50/20'
+                          : isOpposed
+                          ? 'border-amber-200 bg-amber-50/20'
+                          : 'border-gray-200 bg-gray-50/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-bold text-xs text-carbon">
+                          {t(`arco.consent_types.${typeKey}`)}
+                        </span>
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            isGranted
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : isOpposed
+                              ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                              : isRevoked
+                              ? 'bg-red-100 text-red-800 border border-red-300'
+                              : 'bg-gray-200 text-gray-600'
+                          }`}
+                        >
+                          {consentItem ? t(`arco.consent_status.${consentItem.status}`) : t('arco.consent_pending')}
+                        </span>
+                      </div>
+
+                      {consentItem ? (
+                        <div className="text-xs text-gray-600 space-y-1 mt-2">
+                          {consentItem.is_minor_assent && (
+                            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-xs font-semibold mb-1">
+                              <Scale className="w-3 h-3 text-amber-700" />
+                              <span>{t('arco.assent_label')}</span>
+                            </div>
+                          )}
+                          {consentItem.legal_guardian_name && (
+                            <p>
+                              <span className="font-medium text-gray-500">{t('arco.guardian_label')}</span> {consentItem.legal_guardian_name} ({consentItem.legal_guardian_role})
+                            </p>
+                          )}
+                          {consentItem.authority_letter_ref && (
+                            <p>
+                              <span className="font-medium text-gray-500">{t('arco.authority_ref_label')}</span> <span className="font-mono">{consentItem.authority_letter_ref}</span>
+                            </p>
+                          )}
+                          <p>
+                            <span className="font-medium text-gray-500">{t('arco.granted_at_label')}</span> {formatDate(consentItem.granted_at)}
+                          </p>
+                          {consentItem.notes && (
+                            <p className="italic text-gray-500 text-xs bg-white/70 p-1.5 rounded border border-gray-100 mt-1">
+                              "{consentItem.notes}"
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 italic mt-2">
+                          {t('arco.no_record')}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
 
-          {/* Historial de Solicitudes ARCO */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
-            <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
-              <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
-                {t('arco.history_title')}
-              </h3>
-              <span className="text-xs font-mono text-gray-500">
-                {t('arco.records_count').replace('{n}', String(arcoRequests.length))}
-              </span>
+            {/* Sección: Ejercicio de Derechos ARCO */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-5">
+              <div className="border-b border-gray-100 pb-3">
+                <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                  {t('arco.arco_section_title')}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  {t('arco.arco_section_desc')}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Acceso */}
+                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
+                      <FileText className="w-4 h-4 text-turquesa-dark" />
+                      <span>{t('arco.right_access')}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {t('arco.access_desc')}
+                    </p>
+                  </div>
+                  <DisabledReason id="arco-acceso" reason={isDirector ? null : t('arco.reserved_director')} />
+                  <button
+                    onClick={() => setIsAccessExtractModalOpen(true)}
+                    disabled={!isDirector}
+                    {...describedBy('arco-acceso', isDirector ? null : 'x')}
+                    className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                      isDirector
+                        ? 'bg-carbon text-white hover:bg-carbon-muted cursor-pointer'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                    title={!isDirector ? t('arco.reserved_director') : undefined}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>{t('arco.btn_access')}</span>
+                  </button>
+                </div>
+
+                {/* Rectificación */}
+                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
+                      <Edit3 className="w-4 h-4 text-turquesa-dark" />
+                      <span>{t('arco.right_rectification')}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {t('arco.rectify_desc')}
+                    </p>
+                  </div>
+                  <DisabledReason id="arco-rectificar" reason={arcoReason(canRectify, 'arco.reserved_intake_director')} />
+                  <button
+                    onClick={onStartRectify}
+                    disabled={!canRectify || caseData.person.is_anonymized}
+                    {...describedBy('arco-rectificar', arcoReason(canRectify, 'arco.reserved_intake_director'))}
+                    className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                      canRectify && !caseData.person.is_anonymized
+                        ? 'bg-turquesa text-carbon hover:bg-turquesa-light cursor-pointer'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                    title={!canRectify ? t('arco.reserved_intake_director') : undefined}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{t('arco.btn_rectify')}</span>
+                  </button>
+                </div>
+
+                {/* Oposición */}
+                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-carbon mb-1">
+                      <ShieldAlert className="w-4 h-4 text-amber-500" />
+                      <span>{t('arco.right_opposition')}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {t('arco.oppose_desc')}
+                    </p>
+                  </div>
+                  <DisabledReason id="arco-oposicion" reason={arcoReason(isDirector, 'arco.reserved_director')} />
+                  <button
+                    onClick={() => setIsOpposeModalOpen(true)}
+                    disabled={!isDirector || caseData.person.is_anonymized}
+                    {...describedBy('arco-oposicion', arcoReason(isDirector, 'arco.reserved_director'))}
+                    className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                      isDirector && !caseData.person.is_anonymized
+                        ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300 cursor-pointer'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                    title={!isDirector ? t('arco.reserved_director') : undefined}
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>{t('arco.btn_oppose')}</span>
+                  </button>
+                </div>
+
+                {/* Cancelación / Anonimización */}
+                <div className="p-4 rounded-xl border border-red-200 bg-red-50/30 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-red-700 mb-1">
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                      <span>{t('arco.right_cancellation')}</span>
+                    </div>
+                    <p className="text-xs text-red-700 leading-relaxed">
+                      {t('arco.cancel_desc')}
+                    </p>
+                  </div>
+                  <DisabledReason id="arco-anonimizar" reason={arcoReason(isDirector, 'arco.reserved_director')} />
+                  <button
+                    onClick={() => setIsAnonymizeModalOpen(true)}
+                    disabled={!isDirector || caseData.person.is_anonymized}
+                    {...describedBy('arco-anonimizar', arcoReason(isDirector, 'arco.reserved_director'))}
+                    className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition ${
+                      isDirector && !caseData.person.is_anonymized
+                        ? 'bg-red-600 text-white hover:bg-red-700 cursor-pointer'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    }`}
+                    title={!isDirector ? t('arco.reserved_director') : undefined}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>
+                      {caseData.person.is_anonymized ? t('arco.anonymized_label') : t('arco.btn_cancel')}
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {arcoRequests.length === 0 ? (
-              <p className="text-xs text-gray-500 italic py-3 text-center">
-                {t('arco.history_empty')}
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 text-xs">
-                  <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-xs">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left">{t('arco.table_docket')}</th>
-                      <th className="px-4 py-2.5 text-left">{t('arco.table_type')}</th>
-                      <th className="px-4 py-2.5 text-left">{t('arco.table_status')}</th>
-                      <th className="px-4 py-2.5 text-left">{t('arco.table_requested_by')}</th>
-                      <th className="px-4 py-2.5 text-left">{t('arco.table_reason')}</th>
-                      <th className="px-4 py-2.5 text-left">{t('arco.table_date')}</th>
-                      <th className="px-4 py-2.5 text-left">{t('arco.table_deadline')}</th>
-                      <th className="px-4 py-2.5 text-right">{t('arco.table_actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
-                    {arcoRequests.map((req) => {
-                      const docket = computeArcoDocket(req, caseData.organization_id?.slice(0, 3) || 'BV');
-                      const deadline = computeBusinessDaysDeadline(req.received_at, 20);
-                      return (
-                        <tr key={req.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-mono font-bold text-carbon text-xs">
-                            {docket}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-carbon">
-                            <span className="px-2 py-0.5 rounded bg-gray-100 border text-xs">
-                              {t(`arco.types.${req.request_type}`)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium text-xs">
-                              {t(`arco.statuses.${req.status}`)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-700">{req.requested_by_name}</td>
-                          <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={req.reason}>
-                            {req.reason}
-                          </td>
-                          <td className="px-4 py-3 text-gray-500 font-mono text-xs">
-                            {formatDate(req.received_at)}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 font-mono text-xs">
-                            {formatDate(deadline)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              type="button"
-                              onClick={() => setReceiptRequest(req)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-gray-300 text-xs font-semibold text-carbon shadow-2xs hover:bg-gray-50"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-turquesa-dark" />
-                              <span>{t('arco.receipt_btn')}</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* Historial de Solicitudes ARCO */}
+            <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+              <div className="border-b border-gray-100 pb-3 flex justify-between items-center">
+                <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
+                  {t('arco.history_title')}
+                </h3>
+                <span className="text-xs font-mono text-gray-500">
+                  {t('arco.records_count').replace('{n}', String(arcoRequests.length))}
+                </span>
               </div>
-            )}
+
+              {arcoRequests.length === 0 ? (
+                <p className="text-xs text-gray-500 italic py-3 text-center">
+                  {t('arco.history_empty')}
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead className="bg-gray-50 text-gray-500 uppercase font-semibold text-xs">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left">{t('arco.table_docket')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('arco.table_type')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('arco.table_status')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('arco.table_requested_by')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('arco.table_reason')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('arco.table_date')}</th>
+                        <th className="px-4 py-2.5 text-left">{t('arco.table_deadline')}</th>
+                        <th className="px-4 py-2.5 text-right">{t('arco.table_actions')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {arcoRequests.map((req) => {
+                        const docket = computeArcoDocket(req, caseData.organization_id?.slice(0, 3) || 'BV');
+                        const deadline = computeBusinessDaysDeadline(req.received_at, 20);
+                        return (
+                          <tr key={req.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-mono font-bold text-carbon text-xs">
+                              {docket}
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-carbon">
+                              <span className="px-2 py-0.5 rounded bg-gray-100 border text-xs">
+                                {t(`arco.types.${req.request_type}`)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium text-xs">
+                                {t(`arco.statuses.${req.status}`)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-700">{req.requested_by_name}</td>
+                            <td className="px-4 py-3 text-gray-600 max-w-xs truncate" title={req.reason}>
+                              {req.reason}
+                            </td>
+                            <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                              {formatDate(req.received_at)}
+                            </td>
+                            <td className="px-4 py-3 text-gray-700 font-mono text-xs">
+                              {formatDate(deadline)}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setReceiptRequest(req)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-gray-300 text-xs font-semibold text-carbon shadow-2xs hover:bg-gray-50"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-turquesa-dark" />
+                                <span>{t('arco.receipt_btn')}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        </MoreSection>
+      </section>
+
+
 
       {/* Modal de Cambio de Estatus Multieje (Regla Dura 7) */}
       {transitioningAxis && (
@@ -1562,3 +1628,11 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     </div>
   );
 };
+
+// «Más del expediente»: secciones que se abren cuando hacen falta (antes eran pestañas)
+const MoreSection: React.FC<{ id: string; title: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode }> = ({ id, title, defaultOpen = false, children }) => (
+  <details id={`caso-${id}`} open={defaultOpen} className="rounded-2xl border border-gray-200 bg-gray-50">
+    <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 text-sm font-bold text-carbon">{title}</summary>
+    <div className="space-y-4 p-4">{children}</div>
+  </details>
+);

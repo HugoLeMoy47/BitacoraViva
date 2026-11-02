@@ -133,7 +133,7 @@ async function tarea2(page) {
   try {
     await openCases(page, k);
     await openCase(page, k, 'ASF-2026-0001');
-    await k.click(page.getByRole('tab', { name: /Bitácora/ }), 'pestaña Bitácora');
+    // Expediente a dos columnas: la bitácora está a la vista, sin pestaña
     await k.click(page.getByRole('button', { name: /Nueva entrada de bitácora/i }), 'Nueva entrada de bitácora');
     await page.waitForTimeout(600);
     // Si el formulario es un modal se trabaja dentro de él; si es una página, dentro del contenido principal
