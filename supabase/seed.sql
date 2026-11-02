@@ -267,6 +267,20 @@ on conflict (organization_id, catalog, key) do nothing;
 -- la de diccionarios). La dirección los edita en «Equipo y permisos».
 select public.fn_seed_default_capabilities('00000000-0000-0000-0000-000000000001');
 
+-- 5n. Documentos con que se identifica la persona (ciclo «Ingreso y expediente»): los nueve del contrato; dirección y Trabajo
+-- Social los editan. «No cuenta con documentos» es del sistema (no se desactiva) y es la respuesta explícita de «ninguno».
+insert into public.catalog_item (organization_id, catalog, key, label_es, is_system, sort_order) values
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'origin_id', 'Cédula o documento de identidad del país de origen', false, 1),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'passport', 'Pasaporte', false, 2),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'birth_cert', 'Acta de nacimiento', false, 3),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'ine', 'INE (credencial para votar, México)', false, 4),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'curp', 'CURP', false, 5),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'comar_doc', 'Constancia de solicitud de refugio (COMAR)', false, 6),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'inm_doc', 'Forma migratoria o tarjeta de visitante (INM)', false, 7),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'other_doc', 'Otro documento de identidad', false, 8),
+    ('00000000-0000-0000-0000-000000000001', 'identity_document', 'none', 'No cuenta con documentos de identificación', true, 9)
+on conflict (organization_id, catalog, key) do nothing;
+
 -- 5l. Papel en la familia (E15 fase 4): los cuatro papeles de la regla de orden de la matriz de Trabajo Social; dirección y
 -- Trabajo Social los editan. Un papel agregado cuenta como «otro» al sugerir el orden.
 insert into public.catalog_item (organization_id, catalog, key, label_es, is_system, sort_order) values
