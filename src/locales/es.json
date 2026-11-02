@@ -96,6 +96,33 @@
     "total_roles": "Roles de la plataforma"
   },
   "cases": {
+    "mobile_summary": "Ver datos de identidad y estatus (Folio {folio})",
+    "sheet": {
+      "title": "Ficha básica",
+      "docs": "Documentos presentados",
+      "phone1": "Teléfono 1",
+      "phone2": "Teléfono 2",
+      "nationality": "Nacionalidad",
+      "intake": "Ingreso"
+    },
+    "status_now": "Estatus vigente",
+    "alerts": "Alertas de vulnerabilidad",
+    "alerts_none": "Sin marcadores de vulnerabilidad registrados.",
+    "more": "Más del expediente",
+    "authorizations": {
+      "title": "Autorizaciones firmadas en físico",
+      "hint": "Fotografía de identificación visual, acuerdos de convivencia y responsabilidad sobre niñas, niños y adolescentes. Sin la de fotografía no se puede subir ninguna foto.",
+      "photo": "Fotografía de identificación visual",
+      "coexistence": "Acuerdos de convivencia",
+      "nna": "Responsabilidad sobre niñez y adolescencia",
+      "nna_na": "No aplica o no registrado",
+      "register": "Registrar autorizaciones",
+      "edit": "Cambiar autorizaciones",
+      "save": "Guardar autorizaciones",
+      "saved": "Autorizaciones guardadas.",
+      "reason": "Motivo (obligatorio si cambias algo ya registrado)",
+      "reason_same": "Cambia alguna autorización para poder guardar."
+    },
     "title": "Expedientes humanitarios",
     "subtitle": "Ficha sociodemográfica estandarizada (MAP-OIM v3) y máquina de 5 ejes de estatus",
     "search_placeholder": "Buscar por folio, folio anterior, nombre, nacionalidad o marcador…",
@@ -207,7 +234,32 @@
     "field_channel": "Canal de procedencia",
     "field_route": "Vía de ingreso a México"
   },
+  "countries": {
+    "search_placeholder": "Escribe para buscar un país",
+    "none_found": "Ningún país coincide con lo escrito.",
+    "n_found": "{n} países encontrados."
+  },
   "intake": {
+    "physical": {
+      "title": "Autorizaciones firmadas en físico",
+      "hint": "Marca solo las que ya están firmadas en papel. Sin marcar, la persona todavía no cuenta con esa autorización; se puede registrar después, desde su expediente.",
+      "photo": "Cuenta con consentimiento firmado para la fotografía de identificación visual (en físico)",
+      "coexistence": "Los acuerdos de convivencia del albergue están aceptados y firmados (en físico)",
+      "nna": "El acuerdo de responsabilidad sobre niñas, niños y adolescentes está firmado (en físico)"
+    },
+    "window_default_note": "La organización fijó este contexto de ingreso; puedes cambiarlo.",
+    "field_phone2": "Segundo número de teléfono (opcional)",
+    "field_phone2_label": "De quién es",
+    "phone2_labels": {
+      "familiar": "Familiar",
+      "whatsapp": "WhatsApp",
+      "propio": "Propio",
+      "acompanante": "Acompañante",
+      "otro": "Otro"
+    },
+    "field_identity_docs": "Documentos con que se identifica",
+    "identity_docs_hint": "Marca todos los que presenta. «No cuenta con documentos» no se combina con los demás.",
+    "identity_docs_empty": "No hay documentos en el diccionario: dirección o Trabajo Social los agregan en «Diccionarios».",
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",
     "step_context": "Contexto",
     "step_person": "Ficha",
@@ -286,6 +338,12 @@
     "sex_3": "Otro / no binario",
     "other_country": "Otro país",
     "summary": {
+      "identity_docs": "Documentos de identificación",
+      "phone2": "Segundo teléfono",
+      "authorizations": "Autorizaciones firmadas",
+      "photo": "Fotografía",
+      "coexistence": "Convivencia",
+      "nna": "Niñez",
       "preferred": "Nombre preferido:",
       "vulnerabilities": "Vulnerabilidades marcadas:",
       "officer": "Oficial de ingreso:",
@@ -430,7 +488,8 @@
       "CONSENT_REVOKED": "Consentimiento revocado",
       "ARCO_ACCESS_EXTRACT_ISSUED": "Extracto de acceso ARCO emitido",
       "EVIDENCE_ACCESS": "Acceso a evidencia",
-      "READ_CASE": "Lectura de expediente"
+      "READ_CASE": "Lectura de expediente",
+      "ACCESS_DENIED": "Intento denegado"
     }
   },
   "authority_requests": {
@@ -461,6 +520,7 @@
       "occupation": "Ocupaciones",
       "department": "Departamentos",
       "family_role": "Papeles en la familia",
+      "identity_document": "Documentos de identificación",
       "social_questions": "Preguntas de la ficha social",
       "specific_need": "Necesidades específicas",
       "language": "Idiomas",
@@ -478,6 +538,7 @@
       "social_questions": "Las preguntas de contexto migratorio y de situaciones sensibles de Trabajo Social. Cada respuesta es informativa (el marcador de vulnerabilidad manda). Lo que hay que contar —relatos, hechos, terceros— va a la bitácora, no aquí.",
       "language": "Los idiomas que se ofrecen en la ficha de la persona.",
       "religion": "Las religiones que se ofrecen en la ficha de la persona.",
+      "identity_document": "Los documentos con que se identifica una persona al ingresar (se eligen varios en el alta). «No cuenta con documentos» es del sistema y no se puede retirar.",
       "age_bands": "Los grupos con que se agrupa la edad en la ficha y en los indicadores. Se calculan solo por edad, sin tomar en cuenta el sexo."
     },
     "department_country": "País de los departamentos",
@@ -727,6 +788,16 @@
     "why_stay": "Se necesita el ingreso y, si ya salió, la salida, ambos con el día exacto"
   },
   "journal": {
+    "quick": {
+      "title": "Captura rápida de bitácora",
+      "area": "Área",
+      "service_line": "Línea de servicio (opcional)",
+      "body": "Nota",
+      "save": "Guardar nota en bitácora",
+      "full_form": "Abrir el formulario completo",
+      "reason_body": "Escribe la nota para poder guardarla.",
+      "no_area": "No tienes un área en la que escribir en esta bitácora: pide a la dirección que te asigne una."
+    },
     "tab_title": "Bitácora de intervenciones",
     "btn_new_entry": "+ Nueva entrada de bitácora",
     "filter_all": "Todas las notas",
@@ -1030,6 +1101,7 @@
     "reserved_director": "Reservado a Dirección",
     "reserved_intake_director": "Reservado a Ingreso y Dirección",
     "rectify_page": {
+      "section_contact": "Contacto, documentos y país",
       "back_to_case": "Volver al caso {folio}",
       "section_data": "Datos de la persona",
       "no_changes": "No cambiaste ningún dato: modifica al menos uno para poder guardar.",
@@ -1310,6 +1382,7 @@
     "config_security": "Ajustes de seguridad actualizados.",
     "config_logo": "Logotipo guardado.",
     "config_logo_removed": "Logotipo quitado.",
+    "config_intake_context": "Contexto de ingreso guardado.",
     "subfolio_created": "Subfolio creado."
   },
   "errors": {
@@ -1461,9 +1534,14 @@
       "bv364": "Solo un área activa puede ser la general o la de apertura de expedientes.",
       "bv365": "Indica el motivo: es obligatorio al desactivar un área.",
       "bv366": "El logotipo no es válido: usa una imagen PNG, JPG o WebP de hasta 1 MB.",
+      "bv367": "Los documentos de identificación no son válidos: «No cuenta con documentos» no puede ir junto con otros, y cada uno debe estar en el diccionario.",
+      "bv368": "El segundo teléfono no es válido: hasta 30 caracteres, y la etiqueta necesita un número.",
+      "bv369": "El país no es válido.",
+      "bv370": "El contexto de ingreso no es válido: elige ventanilla fija, móvil o transaccional.",
+      "bv371": "Indica si cuenta con cada autorización (sí o no).",
       "bv334": "«La persona no quiso responder» no se combina con otras necesidades. Marca una cosa o la otra.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
-      "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
+      "bv402": "Falta el consentimiento necesario: el de datos sensibles (para marcadores, sexo, nacionalidad, teléfonos e idioma) o, para la fotografía, la autorización firmada en físico.",
       "bv403": "Para una persona menor de 18 años, el consentimiento exige su asentimiento y la identidad de quien la representa.",
       "bv404": "Para niñez no acompañada se requiere la identidad de la autoridad o tutor y la referencia de su oficio.",
       "bv405": "Quien representa a la persona menor debe ser una persona adulta.",
@@ -1498,6 +1576,13 @@
     }
   },
   "config": {
+    "intake_context": {
+      "title": "Contexto de ingreso predeterminado",
+      "hint": "Si tu organización recibe siempre por la misma ventanilla, elígela aquí y el alta la propondrá ya marcada (se puede cambiar). Sin configurar, quien captura elige la ventanilla en cada alta.",
+      "none": "Sin configurar (se elige en cada alta)",
+      "save": "Guardar el contexto de ingreso",
+      "reason_same": "Cambia la opción para poder guardar."
+    },
     "logo": {
       "title": "Logotipo",
       "hint": "Aparece en el encabezado de la aplicación. Imagen PNG, JPG o WebP de hasta {mb} MB (no se admite SVG). El inicio de sesión sigue mostrando la marca de Bitácora Viva.",

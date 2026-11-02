@@ -208,7 +208,22 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
     run(async () => {
       const current = casesList.find((c) => c.titular_person_id === personId)?.person;
       if (!current) throw new DbError('Persona no encontrada.', 'BV202');
-      await api.rectifyPerson({ ...current, ...updates }, reason);
+      // Lo básico (nombre, fecha, teléfono, correo) y lo de contacto, documentos y país van por funciones distintas de la base;
+      // solo se llama a la que corresponde a lo que cambió
+      const BASE = ['given_name', 'paternal_family_name', 'maternal_family_name', 'preferred_name', 'birth_date', 'birth_date_is_estimated', 'phone_number', 'email'];
+      const CONTACT = ['secondary_phone', 'secondary_phone_label', 'identity_documents_presented', 'nationality_iso'];
+      const merged = { ...current, ...updates };
+      if (BASE.some((k) => k in updates)) await api.rectifyPerson(merged, reason);
+      if (CONTACT.some((k) => k in updates)) {
+        await api.rectifyPersonContact(personId, {
+          secondary_phone: merged.secondary_phone ?? null,
+          secondary_phone_label: merged.secondary_phone_label ?? null,
+          identity_documents: merged.identity_documents_presented ?? null,
+          nationality_iso: merged.nationality_iso ?? null,
+          nationality_country_id: merged.nationality_country_id ?? null,
+          other_nationality: merged.other_nationality ?? null,
+        }, reason);
+      }
     }, 'toast.rectified');
 
   const handleAnonymizePerson = (personId: string, reason: string) =>
@@ -250,7 +265,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
   const caseNumberOf = (id: string) => casesList.find((c) => c.id === id)?.case_number ?? null;
 
   return (
-    <CatalogProvider value={{ areas: data.areas.filter((a) => a.active), statusAxes: data.statusAxes, statusValues: data.statusValues, documentTypes: data.documentTypes, geoStates: data.geoStates, intakeChannels: data.intakeChannels, entryRoutes: data.entryRoutes, familyTypes: data.familyTypes, familyUnits: data.familyUnits, catalogItems: data.catalogItems, ageBands: data.ageBands, socialQuestions: data.socialQuestions, organizationName: organization?.legal_name ?? '', organizationInfo: { responsibleName: organization?.responsible_name ?? '', responsibleAddress: organization?.responsible_address ?? '', arcoContact: organization?.arco_contact ?? '' }, userNames: data.userNames }}>
+    <CatalogProvider value={{ areas: data.areas.filter((a) => a.active), statusAxes: data.statusAxes, statusValues: data.statusValues, documentTypes: data.documentTypes, geoStates: data.geoStates, intakeChannels: data.intakeChannels, entryRoutes: data.entryRoutes, familyTypes: data.familyTypes, familyUnits: data.familyUnits, catalogItems: data.catalogItems, ageBands: data.ageBands, socialQuestions: data.socialQuestions, organizationName: organization?.legal_name ?? '', defaultIntakeContext: organization?.default_intake_context ?? null, organizationInfo: { responsibleName: organization?.responsible_name ?? '', responsibleAddress: organization?.responsible_address ?? '', arcoContact: organization?.arco_contact ?? '' }, userNames: data.userNames }}>
       {pending > 0 && (
         <div role="status" className="fixed left-1/2 top-16 z-[55] -translate-x-1/2 rounded-full bg-carbon px-4 py-1.5 text-sm font-semibold text-white shadow-lg">
           {t('toast.saving')}
@@ -321,6 +336,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onUpdateSecuritySettings={(enforce) => run(() => configApi.updateSecuritySettings(enforce), 'toast.config_security')}
             onSetLogo={(file) => run(async () => { await configApi.setLogo(await uploadLogoFile(organization?.id ?? '', file)); }, 'toast.config_logo')}
             onClearLogo={() => run(() => configApi.clearLogo(), 'toast.config_logo_removed')}
+            onSetIntakeContext={(ctx) => run(() => configApi.setIntakeContext(ctx), 'toast.config_intake_context')}
           />
         )}
         {current === 'about' && <AboutView organization={organization} areasCount={data.areas.length} />}

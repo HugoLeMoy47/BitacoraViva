@@ -1,7 +1,8 @@
 import { VulnerabilityMarkerCode } from '../types/database';
 import { t } from './i18n';
 
-// Catálogo cerrado MAP-OIM v3 (13 marcadores). Es parte del estándar, no dato de la organización.
+// Catálogo cerrado: los 13 marcadores de MAP-OIM v3 más dos propios de la plataforma (decisión del PO, 01 nov 2026). Es parte del
+// estándar, no dato de la organización. Todos son sensibles: solo se capturan con consentimiento sensible vigente (BV402).
 export const VULNERABILITY_CATALOG: Record<VulnerabilityMarkerCode, { label: string; description: string }> = {
   unaccompanied_child: { label: 'Niñez No Acompañada', description: 'Menor de 18 años que viaja sin persona adulta responsable.' },
   separated_child: { label: 'Niñez Separada', description: 'Menor de 18 años separado de sus padres pero con parientes.' },
@@ -16,6 +17,8 @@ export const VULNERABILITY_CATALOG: Record<VulnerabilityMarkerCode, { label: str
   international_protection_need: { label: 'Necesidad Protección Internacional', description: 'Riesgo manifiesto a la vida en caso de retorno forzado.' },
   older_person_at_risk: { label: 'Persona Adulta Mayor en Riesgo', description: 'Mayor de 60 años en condición de desamparo o fragilidad.' },
   other_vulnerability: { label: 'Otra Situación de Riesgo', description: 'Circunstancia especial identificada por profesional.' },
+  cuidador_monoparental: { label: 'Cuidador/a solo/a a cargo de dependientes', description: 'Una sola persona a cargo de niñas, niños, personas adultas mayores o con discapacidad.' },
+  cuidados_paliativos: { label: 'Cuidados paliativos o enfermedad terminal', description: 'Persona en situación de cuidados paliativos o enfermedad terminal.' },
 };
 
 // Países del estándar con identificador propio; cualquier otro va como «otro» (id 1) más texto libre.

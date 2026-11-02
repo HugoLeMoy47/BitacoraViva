@@ -282,32 +282,9 @@ async function keyboardJourney(page) {
 
   // Entrada de bitácora en un expediente
   await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; document.activeElement?.blur?.(); });
-  await page.locator('main [role=tab]', { hasText: /Bitácora/ }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+  // Expediente a dos columnas: la bitácora no está detrás de una pestaña; se llega a «Nueva entrada de bitácora» con Tab
+  await page.getByRole('button', { name: /Nueva entrada de bitácora/i }).first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(300);
-  let found = false;
-  const trail = [];
-  for (let i = 0; i < 80 && !found; i++) {
-    const a = await activeInfo(page);
-    trail.push(a ? `${a.tag}:${a.role}:${a.text.slice(0, 22)}${a.inMain ? '·main' : ''}` : 'nada');
-    if (process.env.AUDIT_DEBUG) console.log('  bit →', a && (a.tag + ':' + a.role + ':' + a.text.slice(0, 40)));
-    if (a && a.role === 'tab' && a.inMain) {
-      for (let k = 0; k < 10; k++) {
-        const c = await activeInfo(page);
-        if (c && /Bitácora/i.test(c.text)) { found = true; break; }
-        await page.keyboard.press('ArrowRight');
-        await page.waitForTimeout(150);
-      }
-      break;
-    }
-    await page.keyboard.press('Tab');
-  }
-  if (!found) {
-    const url = await page.evaluate(() => location.hash);
-    const tabs = await page.locator('main [role=tab]').count();
-    return [...out, { rule: 'recorrido-teclado', detail: `bitácora: no se llega a la pestaña Bitácora con teclado (url ${url}, ${tabs} pestañas; foco: ${trail.slice(-6).join(' > ')})` }];
-  }
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(500);
   if (!(await tabTo(page, /Nueva entrada de bitácora/i))) return [...out, { rule: 'recorrido-teclado', detail: 'bitácora: no se llega a «Nueva entrada de bitácora» con Tab' }];
   await page.keyboard.press('Enter');
   await page.locator('main textarea').first().waitFor({ state: 'visible', timeout: 15000 });
@@ -403,9 +380,18 @@ try {
       if (role.key === 'director' && (vp.name === '360' || vp.name === '1024')) {
         await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; });
         await page.waitForTimeout(1200);
-        const tabCount = await page.locator('main [role=tab]').count();
-        for (let i = 0; i < tabCount; i++) {
-          await page.locator('main [role=tab]').nth(i).click();
+        // Expediente a dos columnas: la página tal cual; en celular, también con el acordeón de identidad abierto
+        record(role.key, vp.name, 'expediente/dos columnas', await auditNow());
+        const identityAccordion = page.locator('main details', { hasText: /Ver datos de identidad y estatus/ }).first();
+        if (vp.width < 1024 && (await identityAccordion.count())) {
+          await identityAccordion.locator(':scope > summary').click();
+          await page.waitForTimeout(400);
+          record(role.key, vp.name, 'expediente/acordeón de identidad (celular)', await auditNow());
+        }
+        // «Más del expediente»: cada sección se abre y se revisa
+        const moreCount = await page.locator('main section[aria-labelledby="caso-mas"] > details').count();
+        for (let i = 0; i < moreCount; i++) {
+          await page.locator('main section[aria-labelledby="caso-mas"] > details').nth(i).locator(':scope > summary').click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'expediente/sección ' + (i + 1), await auditNow());
         }
@@ -432,7 +418,7 @@ try {
         await page.waitForTimeout(600);
 
         // Tareas ligadas al caso (E7, BV-7.16): el formulario se abre y se cancela
-        const caseTasksTab = page.getByRole('tablist', { name: 'Secciones del expediente' }).getByRole('tab', { name: 'Tareas', exact: true });
+        const caseTasksTab = page.locator('#caso-tasks > summary');
         if (await caseTasksTab.count()) {
           await caseTasksTab.click();
           await page.waitForTimeout(900);
@@ -592,20 +578,10 @@ try {
       if ((role.key === 'caseworker' || role.key === 'intake') && (vp.name === '360' || vp.name === '1024')) {
         await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; });
         await page.waitForTimeout(1200);
-        const caseTabs = page.locator('main [role=tab]');
-        const nTabs = await caseTabs.count();
-        // En celular, la pestaña de la bitácora (la de uso diario) debe verse COMPLETA sin desplazar la fila de pestañas
-        if (vp.width < 768) {
-          const bit = await page.evaluate(() => {
-            const tab = [...document.querySelectorAll('main [role=tab]')].find((x) => /Bitácora/.test(x.textContent));
-            if (!tab) return null;
-            const r = tab.getBoundingClientRect();
-            return { izq: Math.round(r.left), der: Math.round(r.right), ancho: innerWidth };
-          });
-          record(role.key, vp.name, '(pestaña Bitácora a la vista)', !bit || (bit.izq >= 0 && bit.der <= bit.ancho) ? [] : [{ rule: 'pestana-fuera-de-pantalla', detail: 'la pestaña Bitácora ocupa de ' + bit.izq + ' a ' + bit.der + ' px en una pantalla de ' + bit.ancho + ' px' }]);
-        }
-        for (let k = 0; k < nTabs; k++) {
-          await caseTabs.nth(k).click();
+        record(role.key, vp.name, 'expediente/dos columnas (rol sin Dirección)', await auditNow());
+        const nMore = await page.locator('main section[aria-labelledby="caso-mas"] > details').count();
+        for (let k = 0; k < nMore; k++) {
+          await page.locator('main section[aria-labelledby="caso-mas"] > details').nth(k).locator(':scope > summary').click();
           await page.waitForTimeout(500);
           record(role.key, vp.name, 'expediente/sección ' + (k + 1) + ' (rol sin Dirección)', await auditNow());
         }

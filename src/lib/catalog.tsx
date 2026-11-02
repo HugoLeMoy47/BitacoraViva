@@ -22,6 +22,8 @@ export interface Catalog {
   /** Preguntas de la ficha social */
   socialQuestions: SocialQuestion[];
   organizationName: string;
+  /** Contexto de ingreso que la organización fijó (null = sin configurar: lo elige quien captura) */
+  defaultIntakeContext: 'fija' | 'movil' | 'transaccional' | null;
   /** Datos del responsable declarados por la asociación (aviso de privacidad y extracto ARCO) */
   organizationInfo: { responsibleName: string; responsibleAddress: string; arcoContact: string };
   userNames: Record<string, string>;
@@ -29,6 +31,7 @@ export interface Catalog {
 
 const EMPTY: Catalog = {
   organizationName: '',
+  defaultIntakeContext: null,
   organizationInfo: { responsibleName: '', responsibleAddress: '', arcoContact: '' },
   userNames: {},
   areas: [],

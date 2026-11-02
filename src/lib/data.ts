@@ -440,6 +440,14 @@ export interface NewCaseInput {
   marital_status_item_id?: string | null;
   origin_department_item_id?: string | null;
   occupation_item_ids?: string[];
+  /** Ciclo «Ingreso y expediente»: segundo teléfono (sensible), documentos con que se identifica, país ISO (sensible) y autorizaciones firmadas en físico */
+  secondary_phone?: string | null;
+  secondary_phone_label?: string | null;
+  identity_documents?: string[] | null;
+  nationality_iso?: string | null;
+  photo_consent?: boolean | null;
+  coexistence_rules_accepted?: boolean | null;
+  nna_responsibility_accepted?: boolean | null;
 }
 
 // Indicadores agregados con supresión de celdas pequeñas (Ethos E-05): `count` llega
@@ -527,7 +535,38 @@ export const api = {
       p_marital_status_item_id: i.marital_status_item_id ?? null,
       p_origin_department_item_id: i.origin_department_item_id ?? null,
       p_occupation_item_ids: i.occupation_item_ids ?? null,
+      p_secondary_phone: i.secondary_phone ?? null,
+      p_secondary_phone_label: i.secondary_phone_label ?? null,
+      p_identity_documents: i.identity_documents ?? null,
+      p_nationality_iso: i.nationality_iso ?? null,
+      p_photo_consent: i.photo_consent ?? null,
+      p_coexistence_rules: i.coexistence_rules_accepted ?? null,
+      p_nna_responsibility: i.nna_responsibility_accepted ?? null,
     }),
+
+  /** Corregir lo registrado de una persona: segundo teléfono, documentos con que se identifica y país (ISO). Cambiar algo ya registrado pide motivo. */
+  rectifyPersonContact: (personId: string, c: {
+    secondary_phone: string | null;
+    secondary_phone_label: string | null;
+    identity_documents: string[] | null;
+    nationality_iso: string | null;
+    nationality_country_id: number | null;
+    other_nationality: string | null;
+  }, reason: string) =>
+    rpc('fn_rectify_person_contact', {
+      p_person_id: personId,
+      p_secondary_phone: c.secondary_phone,
+      p_secondary_phone_label: c.secondary_phone_label,
+      p_identity_documents: c.identity_documents,
+      p_nationality_iso: c.nationality_iso,
+      p_nationality_country_id: c.nationality_country_id,
+      p_other_nationality: c.other_nationality,
+      p_reason: reason.trim() || null,
+    }),
+
+  /** Autorizaciones firmadas en físico de un caso; cambiar una ya registrada pide motivo y deja auditoría */
+  setCaseAuthorizations: (caseId: string, photo: boolean, coexistence: boolean, nna: boolean | null, reason?: string) =>
+    rpc('fn_set_case_authorizations', { p_case_id: caseId, p_photo_consent: photo, p_coexistence_rules: coexistence, p_nna_responsibility: nna, p_reason: reason?.trim() || null }),
 
   createSubfolio: (i: SubfolioInput) =>
     rpc<string>('fn_create_subfolio', {
@@ -820,6 +859,8 @@ export interface OrganizationIdentityInput {
 }
 
 export const configApi = {
+  /** Contexto de ingreso que se propone al abrir un expediente (null = sin configurar); solo quien configura la organización */
+  setIntakeContext: (context: 'fija' | 'movil' | 'transaccional' | null) => rpc('fn_set_organization_default_intake_context', { p_context: context }),
   // Logotipo (E17 fase 4): el archivo se sube aparte (src/lib/logo.ts); la base fija cuál es el vigente
   setLogo: (path: string) => rpc('fn_set_organization_logo', { p_path: path }),
   clearLogo: () => rpc('fn_clear_organization_logo', {}),

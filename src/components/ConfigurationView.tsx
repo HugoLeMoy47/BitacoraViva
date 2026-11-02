@@ -22,6 +22,7 @@ interface Props {
   onUpdateSecuritySettings?: (enforce: boolean) => Result;
   onSetLogo?: (file: File) => Result;
   onClearLogo?: () => Result;
+  onSetIntakeContext?: (context: 'fija' | 'movil' | 'transaccional' | null) => Result;
 }
 
 // Consentimientos que se configuran. «internal_sharing» no se pide por separado (lo cubre el aviso general).
@@ -45,6 +46,7 @@ export const ConfigurationView: React.FC<Props> = ({
   onUpdateSecuritySettings,
   onSetLogo,
   onClearLogo,
+  onSetIntakeContext,
 }) => {
   const [tab, setTab] = useState<TabId>('identity');
   const [notices, setNotices] = useState<PrivacyNotice[] | null>(null);
@@ -101,6 +103,7 @@ export const ConfigurationView: React.FC<Props> = ({
           {tab === 'identity' && (
             <div className="space-y-6">
               <LogoSection organization={organization} busy={busy} onSet={onSetLogo} onClear={onClearLogo} />
+              <IntakeContextSection organization={organization} busy={busy} onSave={onSetIntakeContext} />
               <IdentityForm organization={organization} busy={busy} onSave={onSaveIdentity} />
             </div>
           )}
@@ -609,6 +612,44 @@ const LogoSection: React.FC<{
           <button type="button" className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-carbon hover:bg-gray-50 disabled:opacity-50" disabled={busy} onClick={() => void onClear()}>{t('config.logo.remove')}</button>
         )}
       </div>
+    </section>
+  );
+};
+
+// ---------------------------------------------------------------- Contexto de ingreso predeterminado (ciclo «Ingreso y expediente»)
+// Lo fija quien configura la organización. Sin configurar (el valor por omisión) la ventanilla la elige quien captura, como siempre:
+// no se supone ninguna. Con un valor, el alta lo propone ya marcado y se puede cambiar.
+const IntakeContextSection: React.FC<{
+  organization: Organization | null;
+  busy: boolean;
+  onSave?: (context: 'fija' | 'movil' | 'transaccional' | null) => Promise<{ ok: boolean }>;
+}> = ({ organization, busy, onSave }) => {
+  const uid = React.useId();
+  const saved = organization?.default_intake_context ?? '';
+  const [value, setValue] = useState<string>(saved);
+  useEffect(() => { setValue(saved); }, [saved]);
+  const reason = value === saved ? t('config.intake_context.reason_same') : null;
+
+  return (
+    <section aria-labelledby={`${uid}-t`} className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+      <h3 id={`${uid}-t`} className="text-sm font-bold text-carbon">{t('config.intake_context.title')}</h3>
+      <p className="text-sm text-gray-700">{t('config.intake_context.hint')}</p>
+      <fieldset>
+        <legend className="sr-only">{t('config.intake_context.title')}</legend>
+        <div className="space-y-1">
+          {([['', 'config.intake_context.none'], ['fija', 'indicators.window.fija'], ['movil', 'indicators.window.movil'], ['transaccional', 'indicators.window.transaccional']] as const).map(([v, key]) => (
+            <label key={v || 'none'} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-carbon">
+              <input type="radio" name={`${uid}-ctx`} value={v} checked={value === v} onChange={() => setValue(v)} className="h-5 w-5 accent-turquesa" />
+              {t(key)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <DisabledReason id={`${uid}-r`} reason={reason} />
+      <button type="button" className={BTN} disabled={!!reason || busy || !onSave} {...describedBy(`${uid}-r`, reason)}
+        onClick={() => void onSave?.(value === '' ? null : (value as 'fija' | 'movil' | 'transaccional'))}>
+        {t('config.intake_context.save')}
+      </button>
     </section>
   );
 };
