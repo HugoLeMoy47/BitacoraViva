@@ -103,7 +103,12 @@
       "phone1": "Teléfono 1",
       "phone2": "Teléfono 2",
       "nationality": "Nacionalidad",
-      "intake": "Ingreso"
+      "intake": "Ingreso",
+      "photo_title": "Fotografía de identificación",
+      "photo_alt": "Silueta genérica: aún no hay fotografía cargada",
+      "photo_authorized": "Autorizada por escrito; aún sin imagen cargada.",
+      "photo_not_authorized": "No autorizada: no se toma ni se sube.",
+      "photo_not_recorded": "Autorización no registrada."
     },
     "status_now": "Estatus vigente",
     "alerts": "Alertas de vulnerabilidad",
