@@ -207,7 +207,32 @@
     "field_channel": "Canal de procedencia",
     "field_route": "Vía de ingreso a México"
   },
+  "countries": {
+    "search_placeholder": "Escribe para buscar un país",
+    "none_found": "Ningún país coincide con lo escrito.",
+    "n_found": "{n} países encontrados."
+  },
   "intake": {
+    "physical": {
+      "title": "Autorizaciones firmadas en físico",
+      "hint": "Marca solo las que ya están firmadas en papel. Sin marcar, la persona todavía no cuenta con esa autorización; se puede registrar después, desde su expediente.",
+      "photo": "Cuenta con consentimiento firmado para la fotografía de identificación visual (en físico)",
+      "coexistence": "Los acuerdos de convivencia del albergue están aceptados y firmados (en físico)",
+      "nna": "El acuerdo de responsabilidad sobre niñas, niños y adolescentes está firmado (en físico)"
+    },
+    "window_default_note": "La organización fijó este contexto de ingreso; puedes cambiarlo.",
+    "field_phone2": "Segundo número de teléfono (opcional)",
+    "field_phone2_label": "De quién es",
+    "phone2_labels": {
+      "familiar": "Familiar",
+      "whatsapp": "WhatsApp",
+      "propio": "Propio",
+      "acompanante": "Acompañante",
+      "otro": "Otro"
+    },
+    "field_identity_docs": "Documentos con que se identifica",
+    "identity_docs_hint": "Marca todos los que presenta. «No cuenta con documentos» no se combina con los demás.",
+    "identity_docs_empty": "No hay documentos en el diccionario: dirección o Trabajo Social los agregan en «Diccionarios».",
     "modal_title": "Levantamiento de expediente (Estándar MAP-OIM v3)",
     "step_context": "Contexto",
     "step_person": "Ficha",
@@ -286,6 +311,12 @@
     "sex_3": "Otro / no binario",
     "other_country": "Otro país",
     "summary": {
+      "identity_docs": "Documentos de identificación",
+      "phone2": "Segundo teléfono",
+      "authorizations": "Autorizaciones firmadas",
+      "photo": "Fotografía",
+      "coexistence": "Convivencia",
+      "nna": "Niñez",
       "preferred": "Nombre preferido:",
       "vulnerabilities": "Vulnerabilidades marcadas:",
       "officer": "Oficial de ingreso:",
@@ -461,6 +492,7 @@
       "occupation": "Ocupaciones",
       "department": "Departamentos",
       "family_role": "Papeles en la familia",
+      "identity_document": "Documentos de identificación",
       "social_questions": "Preguntas de la ficha social",
       "specific_need": "Necesidades específicas",
       "language": "Idiomas",
@@ -478,6 +510,7 @@
       "social_questions": "Las preguntas de contexto migratorio y de situaciones sensibles de Trabajo Social. Cada respuesta es informativa (el marcador de vulnerabilidad manda). Lo que hay que contar —relatos, hechos, terceros— va a la bitácora, no aquí.",
       "language": "Los idiomas que se ofrecen en la ficha de la persona.",
       "religion": "Las religiones que se ofrecen en la ficha de la persona.",
+      "identity_document": "Los documentos con que se identifica una persona al ingresar (se eligen varios en el alta). «No cuenta con documentos» es del sistema y no se puede retirar.",
       "age_bands": "Los grupos con que se agrupa la edad en la ficha y en los indicadores. Se calculan solo por edad, sin tomar en cuenta el sexo."
     },
     "department_country": "País de los departamentos",
@@ -1461,9 +1494,14 @@
       "bv364": "Solo un área activa puede ser la general o la de apertura de expedientes.",
       "bv365": "Indica el motivo: es obligatorio al desactivar un área.",
       "bv366": "El logotipo no es válido: usa una imagen PNG, JPG o WebP de hasta 1 MB.",
+      "bv367": "Los documentos de identificación no son válidos: «No cuenta con documentos» no puede ir junto con otros, y cada uno debe estar en el diccionario.",
+      "bv368": "El segundo teléfono no es válido: hasta 30 caracteres, y la etiqueta necesita un número.",
+      "bv369": "El país no es válido.",
+      "bv370": "El contexto de ingreso no es válido: elige ventanilla fija, móvil o transaccional.",
+      "bv371": "Indica si cuenta con cada autorización (sí o no).",
       "bv334": "«La persona no quiso responder» no se combina con otras necesidades. Marca una cosa o la otra.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
-      "bv402": "No se registran marcadores de vulnerabilidad sin el consentimiento para datos sensibles.",
+      "bv402": "Falta el consentimiento necesario: el de datos sensibles (para marcadores, sexo, nacionalidad, teléfonos e idioma) o, para la fotografía, la autorización firmada en físico.",
       "bv403": "Para una persona menor de 18 años, el consentimiento exige su asentimiento y la identidad de quien la representa.",
       "bv404": "Para niñez no acompañada se requiere la identidad de la autoridad o tutor y la referencia de su oficio.",
       "bv405": "Quien representa a la persona menor debe ser una persona adulta.",

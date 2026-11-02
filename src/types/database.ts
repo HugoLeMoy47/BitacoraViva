@@ -154,6 +154,8 @@ export interface Organization {
   responsible_address?: string | null;
   responsible_contact?: string | null;
   arco_contact?: string | null;
+  /** Contexto de ingreso que se propone al abrir un expediente; vacío = la organización no lo ha configurado */
+  default_intake_context?: 'fija' | 'movil' | 'transaccional' | null;
   /** Ruta del logotipo vigente en el bucket `org-assets` (E17 fase 4) */
   logo_path?: string | null;
   enforce_absolute_session_timeout?: boolean;
@@ -276,6 +278,13 @@ export interface Person {
   marital_status_item_id?: string | null;
   origin_department_item_id?: string | null;
   phone_number?: string | null;
+  /** Segundo teléfono y su etiqueta (sensible, como el principal); vacío = «No registrado» */
+  secondary_phone?: string | null;
+  secondary_phone_label?: 'familiar' | 'whatsapp' | 'propio' | 'acompanante' | 'otro' | null;
+  /** Claves del diccionario `identity_document`; vacío = «No registrado», ['none'] = «No cuenta con documentos» */
+  identity_documents_presented?: string[] | null;
+  /** País de nacionalidad (ISO 3166-1 alfa-2, sensible) */
+  nationality_iso?: string | null;
   email?: string | null;
   address_line?: string | null;
   neighborhood?: string | null;
@@ -308,6 +317,10 @@ export interface Case {
   entry_route_id?: number | null;
   entry_date_str?: string | null;
   travels_with_family?: boolean | null;
+  /** Autorizaciones firmadas en físico; vacío = «No registrado», false = «no cuenta con ella» */
+  photo_consent?: boolean | null;
+  coexistence_rules_accepted?: boolean | null;
+  nna_responsibility_accepted?: boolean | null;
   opened_at: string;
   opened_by: string;
   closed_at?: string | null;
@@ -329,7 +342,7 @@ export interface Case {
 export interface CatalogItem {
   id: string;
   organization_id: string;
-  catalog: 'language' | 'religion' | 'specific_need' | 'service_line' | 'education_level' | 'marital_status' | 'occupation' | 'department' | 'family_role';
+  catalog: 'language' | 'religion' | 'specific_need' | 'service_line' | 'education_level' | 'marital_status' | 'occupation' | 'department' | 'family_role' | 'identity_document';
   /** Solo el departamento: país (de la lista de nacionalidades) al que pertenece; null en los demás y en «no quiso responder» */
   country_id?: number | null;
   key: string;
@@ -497,7 +510,9 @@ export type VulnerabilityMarkerCode =
   | 'survivor_torture_trauma'
   | 'international_protection_need'
   | 'older_person_at_risk'
-  | 'other_vulnerability';
+  | 'other_vulnerability'
+  | 'cuidador_monoparental'
+  | 'cuidados_paliativos';
 
 export interface CaseVulnerabilityMarker {
   id: string;

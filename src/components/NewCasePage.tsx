@@ -8,6 +8,9 @@ import { FlexibleDateInput } from './FlexibleDateInput';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
+import { countryName, legacyCountryId } from '../lib/countries';
+import { isDisabledByNone, toggleIdentityDocument, toSubmit } from '../lib/identityDocuments';
+import { CountryPicker } from './CountryPicker';
 import { ConsentInput, NewCaseInput, dataApi, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
 import { DisabledReason, describedBy } from './DisabledReason';
 import { NnaAssentModal } from './NnaAssentModal';
@@ -25,7 +28,6 @@ const CONSENT_KEYS: { key: ConsentKey; required: boolean }[] = [
 ];
 
 // Identificadores de país del estándar usados hasta ahora por la semilla; el resto va como "otro" (1).
-const COUNTRY_ID: Record<string, number> = { Honduras: 93, Guatemala: 86 };
 
 function ageYears(isoDate: string): number {
   const b = new Date(isoDate);
@@ -52,7 +54,7 @@ interface NewCasePageProps {
 export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreated, authorFullName }) => {
   const [step, setStep] = useState<Step>(0);
   const { isDemo } = useEnvironment();
-  const { areas, geoStates, intakeChannels, entryRoutes, catalogItems } = useCatalog();
+  const { areas, geoStates, intakeChannels, entryRoutes, catalogItems, defaultIntakeContext } = useCatalog();
 
   // Paso 0: aviso de privacidad y consentimiento. Ninguna opción viene marcada.
   const [notice, setNotice] = useState<PrivacyNotice | null>(null);
@@ -66,6 +68,10 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
     sensitive_data: null,
     secondary_use_research: null,
   });
+  // Autorizaciones firmadas en físico (ciclo «Ingreso y expediente»): ninguna viene marcada; sin marcar = «no cuenta con ella»
+  const [photoConsent, setPhotoConsent] = useState(false);
+  const [coexistenceAccepted, setCoexistenceAccepted] = useState(false);
+  const [nnaResponsibility, setNnaResponsibility] = useState(false);
   const [isMinor, setIsMinor] = useState(false);
   const [showNnaModal, setShowNnaModal] = useState(false);
   const [isUnaccompanied, setIsUnaccompanied] = useState(false);
@@ -75,7 +81,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
 
   // Paso 1: Contexto
   // Sin valores supuestos: lo obligatorio (ventanilla) lo elige quien captura; lo opcional queda «No registrado»
-  const [windowType, setWindowType] = useState<'' | 'fija' | 'movil' | 'transaccional'>('');
+  // Si la dirección fijó un contexto de ingreso, viene preseleccionado (y se puede cambiar); si no, lo elige quien captura
+  const [windowType, setWindowType] = useState<'' | 'fija' | 'movil' | 'transaccional'>(defaultIntakeContext ?? '');
   const [travelsWithFamily, setTravelsWithFamily] = useState<'' | 'yes' | 'no'>('');
   const [stateKey, setStateKey] = useState('');
   const [municipalityKey, setMunicipalityKey] = useState('');
@@ -97,11 +104,16 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const [birthDate, setBirthDate] = useState('');
   const [birthDateEstimated, setBirthDateEstimated] = useState(false);
   const [sexId, setSexId] = useState<number | ''>('');
-  const [nationalityCountry, setNationalityCountry] = useState('');
+  // País por ISO 3166-1, sin texto libre; el nombre y el id del estándar se derivan
+  const [nationalityIso, setNationalityIso] = useState('');
   // Idioma: valor del diccionario + detalle; sin consentimiento sensible solo «la persona no quiso responder»
   const [languageItemId, setLanguageItemId] = useState('');
   const [primaryLanguage, setPrimaryLanguage] = useState('');
   const [phone, setPhone] = useState('');
+  const [phone2, setPhone2] = useState('');
+  const [phone2Label, setPhone2Label] = useState('');
+  // Documentos con que se identifica (varios; «No cuenta con documentos» es excluyente)
+  const [identityDocs, setIdentityDocs] = useState<string[]>([]);
   // Ficha completa (E15 fase 1): estudios, estado civil, departamento de origen y ocupación (obligatoria si hay opciones)
   const [educationItemId, setEducationItemId] = useState('');
   const [maritalItemId, setMaritalItemId] = useState('');
@@ -144,7 +156,8 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
   const occupationNoResponse = occupationItems.find((i) => i.key === 'no_response');
   const occupationRequired = occupationItems.length > 0;
   // El departamento depende de la nacionalidad: se ofrecen los del país elegido (los demás países comparten el grupo «otro», id 1)
-  const nationalityId = nationalityCountry ? (COUNTRY_ID[nationalityCountry] ?? 1) : null;
+  const nationalityId = legacyCountryId(nationalityIso);
+  const identityDocItems = catalogItems.filter((i) => i.catalog === 'identity_document' && i.is_active).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   const departmentOptions = catalogItems.filter(
     (i) => i.catalog === 'department' && i.is_active && (i.key === 'no_response' || (sensitiveGranted && nationalityId !== null && i.country_id === nationalityId))
   );
@@ -206,7 +219,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
 
   const handleFinish = () => {
     // Ningún dato se inventa: lo sensible solo viaja con consentimiento sensible; lo no resuelto va vacío
-    const nationality = sensitiveGranted && nationalityCountry ? nationalityCountry : null;
+    const nationality = sensitiveGranted && nationalityIso ? nationalityIso : null;
     const langItem = catalogItems.find((i) => i.id === languageItemId && i.catalog === 'language');
     const effectiveLang = langItem && (sensitiveGranted || langItem.key === 'no_response') ? langItem : null;
     const nationStored = toStoredDate(nationPrecision, nationRaw);
@@ -223,11 +236,20 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       birth_date: birthDate,
       birth_date_is_estimated: birthDateEstimated,
       sex_id: sensitiveGranted && sexId !== '' ? sexId : null,
-      nationality_country_id: nationality ? (COUNTRY_ID[nationality] ?? 1) : null,
-      other_nationality: nationality,
+      nationality_country_id: legacyCountryId(nationality),
+      // El nombre canónico del país (nunca texto escrito a mano): lo leen el extracto ARCO y los informes
+      other_nationality: countryName(nationality),
+      nationality_iso: nationality,
       primary_language_item_id: effectiveLang?.id ?? null,
       other_language: effectiveLang && effectiveLang.key !== 'no_response' && primaryLanguage.trim() ? primaryLanguage.trim() : null,
       phone_number: sensitiveGranted && phone.trim() ? phone.trim() : null,
+      secondary_phone: sensitiveGranted && phone2.trim() ? phone2.trim() : null,
+      secondary_phone_label: sensitiveGranted && phone2.trim() && phone2Label ? phone2Label : null,
+      identity_documents: toSubmit(identityDocs),
+      photo_consent: photoConsent,
+      coexistence_rules_accepted: coexistenceAccepted,
+      // Solo se pregunta si viaja con familia; si no aplica queda vacío (No registrado), no «No»
+      nna_responsibility_accepted: travelsWithFamily === 'yes' ? nnaResponsibility : null,
       intake_window_type: windowType as 'fija' | 'movil' | 'transaccional',
       travels_with_family: travelsWithFamily === '' ? null : travelsWithFamily === 'yes',
       intake_state_id: stateKey ? Number(stateKey) : null,
@@ -287,7 +309,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
 
   // ¿Hay algo capturado que se perdería al salir?
   const dirty =
-    !!(givenName || paternalName || maternalName || preferredName || phone || birthDate || windowType || travelsWithFamily || stateKey || channelCode || routeCode || guardianName || guardianRole || authorityRef) ||
+    !!(givenName || paternalName || maternalName || preferredName || phone || phone2 || nationalityIso || identityDocs.length > 0 || photoConsent || coexistenceAccepted || birthDate || windowType || travelsWithFamily || stateKey || channelCode || routeCode || guardianName || guardianRole || authorityRef) ||
     noticeDelivered ||
     CONSENT_KEYS.some(({ key }) => choices[key] !== null);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
@@ -512,6 +534,21 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   </div>
                 )}
               </div>
+
+              <fieldset className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <legend className="px-1 text-xs font-bold text-carbon">{t('intake.physical.title')}</legend>
+                <p className="mb-2 text-xs text-gray-700">{t('intake.physical.hint')}</p>
+                <div className="space-y-1">
+                  <label className="flex min-h-11 cursor-pointer items-start gap-2 text-xs text-carbon">
+                    <input type="checkbox" checked={photoConsent} onChange={(e) => setPhotoConsent(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-turquesa" />
+                    <span>{t('intake.physical.photo')}</span>
+                  </label>
+                  <label className="flex min-h-11 cursor-pointer items-start gap-2 text-xs text-carbon">
+                    <input type="checkbox" checked={coexistenceAccepted} onChange={(e) => setCoexistenceAccepted(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-turquesa" />
+                    <span>{t('intake.physical.coexistence')}</span>
+                  </label>
+                </div>
+              </fieldset>
             </div>
           )}
 
@@ -535,6 +572,9 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                     </button>
                   ))}
                 </div>
+                {defaultIntakeContext && windowType === defaultIntakeContext && (
+                  <p className="mt-1 text-xs text-gray-700">{t('intake.window_default_note')}</p>
+                )}
               </div>
 
               <div className="p-4 bg-gray-50 rounded-xl border border-gray-200" role="radiogroup" aria-labelledby="travels-label">
@@ -549,6 +589,13 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   ))}
                 </div>
               </div>
+
+              {travelsWithFamily === 'yes' && (
+                <label className="flex min-h-11 cursor-pointer items-start gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-carbon">
+                  <input type="checkbox" checked={nnaResponsibility} onChange={(e) => setNnaResponsibility(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-turquesa" />
+                  <span>{t('intake.physical.nna')}</span>
+                </label>
+              )}
 
               <p className="text-xs text-gray-700">{t('intake.ctx.hint')}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -709,24 +756,12 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-10">{t('intake.field_nationality')}</label>
-                  <select id="newcas-10" name="newcas-10" autoComplete="off"
+                  <CountryPicker
+                    label={t('intake.field_nationality')}
+                    value={nationalityIso}
                     disabled={!sensitiveGranted}
-                    value={nationalityCountry}
-                    onChange={(e) => { setNationalityCountry(e.target.value); setDepartmentItemId(''); }}
-                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <option value="">{t('common.not_recorded')}</option>
-                    <option value="Honduras">{t('intake.countries.honduras')}</option>
-                    <option value="Guatemala">{t('intake.countries.guatemala')}</option>
-                    <option value="El Salvador">{t('intake.countries.el_salvador')}</option>
-                    <option value="Venezuela">{t('intake.countries.venezuela')}</option>
-                    <option value="Haití">{t('intake.countries.haiti')}</option>
-                    <option value="Cuba">{t('intake.countries.cuba')}</option>
-                    <option value="Colombia">{t('intake.countries.colombia')}</option>
-                    <option value="México">{t('intake.countries.mexico')}</option>
-                    <option value="Otro">{t('intake.other_country')}</option>
-                  </select>
+                    onChange={(iso) => { setNationalityIso(iso); setDepartmentItemId(''); }}
+                  />
                   {!sensitiveGranted && (
                     <span className="mt-1 block text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
                       {t('intake.consent.sensitive_disabled_notice')}
@@ -780,6 +815,53 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                   </span>
                 )}
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-12b">{t('intake.field_phone2')}</label>
+                  <input id="newcas-12b" name="newcas-12b" autoComplete="off"
+                    disabled={!sensitiveGranted}
+                    type="text"
+                    maxLength={30}
+                    value={phone2}
+                    onChange={(e) => { setPhone2(e.target.value); if (!e.target.value.trim()) setPhone2Label(''); }}
+                    placeholder={t('intake.ph_phone')}
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1" htmlFor="newcas-12c">{t('intake.field_phone2_label')}</label>
+                  <select id="newcas-12c" name="newcas-12c" autoComplete="off"
+                    disabled={!sensitiveGranted || !phone2.trim()}
+                    value={phone2Label}
+                    onChange={(e) => setPhone2Label(e.target.value)}
+                    className="w-full text-xs p-2.5 border rounded-lg border-gray-300 focus:outline-none focus:border-turquesa disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{t('common.not_recorded')}</option>
+                    {(['familiar', 'whatsapp', 'propio', 'acompanante', 'otro'] as const).map((k) => <option key={k} value={k}>{t(`intake.phone2_labels.${k}`)}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <fieldset>
+                <legend className="mb-1 block text-xs font-medium text-gray-700">{t('intake.field_identity_docs')}</legend>
+                <p className="mb-1 text-xs text-gray-700">{t('intake.identity_docs_hint')}</p>
+                {identityDocItems.length === 0 ? (
+                  <p className="text-xs text-gray-700">{t('intake.identity_docs_empty')}</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                    {identityDocItems.map((d) => {
+                      const off = isDisabledByNone(identityDocs, d.key);
+                      return (
+                        <label key={d.id} className={`flex min-h-11 items-start gap-2 text-xs ${off ? 'cursor-not-allowed text-gray-600' : 'cursor-pointer text-carbon'}`}>
+                          <input type="checkbox" checked={identityDocs.includes(d.key)} disabled={off} onChange={() => setIdentityDocs((prev) => toggleIdentityDocument(prev, d.key))} className="mt-0.5 h-5 w-5 shrink-0 accent-turquesa" />
+                          <span>{d.label_es}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </fieldset>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -903,7 +985,26 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">{t('intake.summary.nationality')}</span>
-                  <span className="font-semibold text-carbon">{sensitiveGranted && nationalityCountry ? nationalityCountry : t('common.not_recorded')}</span>
+                  <span className="font-semibold text-carbon">{sensitiveGranted && nationalityIso ? countryName(nationalityIso) : t('common.not_recorded')}</span>
+                </div>
+                <div className="flex justify-between gap-3 border-b pb-2">
+                  <span className="text-gray-500">{t('intake.summary.identity_docs')}</span>
+                  <span className="text-right font-semibold text-carbon">
+                    {identityDocs.length === 0 ? t('common.not_recorded') : identityDocs.map((k) => identityDocItems.find((d) => d.key === k)?.label_es ?? k).join(', ')}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3 border-b pb-2">
+                  <span className="text-gray-500">{t('intake.summary.phone2')}</span>
+                  <span className="text-right font-semibold text-carbon">
+                    {sensitiveGranted && phone2.trim() ? `${phone2.trim()}${phone2Label ? ` (${t(`intake.phone2_labels.${phone2Label}`)})` : ''}` : t('common.not_recorded')}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3 border-b pb-2">
+                  <span className="text-gray-500">{t('intake.summary.authorizations')}</span>
+                  <span className="text-right font-semibold text-carbon">
+                    {t('intake.summary.photo')}: {t(photoConsent ? 'common.yes' : 'common.no')} · {t('intake.summary.coexistence')}: {t(coexistenceAccepted ? 'common.yes' : 'common.no')}
+                    {travelsWithFamily === 'yes' ? ` · ${t('intake.summary.nna')}: ${t(nnaResponsibility ? 'common.yes' : 'common.no')}` : ''}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b pb-2">
                   <span className="text-gray-500">{t('intake.summary.vulnerabilities')}</span>
