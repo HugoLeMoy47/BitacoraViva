@@ -1343,6 +1343,7 @@
     "config_security": "Ajustes de seguridad actualizados.",
     "config_logo": "Logotipo guardado.",
     "config_logo_removed": "Logotipo quitado.",
+    "config_intake_context": "Contexto de ingreso guardado.",
     "subfolio_created": "Subfolio creado."
   },
   "errors": {
@@ -1536,6 +1537,13 @@
     }
   },
   "config": {
+    "intake_context": {
+      "title": "Contexto de ingreso predeterminado",
+      "hint": "Si tu organización recibe siempre por la misma ventanilla, elígela aquí y el alta la propondrá ya marcada (se puede cambiar). Sin configurar, quien captura elige la ventanilla en cada alta.",
+      "none": "Sin configurar (se elige en cada alta)",
+      "save": "Guardar el contexto de ingreso",
+      "reason_same": "Cambia la opción para poder guardar."
+    },
     "logo": {
       "title": "Logotipo",
       "hint": "Aparece en el encabezado de la aplicación. Imagen PNG, JPG o WebP de hasta {mb} MB (no se admite SVG). El inicio de sesión sigue mostrando la marca de Bitácora Viva.",

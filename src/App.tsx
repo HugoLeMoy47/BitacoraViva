@@ -321,6 +321,7 @@ const Workspace: React.FC<{ currentUser: SessionUser }> = ({ currentUser }) => {
             onUpdateSecuritySettings={(enforce) => run(() => configApi.updateSecuritySettings(enforce), 'toast.config_security')}
             onSetLogo={(file) => run(async () => { await configApi.setLogo(await uploadLogoFile(organization?.id ?? '', file)); }, 'toast.config_logo')}
             onClearLogo={() => run(() => configApi.clearLogo(), 'toast.config_logo_removed')}
+            onSetIntakeContext={(ctx) => run(() => configApi.setIntakeContext(ctx), 'toast.config_intake_context')}
           />
         )}
         {current === 'about' && <AboutView organization={organization} areasCount={data.areas.length} />}
