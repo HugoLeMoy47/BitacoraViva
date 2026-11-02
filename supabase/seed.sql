@@ -1229,3 +1229,273 @@ from (values
     (5, 'dining', 3, 'night', 'Todo en orden. Quedó cena para quien llegue tarde en el refrigerador.', 'a0000000-0000-0000-0000-000000000007')
 ) as s(n, wa, d, sh, b, who)
 on conflict (id) do nothing;
+
+-- ==============================================================================
+-- 11. Representación de estados y datos del ciclo «Ingreso y expediente»
+--
+-- Se aplica DESPUÉS de todo lo anterior y sobre los mismos 60 expedientes (no agrega ni quita ninguno), de modo que los
+-- datos generados arriba no cambian. Lo que agrega:
+--   * Estados que la demo no mostraba: persona anonimizada (con su solicitud ARCO de cancelación), reapertura, cierre,
+--     salidas anticipadas con motivo (ME-02), en pausa, pérdida de contacto, referida, y los valores jurídicos que
+--     estaban en cero. Los cambios pasan por `fn_change_case_status` / `fn_anonymize_person` bajo una sesión simulada de
+--     Dirección, así que dejan historial, motivo y auditoría como en producción.
+--   * Solicitudes ARCO pendientes (una vencida), aprobadas y rechazadas; consentimiento sensible revocado y
+--     compartición interna autorizada o revocada.
+--   * Datos del ciclo nuevo: país ISO, documentos con que se identifica, segundo teléfono y las tres autorizaciones
+--     firmadas en físico, con respuestas distintas (sí, no y «No registrado») para ver cada pantalla.
+-- Todo es FICTICIO y determinista (el orden sale de md5 sobre el folio).
+-- ==============================================================================
+create or replace function pg_temp.bv_cur(p_case uuid, p_axis text)
+returns text language sql stable as $$
+    select sv.code
+    from public.case_status cs
+    join public.status_value sv on sv.id = cs.value_id
+    join public.status_axis sa on sa.id = cs.axis_id
+    where cs.case_id = p_case and sa.code = p_axis and cs.valid_to is null
+$$;
+
+do $$
+declare
+    v_org uuid := '00000000-0000-0000-0000-000000000001';
+    v_dir uuid := 'a0000000-0000-0000-0000-000000000001';
+    v_in uuid := 'a0000000-0000-0000-0000-000000000003';
+    v_notice uuid := '60000000-0000-0000-0000-000000000001';
+    r record;
+    k int;
+    v_cases uuid[];
+    v_persons uuid[];
+    v_names text[];
+begin
+    -- Sesión simulada de Dirección: las funciones leen auth.uid() y el rol; así los cambios quedan atribuidos
+    perform set_config('request.jwt.claims', json_build_object('sub', v_dir, 'role', 'authenticated')::text, true);
+    perform set_config('request.jwt.claim.sub', v_dir::text, true);
+
+    create temp table bv_el on commit drop as
+    select c.id as case_id, c.titular_person_id as person_id, c.case_number,
+           row_number() over (order by md5(c.case_number)) as rn,
+           not exists (select 1 from public."case" k where k.parent_case_id = c.id) as sin_familia
+    from public."case" c
+    where c.parent_case_id is null and c.case_number not in ('ASF-2026-0001', 'ASF-2026-0002');
+    create temp table bv_used (case_id uuid primary key) on commit drop;
+
+    -- ---- A. Dos personas anonimizadas (cancelación ARCO ejecutada), de expedientes concluidos y cerrados, sin familia
+    for r in
+        select e.case_id, e.person_id from bv_el e
+        where e.sin_familia and pg_temp.bv_cur(e.case_id, 'engagement_status') = 'discharged' and pg_temp.bv_cur(e.case_id, 'record_status') = 'closed'
+        order by e.rn limit 2
+    loop
+        insert into bv_used values (r.case_id);
+        insert into public.arco_request (
+            organization_id, person_id, case_id, request_type, status, details, reason, requested_by_name, is_legal_representative,
+            received_at, handled_by_user_id, resolved_at, resolution_notes
+        ) values (
+            v_org, r.person_id, r.case_id, 'cancellation', 'approved_executed',
+            'Solicita la supresión de sus datos personales (dato sintético de demostración).',
+            'La persona titular ya no desea que la organización conserve su información.',
+            'Persona titular', false, now() - interval '30 days', v_dir, now() - interval '24 days',
+            'Se ejecutó la anonimización irreversible; solo queda el esqueleto estadístico (ADR-0001).');
+        perform public.fn_anonymize_person(r.person_id, 'Cancelación solicitada por la persona titular (ARCO); dato sintético de demostración.');
+    end loop;
+
+    -- ---- B. Una reapertura: un expediente cerrado vuelve a abrirse y a acompañarse
+    for r in
+        select e.case_id from bv_el e
+        where e.sin_familia and pg_temp.bv_cur(e.case_id, 'record_status') = 'closed' and pg_temp.bv_cur(e.case_id, 'engagement_status') = 'discharged'
+          and not exists (select 1 from bv_used u where u.case_id = e.case_id)
+        order by e.rn limit 1
+    loop
+        insert into bv_used values (r.case_id);
+        perform public.fn_change_case_status(r.case_id, 'record_status', 'open', 'Reapertura: la persona regresó y solicita de nuevo acompañamiento (dato sintético de demostración).');
+        perform public.fn_change_case_status(r.case_id, 'engagement_status', 'active', 'Reapertura: se retoma el acompañamiento (dato sintético de demostración).');
+    end loop;
+
+    -- ---- C. Cierres: tres expedientes concluidos pasan a cerrados; en dos, además, la situación ante la organización
+    k := 0;
+    for r in
+        select e.case_id from bv_el e
+        where pg_temp.bv_cur(e.case_id, 'engagement_status') = 'discharged' and pg_temp.bv_cur(e.case_id, 'record_status') in ('open', 'under_review')
+          and not exists (select 1 from bv_used u where u.case_id = e.case_id)
+        order by e.rn limit 3
+    loop
+        k := k + 1;
+        insert into bv_used values (r.case_id);
+        perform public.fn_change_case_status(r.case_id, 'record_status', 'closed', 'Cierre administrativo: proceso concluido y sin pendientes (dato sintético de demostración).');
+        if k <= 2 then
+            perform public.fn_change_case_status(r.case_id, 'engagement_status', 'closed', 'Cierre del acompañamiento (dato sintético de demostración).');
+        end if;
+    end loop;
+
+    -- ---- D. Salidas anticipadas (ME-02): de «primer contacto» directo a la salida, con motivo
+    k := 0;
+    for r in
+        select e.case_id from bv_el e
+        where pg_temp.bv_cur(e.case_id, 'engagement_status') = 'first_contact' and not exists (select 1 from bv_used u where u.case_id = e.case_id)
+        order by e.rn limit 3
+    loop
+        k := k + 1;
+        insert into bv_used values (r.case_id);
+        perform public.fn_change_case_status(r.case_id, 'engagement_status', case when k <= 2 then 'lost_contact' else 'referred_out' end,
+            case when k <= 2 then 'Salida anticipada directa: la persona se retiró antes de la valoración (dato sintético de demostración).'
+                 else 'Salida anticipada directa: se canalizó de inmediato a otra institución (dato sintético de demostración).' end);
+        if pg_temp.bv_cur(r.case_id, 'shelter_status') in ('sheltered', 'in_transit') then
+            perform public.fn_change_shelter_status(r.case_id, 'left_shelter', 'Salida anticipada del albergue (dato sintético de demostración).', current_date, 'day');
+        end if;
+    end loop;
+
+    -- ---- E. En pausa (3), pérdida de contacto (3) y referidas (2), desde el acompañamiento activo
+    k := 0;
+    for r in
+        select e.case_id from bv_el e
+        where pg_temp.bv_cur(e.case_id, 'engagement_status') = 'active' and pg_temp.bv_cur(e.case_id, 'record_status') = 'open'
+          and pg_temp.bv_cur(e.case_id, 'case_stage') in ('case_plan', 'implementation', 'monitoring')
+          and not exists (select 1 from bv_used u where u.case_id = e.case_id)
+        order by e.rn limit 8
+    loop
+        k := k + 1;
+        insert into bv_used values (r.case_id);
+        if k <= 3 then
+            perform public.fn_change_case_status(r.case_id, 'engagement_status', 'paused', 'En pausa: la persona está en una cita médica prolongada (dato sintético de demostración).');
+        elsif k <= 6 then
+            perform public.fn_change_case_status(r.case_id, 'engagement_status', 'lost_contact', 'Pérdida de contacto: no se presentó a tres citas seguidas (dato sintético de demostración).');
+            if pg_temp.bv_cur(r.case_id, 'shelter_status') in ('sheltered', 'in_transit') then
+                perform public.fn_change_shelter_status(r.case_id, 'left_shelter', 'Dejó el albergue sin aviso (dato sintético de demostración).', current_date, 'day');
+            end if;
+        else
+            perform public.fn_change_case_status(r.case_id, 'engagement_status', 'referred_out', 'Referida a una institución aliada para atención especializada (dato sintético de demostración).');
+        end if;
+    end loop;
+
+    -- ---- F. Estatus jurídicos que estaban en cero (2, 6, 3, 3 y 2 expedientes: los de 6 se ven, los demás quedan suprimidos por n < 5)
+    k := 0;
+    for r in
+        select e.case_id from bv_el e
+        where pg_temp.bv_cur(e.case_id, 'legal_status') = 'undetermined' and pg_temp.bv_cur(e.case_id, 'record_status') <> 'anonymized'
+        order by e.rn limit 16
+    loop
+        k := k + 1;
+        perform public.fn_change_case_status(r.case_id, 'legal_status',
+            case when k <= 2 then 'permanent_resident' when k <= 8 then 'visitor_card' when k <= 11 then 'family_link_registration'
+                 when k <= 14 then 'voluntary_return' else 'indefinite_plan' end,
+            'Actualización jurídica tras la valoración del área (dato sintético de demostración).');
+    end loop;
+
+    -- ---- G. Solicitudes ARCO en otros estados (sobre expedientes abiertos y activos)
+    select array_agg(case_id order by rn), array_agg(person_id order by rn) into v_cases, v_persons
+    from (select e.case_id, e.person_id, e.rn from bv_el e
+          where pg_temp.bv_cur(e.case_id, 'engagement_status') = 'active' and pg_temp.bv_cur(e.case_id, 'record_status') = 'open' and e.sin_familia
+          order by e.rn limit 6) s;
+    select array_agg(p.given_name || ' ' || p.paternal_family_name order by x.ord) into v_names
+    from unnest(v_persons) with ordinality as x(pid, ord) join public.person p on p.id = x.pid;
+    if coalesce(array_length(v_cases, 1), 0) >= 6 then
+        insert into public.arco_request (
+            organization_id, person_id, case_id, request_type, status, details, reason, requested_by_name, is_legal_representative,
+            representative_relationship, received_at, handled_by_user_id, resolved_at, resolution_notes
+        ) values
+            (v_org, v_persons[1], v_cases[1], 'access', 'pending', 'Pide una copia de lo que la organización guarda de ella (dato sintético de demostración).',
+             'Quiere conocer qué datos se tienen y para qué se usan.', v_names[1], false, null, now() - interval '3 days', null, null, null),
+            (v_org, v_persons[2], v_cases[2], 'rectification', 'pending', 'Pide corregir la fecha de nacimiento y el nombre de su madre (dato sintético de demostración).',
+             'Los datos registrados en el ingreso no coinciden con su acta de nacimiento.', v_names[2], false, null, now() - interval '28 days', null, null, null),
+            (v_org, v_persons[3], v_cases[3], 'cancellation', 'pending', 'Pide que se supriman sus datos (dato sintético de demostración).',
+             'Ya no desea que la organización conserve su información.', v_names[3], false, null, now() - interval '2 days', null, null, null),
+            (v_org, v_persons[4], v_cases[4], 'access', 'approved_executed', 'Pide una copia de su expediente (dato sintético de demostración).',
+             'Quiere llevarla a su trámite migratorio.', v_names[4], false, null, now() - interval '14 days', v_dir, now() - interval '10 days',
+             'Se entregó el extracto de acceso en sesión presencial.'),
+            (v_org, v_persons[5], v_cases[5], 'cancellation', 'rejected', 'Pide que se supriman sus datos (dato sintético de demostración).',
+             'Desea que no se conserve su información.', v_names[5], false, null, now() - interval '20 days', v_dir, now() - interval '12 days',
+             'Se negó por ahora: el expediente tiene un trámite abierto que obliga a conservarlo; se le informó a la persona.'),
+            (v_org, v_persons[6], v_cases[6], 'rectification', 'approved_executed', 'Pide corregir el nombre de su hijo en el expediente (dato sintético de demostración).',
+             'El nombre quedó mal escrito en el ingreso.', 'Persona representante', true, 'Madre de la persona titular', now() - interval '9 days', v_dir, now() - interval '7 days',
+             'Se corrigió el nombre con el acta de nacimiento.');
+    end if;
+
+    -- ---- H. Consentimientos: sensible revocado (2), compartición interna autorizada (adultos, uno de cada cuatro) y una revocada
+    for r in
+        select e.case_id, e.person_id from bv_el e
+        where pg_temp.bv_cur(e.case_id, 'record_status') = 'open' and pg_temp.bv_cur(e.case_id, 'engagement_status') = 'active' and e.sin_familia
+          and exists (select 1 from public.consent c where c.person_id = e.person_id and c.consent_type = 'sensitive_data' and c.status = 'granted')
+          and not exists (select 1 from public.arco_request a where a.person_id = e.person_id)
+        order by e.rn desc limit 2
+    loop
+        update public.consent set status = 'revoked', revoked_at = now() - interval '4 days', revoked_by_user_id = v_dir,
+               revocation_reason = 'La persona retiró su consentimiento para datos sensibles (dato sintético de demostración).'
+        where person_id = r.person_id and consent_type = 'sensitive_data' and status = 'granted';
+    end loop;
+
+    insert into public.consent (organization_id, person_id, case_id, privacy_notice_id, consent_type, status, is_minor_assent, granted_at, granted_by_user_id, notes)
+    select v_org, e.person_id, e.case_id, v_notice, 'internal_sharing', 'granted', false, c.opened_at + interval '10 minutes', v_in,
+           'Autoriza compartir su información entre las áreas del albergue (dato sintético de demostración).'
+    from bv_el e
+    join public."case" c on c.id = e.case_id
+    join public.person p on p.id = e.person_id
+    where e.rn % 4 = 0 and not p.is_anonymized and p.birth_date <= current_date - interval '18 years';
+
+    update public.consent set status = 'revoked', revoked_at = now() - interval '2 days', revoked_by_user_id = v_dir,
+           revocation_reason = 'La persona pidió que no se comparta fuera de su área (dato sintético de demostración).'
+    where id = (select id from public.consent where consent_type = 'internal_sharing' and status = 'granted' order by created_at, id limit 1);
+
+    -- ---- I. Los expedientes cerrados que se sembraron sin fecha de cierre la reciben (como al cerrarlos en la aplicación)
+    update public."case" c set closed_at = cs.valid_from, closed_by = v_dir, closure_reason = coalesce(cs.reason, 'Cierre administrativo')
+    from public.case_status cs
+    join public.status_value sv on sv.id = cs.value_id
+    join public.status_axis sa on sa.id = cs.axis_id
+    where cs.case_id = c.id and cs.valid_to is null and sa.code = 'record_status' and sv.code = 'closed' and c.closed_at is null;
+
+    -- ---- J. Datos del ciclo nuevo en los expedientes que no se anonimizaron
+    -- País ISO (solo con consentimiento sensible vigente: D-14), documentos con que se identifica y segundo teléfono
+    update public.person p set
+        nationality_iso = case when s.sens then case p.other_nationality when 'Honduras' then 'HN' when 'Guatemala' then 'GT' when 'El Salvador' then 'SV'
+                                   when 'Venezuela' then 'VE' when 'Haití' then 'HT' when 'Cuba' then 'CU' when 'Colombia' then 'CO' end end,
+        identity_documents_presented = case
+            when s.age < 18 then case when s.h < 55 then array['birth_cert'] when s.h < 80 then array['none'] when s.h < 90 then array['passport'] end
+            when s.h < 18 then array['passport']
+            when s.h < 40 then array['origin_id']
+            when s.h < 53 then array['origin_id', 'birth_cert']
+            when s.h < 63 then array['comar_doc', 'origin_id']
+            when s.h < 71 then array['inm_doc', 'passport']
+            when s.h < 78 then array['other_doc']
+            when s.h < 90 then array['none']
+        end,
+        secondary_phone = case when s.sens and s.age >= 18 and s.h2 < 32 then
+            case p.other_nationality when 'Honduras' then '+504 9' when 'Guatemala' then '+502 5' else '+52 55 ' end || lpad(((s.h2 + 1) * 104729 % 10000000)::text, 7, '0') end,
+        secondary_phone_label = case when s.sens and s.age >= 18 and s.h2 < 32 then
+            (array['familiar', 'whatsapp', 'propio', 'acompanante', 'otro'])[1 + s.h2 % 5] end
+    from (
+        select p2.id,
+               abs(hashtext(c.case_number || 'doc')) % 100 as h,
+               abs(hashtext(c.case_number || 'tel')) % 100 as h2,
+               extract(year from age(p2.birth_date))::int as age,
+               exists (select 1 from public.consent k where k.person_id = p2.id and k.consent_type = 'sensitive_data' and k.status = 'granted') as sens
+        from public.person p2 join public."case" c on c.titular_person_id = p2.id
+        where not p2.is_anonymized
+    ) s
+    where p.id = s.id;
+
+    -- Autorizaciones firmadas en físico (sí, no y «No registrado»); la responsabilidad sobre NNA, solo donde hay hijos en subfolio
+    update public."case" c set
+        photo_consent = case when a.h < 55 then true when a.h < 90 then false end,
+        coexistence_rules_accepted = case when a.h2 < 85 then true when a.h2 < 95 then false end,
+        nna_responsibility_accepted = case when a.tiene_hijos then (case when a.h3 < 85 then true when a.h3 < 95 then false end) end
+    from (
+        select c2.id,
+               abs(hashtext(c2.case_number || 'foto')) % 100 as h,
+               abs(hashtext(c2.case_number || 'conv')) % 100 as h2,
+               abs(hashtext(c2.case_number || 'nna')) % 100 as h3,
+               exists (select 1 from public."case" k where k.parent_case_id = c2.id) as tiene_hijos
+        from public."case" c2 join public.person p on p.id = c2.titular_person_id
+        where not p.is_anonymized
+    ) a
+    where c.id = a.id;
+
+    -- Tres expedientes de ejemplo completos y pensados para enseñar (Wendy y su hijo; Mateo, sin acompañante)
+    update public.person set nationality_iso = 'HN', identity_documents_presented = array['origin_id'],
+        secondary_phone = '+504 9812 3456', secondary_phone_label = 'familiar'
+    where id = '30000000-0000-0000-0000-000000000001';
+    update public.person set nationality_iso = 'HN', identity_documents_presented = array['birth_cert']
+    where id = '30000000-0000-0000-0000-000000000002';
+    update public.person set nationality_iso = 'GT', identity_documents_presented = array['none']
+    where id = '30000000-0000-0000-0000-000000000003';
+    update public."case" set photo_consent = true, coexistence_rules_accepted = true, nna_responsibility_accepted = true
+    where id in ('c0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000002');
+    update public."case" set photo_consent = false, coexistence_rules_accepted = true, nna_responsibility_accepted = true
+    where id = 'c0000000-0000-0000-0000-000000000003';
+end $$;

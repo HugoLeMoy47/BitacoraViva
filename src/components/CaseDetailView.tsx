@@ -79,6 +79,7 @@ import { CaseNeedsPanel } from './CaseNeedsPanel';
 import { PersonProfilePanel } from './PersonProfilePanel';
 import { SocialFichaPanel } from './SocialFichaPanel';
 import { IntakePlanModal } from './IntakePlanModal';
+import { PersonAvatar } from './PersonAvatar';
 
 interface CaseDetailViewProps {
   caseData: CaseWithDetails;
@@ -288,6 +289,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
     <>
       <section aria-labelledby={`${idp}-ficha`} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
         <h3 id={`${idp}-ficha`} className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.sheet.title')}</h3>
+        <PersonAvatar photoConsent={caseData.photo_consent} />
         <dl className="space-y-2 text-sm">
           <div>
             <dt className="text-gray-700">{t('cases.sheet.docs')}</dt>
