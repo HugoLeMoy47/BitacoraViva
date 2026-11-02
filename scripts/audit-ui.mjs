@@ -382,7 +382,25 @@ try {
         await page.waitForTimeout(1200);
         // Expediente a dos columnas: la página tal cual; en celular, también con el acordeón de identidad abierto
         record(role.key, vp.name, 'expediente/dos columnas', await auditNow());
-        const identityAccordion = page.locator('main details', { hasText: /Ver datos de identidad y estatus/ }).first();
+        // Composición del expediente en celular (E-01, E-02, E-03 del inventario del 02 nov 2026): estatus y alertas siempre a la vista,
+        // la captura rápida plegada al entrar y las acciones de bitácora dentro de la primera pantalla
+        if (vp.width < 768) {
+          await page.evaluate(() => window.scrollTo(0, 0));
+          const comp = await page.evaluate(() => {
+            const vh = innerHeight, res = [];
+            const strip = document.querySelector('[data-resumen-caso]');
+            if (!strip || !strip.getBoundingClientRect().height) res.push('el resumen de estatus y alertas no está visible');
+            else if (strip.getBoundingClientRect().bottom > vh * 0.7) res.push('el resumen termina en ' + Math.round(strip.getBoundingClientRect().bottom) + ' px de ' + vh + ' (límite 70 %)');
+            const q = document.querySelector('#nota-rapida');
+            if (q && q.getBoundingClientRect().height > 0) res.push('la captura rápida está abierta al entrar');
+            const row = document.querySelector('[data-bitacora-acciones]');
+            if (!row) res.push('no hay fila de acciones de bitácora');
+            else if (row.getBoundingClientRect().top > vh - 57) res.push('las acciones de bitácora quedan fuera de la primera pantalla');
+            return res.map((detail) => ({ rule: 'composicion-expediente', detail }));
+          });
+          record(role.key, vp.name, 'expediente/composición (celular)', comp);
+        }
+        const identityAccordion = page.locator('main details', { hasText: /Ficha de identificación y contacto/ }).first();
         if (vp.width < 1024 && (await identityAccordion.count())) {
           await identityAccordion.locator(':scope > summary').click();
           await page.waitForTimeout(400);

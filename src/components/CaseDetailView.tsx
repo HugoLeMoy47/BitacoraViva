@@ -162,6 +162,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 
   // Estados para Bitácora (Épica E4)
   const [journalFilter, setJournalFilter] = useState<'all' | 'my_area' | 'shared' | 'work_notes'>('all');
+  // Captura rápida de bitácora: en celular empieza plegada (en escritorio siempre está a la vista)
+  const [quickOpen, setQuickOpen] = useState(false);
   const [clarifyingEntry, setClarifyingEntry] = useState<JournalEntry | null>(null);
   const [sharingEntry, setSharingEntry] = useState<JournalEntry | null>(null);
   const [expandedSuperseded, setExpandedSuperseded] = useState<Record<string, boolean>>({});
@@ -284,9 +286,9 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
   const docKeys = caseData.person.identity_documents_presented ?? null;
   const docLabel = (k: string) => catalogItems.find((i) => i.catalog === 'identity_document' && i.key === k)?.label_es ?? k;
   const activeMarkers = caseData.vulnerabilities;
-  // Se dibuja dos veces (acordeón de celular y columna de escritorio): cada una con su prefijo para que no se repitan los id
-  const identityColumn = (idp: string) => (
-    <>
+  // La ficha, el estatus y las alertas se dibujan en la columna de escritorio; en celular, estatus y alertas van en un resumen siempre visible y la ficha en un acordeón.
+  // Cada dibujo lleva su prefijo para que no se repitan los id
+  const fichaSection = (idp: string) => (
       <section aria-labelledby={`${idp}-ficha`} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
         <h3 id={`${idp}-ficha`} className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.sheet.title')}</h3>
         <PersonAvatar photoConsent={caseData.photo_consent} />
@@ -317,7 +319,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           </div>
         </dl>
       </section>
-
+  );
+  const statusSection = (idp: string) => (
       <section aria-labelledby={`${idp}-estatus`} className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
         <h3 id={`${idp}-estatus`} className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.status_now')}</h3>
         <ul className="space-y-1.5 text-sm">
@@ -329,7 +332,8 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           ))}
         </ul>
       </section>
-
+  );
+  const alertsSection = (idp: string) => (
       <section aria-labelledby={`${idp}-alertas`} className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
         <h3 id={`${idp}-alertas`} className="text-sm font-bold uppercase tracking-wider text-carbon">{t('cases.alerts')}</h3>
         {activeMarkers.length === 0 ? (
@@ -344,13 +348,19 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           </ul>
         )}
       </section>
+  );
+  const identityColumn = (idp: string) => (
+    <>
+      {fichaSection(idp)}
+      {statusSection(idp)}
+      {alertsSection(idp)}
     </>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Barra superior de navegación */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-4">
+      <div className="flex items-center justify-between gap-2 border-b border-gray-200 pb-3 md:pb-4">
         <button
           onClick={onBack}
           className="flex min-h-9 items-center gap-2 whitespace-nowrap text-sm font-semibold text-carbon-muted hover:text-carbon transition"
@@ -363,14 +373,14 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           <span className="whitespace-nowrap font-mono text-xs px-2.5 py-1 rounded bg-carbon text-white font-bold tracking-wider">
             {caseData.case_number}
           </span>
-          <span className="whitespace-nowrap text-xs bg-claro text-turquesa-dark px-2.5 py-1 rounded-full font-bold">
+          <span className="hidden whitespace-nowrap text-xs bg-claro text-turquesa-dark px-2.5 py-1 rounded-full font-bold md:inline">
             {caseData.statuses.engagement_status?.label || t('common.not_recorded')}
           </span>
         </div>
       </div>
 
       {/* Cabecera del Expediente */}
-      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-3 md:p-6 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
         <div>
           <div className="flex items-center gap-3">
             <h2 className="font-title text-2xl font-bold text-carbon">
@@ -391,15 +401,10 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             <span className="font-medium text-carbon">
               {caseData.person.given_name} {caseData.person.paternal_family_name}
             </span>
-            {caseData.person.preferred_name && (
-              <span className="text-turquesa-dark italic">
-                ("{caseData.person.preferred_name}")
-              </span>
-            )}
             <span>·</span>
             <span>{countryLabel(caseData.person.nationality_country_id, caseData.person.other_nationality) ?? t('cases.not_specified')}</span>
-            <span>·</span>
-            <span>{t('cases.opened_label')} {formatDate(caseData.opened_at)}</span>
+            <span className="hidden md:inline">·</span>
+            <span className="hidden md:inline">{t('cases.opened_label')} {formatDate(caseData.opened_at)}</span>
           </div>
         </div>
 
@@ -425,7 +430,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             <button
               type="button"
               onClick={onStartSubfolio}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-carbon hover:bg-gray-50"
+              className="hidden min-h-11 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-carbon hover:bg-gray-50 md:inline-flex"
             >
               <Users className="h-4 w-4" aria-hidden="true" />
               {t('cases.btn_new_subfolio')}
@@ -446,33 +451,82 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
       )}
 
       {/* Dos columnas (ciclo «Ingreso y expediente»): identidad, estatus y alertas siempre a la vista; a la derecha, la vida del caso */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] lg:items-start">
-        <details className="rounded-2xl border border-gray-200 bg-white lg:hidden">
-          <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold text-carbon">
-            {t('cases.mobile_summary').replace('{folio}', caseData.case_number)}
-          </summary>
-          <div className="space-y-4 p-4">{identityColumn('movil')}</div>
-        </details>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] lg:gap-6 lg:items-start">
+        <div className="space-y-3 lg:hidden">
+          <section data-resumen-caso aria-label={t('cases.summary.label')} className="space-y-2 rounded-2xl border border-gray-200 bg-white p-3">
+            <ul className="space-y-1 text-xs">
+              {statusAxes.map((axis) => (
+                <li key={axis.id} className="flex items-baseline justify-between gap-3">
+                  <span className="text-gray-700">{axis.label_es}</span>
+                  <span className="text-right font-semibold text-carbon">{caseData.statuses[axis.code]?.label || t('common.not_recorded')}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              {activeMarkers.length === 0 ? (
+                <span className="text-gray-700">{t('cases.alerts_none')}</span>
+              ) : activeMarkers.map((m) => (
+                <span key={m.id} className="rounded-md bg-alerta-bg px-2 py-0.5 font-semibold text-alerta-dark">
+                  {VULNERABILITY_CATALOG[m.marker_code]?.label ?? m.marker_code}
+                </span>
+              ))}
+              <span className="rounded-md bg-claro px-2 py-0.5 font-semibold text-carbon">
+                {caseData.photo_consent === true ? t('cases.summary.photo_authorized') : caseData.photo_consent === false ? t('cases.summary.photo_not_authorized') : t('cases.summary.photo_not_recorded')}
+              </span>
+            </div>
+          </section>
+          <details className="rounded-2xl border border-gray-200 bg-white">
+            <summary className="flex min-h-11 cursor-pointer items-center px-4 text-sm font-semibold text-carbon">
+              {t('cases.mobile_summary')}
+            </summary>
+            <div className="space-y-4 p-4">{fichaSection('movil')}</div>
+          </details>
+        </div>
         <div className="hidden space-y-4 lg:sticky lg:top-20 lg:block">{identityColumn('caso')}</div>
 
         <div className="min-w-0 space-y-4">
+          {canWriteJournal && (
+            <div data-bitacora-acciones className="flex gap-2 lg:hidden">
+              {!caseData.person.is_anonymized && (
+                <button
+                  type="button"
+                  aria-expanded={quickOpen}
+                  aria-controls="nota-rapida"
+                  onClick={() => setQuickOpen((v) => !v)}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon hover:bg-gray-50"
+                >
+                  {t('journal.quick.toggle')}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onStartJournalEntry}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-turquesa px-3 text-sm font-bold text-carbon shadow-sm hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>{t('journal.btn_new_entry_short')}</span>
+              </button>
+            </div>
+          )}
           {canWriteJournal && !caseData.person.is_anonymized && (
-            <QuickJournalCapture
-              caseId={caseData.id}
-              assignedAreaId={caseData.assigned_area_id ?? undefined}
-              isDirector={isDirector}
-              onSaved={async () => { await onDataChanged?.(); }}
-              onOpenFullForm={onStartJournalEntry}
-            />
+            <div id="nota-rapida" className={quickOpen ? '' : 'hidden lg:block'}>
+              <QuickJournalCapture
+                caseId={caseData.id}
+                assignedAreaId={caseData.assigned_area_id ?? undefined}
+                isDirector={isDirector}
+                onSaved={async () => { setQuickOpen(false); await onDataChanged?.(); }}
+                onOpenFullForm={onStartJournalEntry}
+              />
+            </div>
           )}
           <div className="space-y-4">
             {/* Header de Bitácora */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-gray-200">
               {/* Filtros */}
-              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto text-xs sm:flex-wrap sm:overflow-visible">
                 <button
                   onClick={() => setJournalFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-lg font-bold transition ${
                     journalFilter === 'all'
                       ? 'bg-carbon text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -483,7 +537,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 {assignedAreaCode && (
                   <button
                     onClick={() => setJournalFilter('my_area')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg font-bold transition ${
                       journalFilter === 'my_area'
                         ? 'bg-turquesa text-carbon shadow-sm'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -494,7 +548,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 )}
                 <button
                   onClick={() => setJournalFilter('shared')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-lg font-bold transition ${
                     journalFilter === 'shared'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -504,7 +558,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
                 </button>
                 <button
                   onClick={() => setJournalFilter('work_notes')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition ${
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-lg font-bold transition ${
                     journalFilter === 'work_notes'
                       ? 'bg-amber-600 text-white shadow-sm'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -518,7 +572,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               {canWriteJournal && (
                 <button
                   onClick={onStartJournalEntry}
-                  className="flex items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-carbon shadow-sm hover:opacity-90"
+                  className="hidden items-center gap-2 rounded-lg bg-turquesa px-4 py-2 text-xs font-bold text-carbon shadow-sm hover:opacity-90 lg:flex"
                 >
                   <Plus className="h-4 w-4" />
                   <span>{t('journal.btn_new_entry')}</span>
@@ -1016,6 +1070,16 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
               </div>
 
               {(caseData.subfolios?.length ?? 0) === 0 && <p className="text-xs text-gray-600">{t('subfolio.no_subfolios')}</p>}
+              {canCreateSubfolio && (
+                <button
+                  type="button"
+                  onClick={onStartSubfolio}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-carbon hover:bg-gray-50 md:hidden"
+                >
+                  <Users className="h-4 w-4" aria-hidden="true" />
+                  {t('cases.btn_new_subfolio')}
+                </button>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {caseData.subfolios?.map((sub) => (
                   <div

@@ -96,7 +96,13 @@
     "total_roles": "Roles de la plataforma"
   },
   "cases": {
-    "mobile_summary": "Ver datos de identidad y estatus (Folio {folio})",
+    "mobile_summary": "Ficha de identificación y contacto",
+    "summary": {
+      "label": "Resumen del caso",
+      "photo_authorized": "Foto autorizada",
+      "photo_not_authorized": "Foto no autorizada",
+      "photo_not_recorded": "Foto sin registrar"
+    },
     "sheet": {
       "title": "Ficha básica",
       "docs": "Documentos presentados",
@@ -800,11 +806,13 @@
       "body": "Nota",
       "save": "Guardar nota en bitácora",
       "full_form": "Abrir el formulario completo",
+      "toggle": "Nota rápida",
       "reason_body": "Escribe la nota para poder guardarla.",
       "no_area": "No tienes un área en la que escribir en esta bitácora: pide a la dirección que te asigne una."
     },
     "tab_title": "Bitácora de intervenciones",
     "btn_new_entry": "+ Nueva entrada de bitácora",
+    "btn_new_entry_short": "Nueva entrada",
     "filter_all": "Todas las notas",
     "filter_my_area": "Mi área",
     "filter_shared": "Compartidas",
