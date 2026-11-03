@@ -750,7 +750,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
       {/* Más del expediente: lo que ya no necesita una pestaña para el trabajo diario */}
       <section aria-labelledby="caso-mas" className="space-y-3">
         <h3 id="caso-mas" className="text-sm font-bold uppercase tracking-wider text-gray-700">{t('cases.more')}</h3>
-        <MoreSection id="axes" title={t('cases.tabs_short.axes')} defaultOpen={false}>
+        <MoreSection id="axes" title={t('cases.tabs_short.axes')} hint={[caseData.statuses.engagement_status?.label, caseData.statuses.case_stage?.label].filter(Boolean).join(' · ')} defaultOpen={false}>
           <div className="space-y-4">
             <div className="bg-claro/30 p-4 rounded-xl border border-turquesa/30 text-xs text-carbon">
               <h3 className="font-bold text-turquesa-dark mb-1">{t('cases.axes_section_title')}</h3>
@@ -819,7 +819,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             <StatusHistory caseId={caseData.id} />
           </div>
         </MoreSection>
-        <MoreSection id="summary" title={t('cases.tabs_short.summary')} defaultOpen={false}>
+        <MoreSection id="summary" title={t('cases.tabs_short.summary')} hint={t('cases.more_hint.summary')} defaultOpen={false}>
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
             <div>
               <h3 className="text-sm font-bold text-carbon uppercase tracking-wider mb-4 border-b pb-2">
@@ -999,7 +999,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             </div>
           </div>
         </MoreSection>
-        <MoreSection id="vulnerabilities" title={`${t('cases.tabs_short.vulnerabilities')} (${caseData.vulnerabilities.length})`} defaultOpen={false}>
+        <MoreSection id="vulnerabilities" title={`${t('cases.tabs_short.vulnerabilities')} (${caseData.vulnerabilities.length})`} hint={caseData.vulnerabilities.slice(0, 2).map((m) => VULNERABILITY_CATALOG[m.marker_code]?.label ?? m.marker_code).join(', ') + (caseData.vulnerabilities.length > 2 ? ` +${caseData.vulnerabilities.length - 2}` : '')} defaultOpen={false}>
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
             <div className="border-b pb-3">
               <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
@@ -1058,7 +1058,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
           </div>
         </MoreSection>
         {((caseData.subfolios && caseData.subfolios.length > 0) || canCreateSubfolio) && (
-          <MoreSection id="subfolios" title={`${t('cases.tabs_short.subfolios')} (${caseData.subfolios?.length ?? 0})`} defaultOpen={false}>
+          <MoreSection id="subfolios" title={`${t('cases.tabs_short.subfolios')} (${caseData.subfolios?.length ?? 0})`} hint={(caseData.subfolios ?? []).slice(0, 2).map((x) => x.case_number).join(', ') + ((caseData.subfolios?.length ?? 0) > 2 ? ` +${(caseData.subfolios?.length ?? 0) - 2}` : '')} defaultOpen={false}>
             <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
               <div className="border-b pb-3">
                 <h3 className="text-sm font-bold text-carbon uppercase tracking-wider">
@@ -1120,7 +1120,7 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
             <CaseTasksPanel caseId={caseData.id} caseNumber={caseData.case_number} />
           </MoreSection>
         )}
-        <MoreSection id="privacy" title={t('cases.tabs_short.privacy') as React.ReactNode} defaultOpen={initialTab === 'privacy'}>
+        <MoreSection id="privacy" title={t('cases.tabs_short.privacy') as React.ReactNode} hint={caseData.photo_consent === true ? t('cases.summary.photo_authorized') : caseData.photo_consent === false ? t('cases.summary.photo_not_authorized') : t('cases.summary.photo_not_recorded')} defaultOpen={initialTab === 'privacy'}>
           <div className="space-y-6">
             <CaseAuthorizationsPanel
               caseId={caseData.id}
@@ -1697,9 +1697,12 @@ export const CaseDetailView: React.FC<CaseDetailViewProps> = ({
 };
 
 // «Más del expediente»: secciones que se abren cuando hacen falta (antes eran pestañas)
-const MoreSection: React.FC<{ id: string; title: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode }> = ({ id, title, defaultOpen = false, children }) => (
+const MoreSection: React.FC<{ id: string; title: React.ReactNode; hint?: string; defaultOpen?: boolean; children: React.ReactNode }> = ({ id, title, hint, defaultOpen = false, children }) => (
   <details id={`caso-${id}`} open={defaultOpen} className="rounded-2xl border border-gray-200 bg-gray-50">
-    <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 text-sm font-bold text-carbon">{title}</summary>
+    <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 text-sm font-bold text-carbon">
+      <span className="shrink-0">{title}</span>
+      {hint && <span data-more-hint className="min-w-0 flex-1 truncate text-right text-xs font-normal text-gray-600">{hint}</span>}
+    </summary>
     <div className="space-y-4 p-4">{children}</div>
   </details>
 );
