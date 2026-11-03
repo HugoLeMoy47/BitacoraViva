@@ -209,7 +209,7 @@ export const CasesView: React.FC<CasesViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <h2 className="text-xl font-bold text-carbon">{t('cases.title')}</h2>
-          <p className="text-xs text-gray-500 mt-1">{t('cases.subtitle')}</p>
+          <p className="mt-1 hidden text-xs text-gray-500 md:block">{t('cases.subtitle')}</p>
         </div>
 
         <div>
