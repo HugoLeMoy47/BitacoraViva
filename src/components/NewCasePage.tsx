@@ -1,3 +1,4 @@
+import { ActionBar } from './ActionBar';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, HeartHandshake, ShieldCheck, AlertTriangle, BookOpen } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -333,7 +334,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       </div>
 
       {isDemo && (
-        <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+        <p role="note" className="hidden rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 md:block">
           {t('demo.modal_notice')}
         </p>
       )}
@@ -1044,9 +1045,9 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
         </div>
       )}
 
-      {/* Barra de acciones: siempre a la vista; en celular queda sobre la barra de navegación */}
-      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
-        <DisabledReason id="alta" reason={stepReason} className="mb-2" />
+      {/* Barra de acciones: siempre a la vista; en celular ocupa el lugar de la navegación inferior */}
+      <ActionBar>
+        <DisabledReason id="alta" reason={stepReason} className="mb-2" compact />
         <div className="flex items-center justify-between gap-3">
           {step > 0 ? (
             <button type="button" onClick={goPrev} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -1079,7 +1080,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
             </button>
           )}
         </div>
-      </div>
+      </ActionBar>
 
       <NnaAssentModal isOpen={showNnaModal} onClose={() => setShowNnaModal(false)} />
     </div>

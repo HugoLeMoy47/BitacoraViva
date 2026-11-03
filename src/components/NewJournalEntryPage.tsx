@@ -1,3 +1,4 @@
+import { ActionBar } from './ActionBar';
 import { useEffect, useMemo, useState } from 'react';
 import { Shield, Clock, AlertTriangle, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -307,7 +308,7 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
             </fieldset>
 
             {/* Barra de acciones: siempre a la vista; en celular queda sobre la barra de navegación */}
-            <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
+            <ActionBar>
               <DisabledReason id="bit" reason={bodyReason} className="mb-2" />
               <div className="flex items-center justify-between gap-3">
                 <button type="button" onClick={cancel} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -323,7 +324,7 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
-            </div>
+            </ActionBar>
           </form>
         ) : (
           /* VISTA PREVIA: el registro es inmutable, se revisa antes de asentarlo */
@@ -366,7 +367,7 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
               </div>
             </div>
 
-            <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 flex items-center justify-between gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
+            <ActionBar className="flex items-center justify-between gap-3">
               <button type="button" onClick={() => setStep('compose')} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50">
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                 <span>{t('journal.new_modal.btn_back_edit')}</span>
@@ -375,7 +376,7 @@ export const NewJournalEntryPage: React.FC<NewJournalEntryPageProps> = ({ caseDa
                 <CheckCircle2 className="h-4 w-4 text-turquesa" aria-hidden="true" />
                 <span>{t('journal.new_modal.btn_save_entry')}</span>
               </button>
-            </div>
+            </ActionBar>
           </div>
         )}
 

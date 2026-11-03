@@ -1,3 +1,4 @@
+import { ActionBar } from './ActionBar';
 import { useState } from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -242,7 +243,7 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
 
           {confirmingLeave && <DiscardConfirm onDiscard={onCancel} onKeep={() => setConfirmingLeave(false)} />}
 
-          <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
+          <ActionBar>
             <DisabledReason id="rectificar" reason={saveReason} className="mb-2" />
             <div className="flex items-center justify-between gap-3">
               <button type="button" onClick={leave} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -258,7 +259,7 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
                 <span>{t('arco.modal_rectify.btn_save')}</span>
               </button>
             </div>
-          </div>
+          </ActionBar>
         </form>
 
         <aside aria-label={t('arco.rectify_page.context_title')} className="space-y-3 lg:sticky lg:top-20 lg:self-start">

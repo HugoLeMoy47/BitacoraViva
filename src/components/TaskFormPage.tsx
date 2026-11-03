@@ -1,3 +1,4 @@
+import { ActionBar } from './ActionBar';
 import React, { useId, useState } from 'react';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -178,7 +179,7 @@ export const TaskFormPage: React.FC<TaskFormPageProps> = ({ task, categories, wo
 
         {confirmingLeave && <DiscardConfirm onDiscard={onCancel} onKeep={() => setConfirmingLeave(false)} />}
 
-        <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
+        <ActionBar>
           <DisabledReason id="tarea" reason={saveReason} className="mb-2" />
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={leave} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -195,7 +196,7 @@ export const TaskFormPage: React.FC<TaskFormPageProps> = ({ task, categories, wo
               {busy ? t('toast.saving') : t(task ? 'tasks.f_save' : 'tasks.f_create')}
             </button>
           </div>
-        </div>
+        </ActionBar>
       </form>
     </div>
   );
