@@ -1050,7 +1050,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
         <DisabledReason id="alta" reason={stepReason} className="mb-2" compact />
         <div className="flex items-center justify-between gap-3">
           {step > 0 ? (
-            <button type="button" onClick={goPrev} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            <button type="button" onClick={goPrev} className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
               {t('intake.btn_prev')}
             </button>
           ) : (
@@ -1073,7 +1073,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
               disabled={!!authorityProblem}
               {...describedBy('alta', stepReason)}
               onClick={handleFinish}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-carbon px-5 text-sm font-bold text-white shadow-md hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 min-w-0 items-center gap-1.5 rounded-lg bg-carbon px-3 text-sm font-bold sm:px-5 text-white shadow-md hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
             >
               <HeartHandshake className="h-4 w-4 text-turquesa" aria-hidden="true" />
               {t('intake.btn_create_case')}

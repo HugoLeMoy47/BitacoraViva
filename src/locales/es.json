@@ -234,6 +234,9 @@
     "subfolios_subtitle": "Subfolios vinculados: NNA acompañados con expediente propio.",
     "btn_new_subfolio": "Abrir subfolio",
     "status_unassigned": "Sin asignar",
+    "more_hint": {
+      "summary": "Identificación y contexto de ingreso"
+    },
     "tabs_short": {
       "axes": "Estatus",
       "journal": "Bitácora",

@@ -446,6 +446,7 @@ try {
             const row = document.querySelector('[data-bitacora-acciones]');
             if (!row) res.push('no hay fila de acciones de bitácora');
             else if (row.getBoundingClientRect().top > vh - 57) res.push('las acciones de bitácora quedan fuera de la primera pantalla');
+            if (!document.querySelector('#caso-summary [data-more-hint]')) res.push('los acordeones de «Más del expediente» no traen resumen de una línea');
             return res.map((detail) => ({ rule: 'composicion-expediente', detail }));
           });
           record(role.key, vp.name, 'expediente/composición (celular)', comp);
