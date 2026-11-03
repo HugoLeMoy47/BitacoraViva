@@ -59,6 +59,13 @@ const pageAudit = `(opts) => {
   const de = document.documentElement;
   if (de.scrollWidth > vw + 1) add('overflow-x', 'la página desborda ' + (de.scrollWidth - vw) + ' px');
 
+  // 1b. Barras fijas apiladas (inventario UX del 02 nov 2026, A-01): con una barra de acciones en pantalla, la navegación inferior del
+  // celular debe estar oculta; de lo contrario se apilan tres barras fijas y el contenido queda en un hueco
+  if (opts.mobile && document.querySelector('[data-action-bar]')) {
+    const bottomNav = [...document.querySelectorAll('nav')].find((n) => getComputedStyle(n).position === 'fixed');
+    if (bottomNav && bottomNav.getBoundingClientRect().height > 0) add('barras-apiladas', 'la navegación inferior sigue visible con una barra de acciones en pantalla');
+  }
+
   // 2. Texto menor de 12 px
   const small = new Set();
   document.querySelectorAll('body *').forEach((e) => {

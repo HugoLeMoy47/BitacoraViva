@@ -23,8 +23,8 @@ export const FlexibleDateInput: React.FC<Props> = ({ id, label, precision, value
   return (
   <fieldset className="min-w-0">
     <legend className="mb-1 block text-sm font-medium text-gray-700">{label}</legend>
-    <div className="grid grid-cols-3 gap-2">
-      <div className={showPrecision ? 'col-span-1' : 'hidden'}>
+    <div className={showPrecision ? 'grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2' : 'grid grid-cols-1 gap-2'}>
+      <div className={showPrecision ? '' : 'hidden'}>
         <label className="sr-only" htmlFor={`${id}-p`}>{t('dates.precision_label')}</label>
         <select id={`${id}-p`} className={CONTROL} value={precision} onChange={(e) => onChange(e.target.value as DatePrecision, '')}>
           <option value="day">{t('dates.precision_day')}</option>
@@ -32,7 +32,7 @@ export const FlexibleDateInput: React.FC<Props> = ({ id, label, precision, value
           <option value="year">{t('dates.precision_year')}</option>
         </select>
       </div>
-      <div className={showPrecision ? 'col-span-2' : 'col-span-3'}>
+      <div>
         <label className="sr-only" htmlFor={`${id}-v`}>{label}</label>
         {precision === 'day' && (
           <input id={`${id}-v`} type="date" className={CONTROL} value={value} max={new Date().toISOString().slice(0, 10)}

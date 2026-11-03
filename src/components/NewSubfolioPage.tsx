@@ -1,3 +1,4 @@
+import { ActionBar } from './ActionBar';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { ArrowLeft, HeartHandshake, BookOpen } from 'lucide-react';
 import { t } from '../lib/i18n';
@@ -418,7 +419,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
           </div>
 
           {/* Barra de acciones: siempre a la vista; en celular queda sobre la barra de navegación */}
-          <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 -mx-4 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:bottom-0 md:mx-0 md:rounded-2xl md:border">
+          <ActionBar>
             <DisabledReason id={uid} reason={reason} className="mb-2" />
             <div className="flex items-center justify-between gap-3">
               <button type="button" onClick={cancel} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
@@ -434,7 +435,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
                 {t('subfolio.create')}
               </button>
             </div>
-          </div>
+          </ActionBar>
         </form>
 
         {/* Contexto: el caso principal a la vista mientras se llena */}

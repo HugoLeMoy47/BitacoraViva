@@ -24,6 +24,7 @@ import { DemoChip } from './DemoBanner';
 import { Menu, MenuItem } from './Menu';
 import { Tabs } from './Tabs';
 import { VersionFooter } from './VersionFooter';
+import { useCaptureMode } from '../lib/captureMode';
 
 // Armazón de la aplicación. Una sola fuente de navegación (los destinos permitidos por rol)
 // alimenta la barra de pestañas en escritorio y la barra inferior en celular.
@@ -80,6 +81,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   const admin = ADMIN_ROUTES.filter((r) => allowed.includes(r));
   const hasAbout = allowed.includes('about');
   const inAdmin = !!route && admin.includes(route);
+  const capture = useCaptureMode();
 
   const label = (id: RouteId) => t(ROUTE_LABEL_KEY[id]);
   const menuItem = (id: RouteId): MenuItem => ({
@@ -231,12 +233,12 @@ export const AppShell: React.FC<AppShellProps> = ({
         {children}
       </main>
 
-      <VersionFooter className="pb-24 md:pb-6" />
+      <VersionFooter className={capture ? 'pb-6' : 'pb-24 md:pb-6'} />
 
-      {/* Navegación de celular: destinos principales al alcance del pulgar */}
+      {/* Navegación de celular: destinos principales al alcance del pulgar (se oculta mientras haya una barra de acciones) */}
       <nav
         aria-label={t('navigation.primary')}
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+        className={`fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden ${capture ? 'hidden' : ''}`}
       >
         <ul className="flex">
           {primary.map((id) => {
