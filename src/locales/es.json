@@ -1246,6 +1246,7 @@
   "indicators": {
     "title": "Indicadores agregados",
     "subtitle": "Estadística sin datos identificables de personas atendidas.",
+    "how_to_read": "Cómo leer estas cifras",
     "threshold_note": "Para visibilizar sin exponer, solo se publican grupos de {n} o más personas; los menores se ocultan para evitar re-identificación. La comparación con el periodo anterior solo aparece cuando ambas cifras superan el umbral. Los expedientes con oposición a usos secundarios no se cuentan.",
     "all_suppressed": "Aún no hay grupos con {n} o más personas, por eso todas las cifras están ocultas. Es el comportamiento esperado con pocos expedientes.",
     "suppressed": "Menos de {n}",
