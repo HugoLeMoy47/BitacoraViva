@@ -4340,6 +4340,128 @@ begin
            where schemaname in ('public', 'storage') and (coalesce(qual, '') || coalesce(with_check, '')) ~ 'has_role(_in_area)?\('$q$,
         'arco_request.arco_request_select_policy,attachment.attachment_select_policy,capability_grant.capability_grant_select,journal_entry.journal_entry_select_policy,sharing_event.sharing_event_select_policy');
 
+    -- ============================================================================================
+    -- ===== Ronda 2 (ciberseguridad): catálogo de anonimización
+    -- ===== Toda columna de texto libre ligada a una persona o a un expediente debe quedar declarada: limpiada al anonimizar
+    -- ===== (y entonces `fn_anonymize_person` tiene que asignarla), conservada con su razón, borrada con su fila o diferida.
+    -- ===== Una columna nueva sin declarar hace fallar esta prueba: es lo que dejó pasar el defecto de la migración 20261105.
+    -- ============================================================================================
+    create temp table anon_registry (tbl text, col text, disp text, why text) on commit drop;
+    insert into anon_registry values
+        ('person', 'address_line', 'cleared', ''),
+        ('person', 'email', 'cleared', ''),
+        ('person', 'given_name', 'cleared', ''),
+        ('person', 'maternal_family_name', 'cleared', ''),
+        ('person', 'neighborhood', 'cleared', ''),
+        ('person', 'other_language', 'cleared', ''),
+        ('person', 'other_nationality', 'cleared', ''),
+        ('person', 'other_profile', 'cleared', ''),
+        ('person', 'other_sex', 'cleared', ''),
+        ('person', 'paternal_family_name', 'cleared', ''),
+        ('person', 'phone_number', 'cleared', ''),
+        ('person', 'postal_code', 'cleared', ''),
+        ('person', 'preferred_name', 'cleared', ''),
+        ('person', 'religion_detail', 'cleared', ''),
+        ('person', 'identity_documents_presented', 'cleared', ''),
+        ('person', 'occupations', 'cleared', ''),
+        ('person', 'secondary_phone', 'cleared', ''),
+        ('person', 'secondary_phone_label', 'cleared', ''),
+        ('person', 'education_level_id', 'cleared', ''),
+        ('person', 'marital_status_id', 'cleared', ''),
+        ('person', 'origin_department_id', 'cleared', ''),
+        ('person', 'religion_item_id', 'cleared', ''),
+        ('person', 'primary_language_item_id', 'cleared', ''),
+        ('person', 'education_level_item_id', 'cleared', ''),
+        ('person', 'marital_status_item_id', 'cleared', ''),
+        ('person', 'origin_department_item_id', 'cleared', ''),
+        ('person', 'nationality_iso', 'kept', 'esqueleto estadistico, como nationality_country_id (ADR-0001, punto 2)'),
+        ('arco_request', 'details', 'cleared', ''),
+        ('arco_request', 'reason', 'cleared', ''),
+        ('arco_request', 'requested_by_name', 'cleared', ''),
+        ('arco_request', 'resolution_notes', 'cleared', ''),
+        ('arco_request', 'representative_relationship', 'kept', 'categoria (madre, tutor...), no nombra a nadie'),
+        ('consent', 'authority_letter_ref', 'cleared', ''),
+        ('consent', 'legal_guardian_name', 'cleared', ''),
+        ('consent', 'notes', 'cleared', ''),
+        ('consent', 'revocation_reason', 'cleared', ''),
+        ('consent', 'legal_guardian_role', 'kept', 'rol (madre, tutor...), no nombra a nadie'),
+        ('authority_request', 'official_letter_ref', 'cleared', ''),
+        ('authority_request', 'response_summary', 'cleared', ''),
+        ('authority_request', 'authority_name', 'kept', 'es la institucion, no la persona'),
+        ('authority_request', 'request_type', 'kept', 'tipo de requerimiento'),
+        ('person_document', 'document_number', 'cleared', ''),
+        ('person_document', 'change_reason', 'cleared', ''),
+        ('person_occupation', 'change_reason', 'cleared', ''),
+        ('social_answer', 'text_value', 'cleared', ''),
+        ('social_answer', 'detail', 'cleared', ''),
+        ('social_answer', 'change_reason', 'cleared', ''),
+        ('case_need', 'change_reason', 'cleared', ''),
+        ('family_member', 'change_reason', 'cleared', ''),
+        ('case_vulnerability_marker', 'notes', 'cleared', ''),
+        ('case_date', 'change_reason', 'cleared', ''),
+        ('case_status', 'reason', 'cleared', ''),
+        ('sharing_event', 'reason', 'cleared', ''),
+        ('sharing_event', 'from_visibility', 'kept', 'categoria de visibilidad'),
+        ('sharing_event', 'to_visibility', 'kept', 'categoria de visibilidad'),
+        ('journal_entry', 'body', 'cleared', ''),
+        ('journal_entry', 'source', 'kept', 'origen de la entrada (aplicacion o importacion)'),
+        ('journal_entry', 'source_author_label', 'kept', 'nombre de quien del equipo escribio una nota importada, no de la persona'),
+        ('case', 'closure_reason', 'cleared', ''),
+        ('case', 'legacy_reference', 'cleared', ''),
+        ('case', 'reference_number', 'cleared', ''),
+        ('case', 'case_number', 'kept', 'el folio no es dato personal por diseno (esqueleto)'),
+        ('case', 'entry_date_str', 'kept', 'fecha de ingreso al pais: esqueleto estadistico'),
+        ('case', 'intake_municipality_key', 'kept', 'municipio de ingreso: esqueleto geografico grueso'),
+        ('attachment', 'file_name', 'deleted', 'la fila se borra'),
+        ('attachment', 'mime_type', 'deleted', 'la fila se borra'),
+        ('attachment', 'storage_path', 'deleted', 'la fila se borra; el archivo en storage es D-19'),
+        ('task', 'case_number', 'kept', 'folio'),
+        ('task', 'name', 'deferred', 'D-26: decision del Product Owner'),
+        ('task', 'details', 'deferred', 'D-26: decision del Product Owner');
+
+    perform pg_temp.expect('S-02: toda columna de texto libre ligada a persona o expediente está declarada en el catálogo', null, null,
+        $q$with scope as (
+             select distinct c.table_name from information_schema.columns c
+             join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
+             where c.table_schema = 'public' and (c.table_name in ('person', 'case') or c.column_name in ('person_id', 'case_id', 'titular_person_id'))),
+           cols as (
+             select c.table_name tbl, c.column_name col from information_schema.columns c join scope s on s.table_name = c.table_name
+             where c.table_schema = 'public' and c.data_type in ('text', 'character varying', 'jsonb', 'ARRAY')
+               and (c.table_name = 'person' or not exists (
+                     select 1 from pg_constraint k join pg_class cl on cl.oid = k.conrelid join pg_namespace n on n.oid = cl.relnamespace
+                     join pg_attribute a on a.attrelid = cl.oid and a.attnum = any(k.conkey)
+                     where n.nspname = 'public' and cl.relname = c.table_name and a.attname = c.column_name and k.contype = 'c'
+                       and pg_get_constraintdef(k.oid) ~ '(ANY \(ARRAY|\sIN\s\()')))
+           select coalesce(string_agg(tbl || '.' || col, ',' order by tbl, col), 'ninguna') from cols
+           where (tbl, col) not in (select tbl, col from anon_registry)$q$, 'ninguna');
+
+    perform pg_temp.expect('S-02: cada columna declarada «limpiada» la asigna fn_anonymize_person', null, null,
+        $q$select coalesce(string_agg(r.tbl || '.' || r.col, ',' order by r.tbl, r.col), 'ninguna') from anon_registry r
+           where r.disp = 'cleared' and not exists (
+             select 1 from pg_proc p where p.proname = 'fn_anonymize_person'
+               and substring(p.prosrc from 'update public\.(?:"?' || r.tbl || '"?)\s+set(.*?)\swhere') ~ ('\m' || r.col || '\M\s*='))$q$, 'ninguna');
+
+    perform pg_temp.expect('S-02: cada columna declarada «borrada con su fila» se borra en fn_anonymize_person', null, null,
+        $q$select coalesce(string_agg(r.tbl || '.' || r.col, ',' order by r.tbl, r.col), 'ninguna') from anon_registry r
+           where r.disp = 'deleted' and not exists (
+             select 1 from pg_proc p where p.proname = 'fn_anonymize_person' and p.prosrc ~ ('delete from public\.' || r.tbl))$q$, 'ninguna');
+
+    perform pg_temp.expect('S-02: lo diferido es solo lo que el Product Owner conoce (D-26)', null, null,
+        $q$select string_agg(tbl || '.' || col, ',' order by tbl, col) from anon_registry where disp = 'deferred'$q$, 'task.details,task.name');
+
+    perform pg_temp.expect('S-02: toda columna conservada trae su razón', null, null,
+        $q$select count(*)::text from anon_registry where disp in ('kept', 'deleted', 'deferred') and length(trim(why)) = 0$q$, '0');
+
+    -- ----- Siembra con un centinela en el texto libre del expediente que se anonimiza al final
+    perform pg_temp.expect('S-02 prep: texto libre en el expediente y sus registros', null, null,
+        $q$with a as (update public."case" set closure_reason = 'PII-CENTINELA', legacy_reference = 'PII-CENTINELA', reference_number = 'PII-CENTINELA'
+                       where id = 'aaaaaaaa-5000-0000-0000-000000000001' returning 1),
+           b as (update public.case_date set change_reason = 'PII-CENTINELA' where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' returning 1),
+           c as (update public.sharing_event set reason = 'PII-CENTINELA' where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' returning 1),
+           d as (insert into public.authority_request (organization_id, case_id, authority_name, request_type, official_letter_ref, response_summary, received_at, extract_delivered)
+                 values ('aaaaaaaa-0000-0000-0000-00000000000a', 'aaaaaaaa-5000-0000-0000-000000000001', 'Autoridad A', 'Consulta', 'PII-CENTINELA', 'PII-CENTINELA', now(), false) returning 1)
+           select ((select count(*) from a) = 1 and (select count(*) from b) >= 1 and (select count(*) from c) >= 1 and (select count(*) from d) = 1)::text$q$, 'true');
+
     -- ===== Ultima: la anonimización es exclusiva de dirección y funciona (irreversible, en transacción de prueba)
     perform pg_temp.expect('control positivo: director anonimiza', DIR, 'authenticated',
         'select count(*)::text from (select public.fn_anonymize_person(''aaaaaaaa-4000-0000-0000-000000000001''::uuid, ''Prueba'')) x', '1');
@@ -4462,6 +4584,30 @@ begin
     perform pg_temp.expect('E15f2: las respuestas quedan como registro cerrado, sin texto ni detalle', null, null,
         $q$select (count(*) > 0 and bool_and(change_reason = '[SUPRIMIDO - ADR-0001]' and text_value is null and detail is null))::text
            from public.social_answer where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null$q$, 'true');
+
+    -- ===== Ronda 2: lo que la anonimización debe dejar limpio (centinela sembrado antes de anonimizar)
+    perform pg_temp.expect('S-02: tras anonimizar, ningún texto libre del expediente conserva el centinela', null, null,
+        $q$select ((select count(*) from public."case" where id = 'aaaaaaaa-5000-0000-0000-000000000001' and (closure_reason like '%CENTINELA%' or legacy_reference is not null or reference_number is not null)) = 0
+               and (select count(*) from public.case_date where change_reason like '%CENTINELA%') = 0
+               and (select count(*) from public.sharing_event where reason like '%CENTINELA%') = 0
+               and (select count(*) from public.authority_request where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and (official_letter_ref like '%CENTINELA%' or response_summary like '%CENTINELA%')) = 0)::text$q$, 'true');
+    perform pg_temp.expect('S-02 control positivo: el motivo de cierre queda como texto suprimido, no vacío', null, null,
+        $q$select coalesce(closure_reason, 'NULO') from public."case" where id = 'aaaaaaaa-5000-0000-0000-000000000001'$q$, '[SUPRIMIDO - ADR-0001]');
+    perform pg_temp.expect('S-02: tras anonimizar, los motivos de los estatus son solo textos suprimidos o los fijos de la anonimización', null, null,
+        $q$select count(*)::text from public.case_status where case_id = 'aaaaaaaa-5000-0000-0000-000000000001'
+           and reason not in ('[SUPRIMIDO - ADR-0001]', 'Cancelación y supresión de datos por ejercicio de derecho ARCO (ADR-0001).', 'Cierre definitivo y anonimización de expediente (ADR-0001).')$q$, '0');
+    perform pg_temp.expect('Regla Dura 7: fuera de la anonimización, el motivo de un estatus cerrado sigue inmutable → BV601', null, null,
+        $q$with u as (update public.case_status set reason = 'x'
+             where id = (select id from public.case_status where case_id = 'aaaaaaaa-5000-0000-0000-000000000001' and valid_to is not null limit 1) returning 1)
+           select count(*)::text from u$q$, 'ERR:BV601');
+    -- (solo los eventos de esta transacción: los anteriores a la migración conservan lo que ya se había registrado)
+    perform pg_temp.expect('S-01: el registro de auditoría no guarda el texto libre de caso, estatus ni tarea', null, null,
+        $q$select count(*)::text from public.audit_event
+           where created_at >= now() and ((table_name = 'case' and ((coalesce(new_values, '{}'::jsonb) || coalesce(old_values, '{}'::jsonb)) ?| array['closure_reason', 'legacy_reference', 'reference_number']))
+              or (table_name = 'case_status' and ((coalesce(new_values, '{}'::jsonb) || coalesce(old_values, '{}'::jsonb)) ? 'reason'))
+              or (table_name = 'task' and ((coalesce(new_values, '{}'::jsonb) || coalesce(old_values, '{}'::jsonb)) ?| array['name', 'details'])))$q$, '0');
+    perform pg_temp.expect('S-01: el centinela no aparece en ningún evento de auditoría', null, null,
+        $q$select count(*)::text from public.audit_event where new_values::text like '%CENTINELA%' or old_values::text like '%CENTINELA%'$q$, '0');
 
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;
