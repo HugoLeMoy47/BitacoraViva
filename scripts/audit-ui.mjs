@@ -383,6 +383,24 @@ try {
 
       const auditNow = () => page.evaluate(`(${pageAudit})(${JSON.stringify({ touch: vp.touch, mobile: vp.width < 768 })})`);
 
+      // Lista de expedientes en celular (L-01 del inventario del 02 nov 2026): los filtros van plegados y la primera tarjeta asoma con al menos 160 px a la vista (sin proporción fija: el encabezado puede crecer con los datos)
+      if (role.key === 'director' && vp.width < 768) {
+        await page.evaluate(() => { location.hash = '#/expedientes'; });
+        await page.waitForTimeout(800);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        const lista = await page.evaluate(() => {
+          const vh = innerHeight, res = [];
+          const panel = document.querySelector('#cases-filtros');
+          if (!panel) res.push('no hay panel de filtros');
+          else if (panel.getBoundingClientRect().height > 0) res.push('los filtros están abiertos al entrar');
+          const firstCard = document.querySelector('main ul a[href*="expedientes/"]');
+          if (!firstCard) res.push('no hay tarjetas de expediente');
+          else if (firstCard.getBoundingClientRect().top > vh - 160) res.push('la primera tarjeta de expediente no asoma en la primera pantalla (empieza en ' + Math.round(firstCard.getBoundingClientRect().top) + ' px de ' + vh + ')');
+          return res.map((detail) => ({ rule: 'composicion-lista', detail }));
+        });
+        record(role.key, vp.name, 'expedientes/composición (celular)', lista);
+      }
+
       // Secciones del expediente, alta paso a paso y Digest (sólo Dirección, escritorio y celular)
       if (role.key === 'director' && (vp.name === '360' || vp.name === '1024')) {
         await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; });

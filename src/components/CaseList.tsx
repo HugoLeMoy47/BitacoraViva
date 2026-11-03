@@ -1,5 +1,5 @@
 import React, { useDeferredValue, useMemo, useState } from 'react';
-import { ChevronRight, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { t } from '../lib/i18n';
 import { CaseWithDetails } from '../types/database';
 import { VULNERABILITY_CATALOG, countryLabel, itemLabel } from '../lib/catalogs';
@@ -55,6 +55,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
   const [onlyMine, setOnlyMine] = useState(false);
   const [sort, setSort] = useState<SortKey>('recent');
   const [limit, setLimit] = useState(PAGE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const term = useDeferredValue(search).trim().toLowerCase();
 
   const filtered = useMemo(() => {
@@ -83,6 +84,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
   }, [cases, term, stage, engagement, onlyMarkers, onlyMine, sort, currentUserId]);
 
   const visible = filtered.slice(0, limit);
+  const activeFilters = [stage, engagement, onlyMarkers, onlyMine].filter(Boolean).length;
   const hasFilters = !!(search || stage || engagement || onlyMarkers || onlyMine);
   const clear = () => {
     setSearch('');
@@ -98,7 +100,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:space-y-3 md:p-4">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
           <label htmlFor="cases-search" className="sr-only">{t('cases.list.search_label')}</label>
@@ -114,7 +116,22 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <button
+          type="button"
+          data-filtros-toggle
+          aria-expanded={filtersOpen}
+          aria-controls="cases-filtros"
+          onClick={() => setFiltersOpen((o) => !o)}
+          className="flex min-h-11 w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 text-sm font-semibold text-carbon md:hidden"
+        >
+          <span>
+            {t('cases.list.filters_toggle')}
+            {activeFilters > 0 && <span className="ml-2 rounded-full bg-claro px-2 py-0.5 text-xs font-bold text-turquesa-dark">{t('cases.list.filters_active').replace('{n}', String(activeFilters))}</span>}
+          </span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+
+        <div id="cases-filtros" className={`${filtersOpen ? 'grid' : 'hidden'} grid-cols-2 gap-3 md:grid lg:grid-cols-4`}>
           <div>
             <label htmlFor="f-stage" className="mb-1 block text-xs font-medium text-gray-600">{t('cases.list.stage')}</label>
             <select id="f-stage" name="f-stage" value={stage} onChange={(e) => { setStage(e.target.value); resetPage(); }} className={selectCls}>
@@ -155,7 +172,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
           </p>
           <div className="flex flex-wrap items-center gap-4">
             {filtered.length > visible.length && (
-              <button type="button" onClick={() => setLimit((n) => n + PAGE)} className="inline-flex min-h-11 items-center text-sm font-semibold text-turquesa-dark underline">
+              <button type="button" onClick={() => setLimit((n) => n + PAGE)} className="hidden min-h-11 items-center text-sm font-semibold text-turquesa-dark underline md:inline-flex">
                 {t('cases.list.more').replace('{n}', String(Math.min(PAGE, filtered.length - visible.length)))}
               </button>
             )}
