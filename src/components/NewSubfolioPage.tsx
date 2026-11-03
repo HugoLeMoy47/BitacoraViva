@@ -207,7 +207,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <form onSubmit={submit} className="min-w-0 space-y-6">
-          <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
+          <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
             <legend className="px-1 text-base font-bold text-carbon">{t('subfolio.section_person')}</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
@@ -323,7 +323,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
             </div>
           </fieldset>
 
-          <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
+          <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
             <legend className="px-1 text-base font-bold text-carbon">{t('subfolio.section_relationship')}</legend>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
@@ -345,7 +345,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
             </div>
           </fieldset>
 
-          <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5">
+          <fieldset className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
             <legend className="px-1 text-base font-bold text-carbon">{t('subfolio.section_consents')}</legend>
             <p className="text-sm text-gray-600">{t('subfolio.consents_hint')}</p>
 
@@ -392,7 +392,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
           </fieldset>
 
           {sensitiveGranted && (
-            <fieldset className="space-y-2 rounded-2xl border border-gray-200 bg-white p-5">
+            <fieldset className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
               <legend className="px-1 text-base font-bold text-carbon">{t('subfolio.section_markers')}</legend>
               <p className="text-sm text-gray-600">{t('subfolio.markers_hint')}</p>
               {markerCodes.map((code) => (
@@ -412,7 +412,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
             </fieldset>
           )}
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
             <label className="mb-1 block text-base font-bold text-carbon" htmlFor={`${uid}-note`}>{t('subfolio.note_label')}</label>
             <p className="mb-2 text-sm text-gray-600">{t('subfolio.note_hint')}</p>
             <textarea id={`${uid}-note`} className={INPUT} rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -439,10 +439,10 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
         </form>
 
         {/* Contexto: el caso principal a la vista mientras se llena */}
-        <aside aria-label={t('subfolio.context_title')} className="space-y-3 lg:sticky lg:top-20 lg:self-start">
-          <section className="rounded-2xl border border-gray-200 bg-white p-5">
+        <aside aria-label={t('subfolio.context_title')} className="order-first space-y-3 lg:order-none lg:sticky lg:top-20 lg:self-start">
+          <section className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
             <h3 className="text-base font-bold text-carbon">{t('subfolio.context_title')}</h3>
-            <dl className="mt-3 space-y-3 text-sm">
+            <dl className="mt-2 space-y-2 text-sm lg:mt-3 lg:space-y-3">
               <div>
                 <dt className="text-gray-600">{t('subfolio.context_folio')}</dt>
                 <dd className="font-mono font-bold text-carbon">{parent.case_number}</dd>
@@ -455,7 +455,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
                 <dt className="text-gray-600">{t('subfolio.context_status')}</dt>
                 <dd className="font-semibold text-carbon">{parent.statuses.engagement_status?.label}</dd>
               </div>
-              <div>
+              <div className="hidden lg:block">
                 <dt className="text-gray-600">{t('subfolio.context_consents')}</dt>
                 <dd>
                   <ul className="mt-1 space-y-1">
@@ -470,7 +470,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
                   </ul>
                 </dd>
               </div>
-              <div>
+              <div className="hidden lg:block">
                 <dt className="text-gray-600">{t('subfolio.context_subfolios')}</dt>
                 <dd className="font-semibold text-carbon">
                   {(parent.subfolios?.length ?? 0) === 0
@@ -480,7 +480,7 @@ export const NewSubfolioPage: React.FC<NewSubfolioPageProps> = ({ parent, onBack
               </div>
             </dl>
           </section>
-          <p className="px-1 text-sm text-gray-600">{t('subfolio.representative').replace('{name}', representative).replace('{folio}', parent.case_number)}</p>
+          <p className="hidden px-1 text-sm text-gray-600 lg:block">{t('subfolio.representative').replace('{name}', representative).replace('{folio}', parent.case_number)}</p>
         </aside>
       </div>
 

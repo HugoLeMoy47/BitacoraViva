@@ -401,6 +401,31 @@ try {
         record(role.key, vp.name, 'expedientes/composición (celular)', lista);
       }
 
+      // Indicadores y subfolio en celular (I-01 y S-01 del inventario del 02 nov 2026): las notas de lectura van plegadas bajo «Cómo leer»
+      // y el contexto del caso principal queda arriba del formulario (no al final)
+      if (role.key === 'director' && vp.width < 768) {
+        await page.evaluate(() => { location.hash = '#/indicadores'; });
+        await page.waitForTimeout(1500);
+        const ind = await page.evaluate(() => {
+          const res = [];
+          const d = document.querySelector('[data-como-leer]');
+          if (!d) res.push('no hay bloque «Cómo leer»');
+          else if (d.open) res.push('«Cómo leer» está abierto al entrar');
+          return res.map((detail) => ({ rule: 'composicion-indicadores', detail }));
+        });
+        record(role.key, vp.name, 'indicadores/composición (celular)', ind);
+        await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001/subfolio'; });
+        await page.waitForTimeout(1500);
+        const sub = await page.evaluate(() => {
+          const res = [];
+          const aside = document.querySelector('aside'), form = document.querySelector('main form');
+          if (!aside || !form) res.push('faltan el contexto o el formulario');
+          else if (aside.getBoundingClientRect().top > form.getBoundingClientRect().top) res.push('el contexto del caso principal queda debajo del formulario');
+          return res.map((detail) => ({ rule: 'composicion-subfolio', detail }));
+        });
+        record(role.key, vp.name, 'subfolio/composición (celular)', sub);
+      }
+
       // Secciones del expediente, alta paso a paso y Digest (sólo Dirección, escritorio y celular)
       if (role.key === 'director' && (vp.name === '360' || vp.name === '1024')) {
         await page.evaluate(() => { location.hash = '#/expedientes/ASF-2026-0001'; });

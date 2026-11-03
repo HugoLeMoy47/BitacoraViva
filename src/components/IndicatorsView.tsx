@@ -116,16 +116,16 @@ export const IndicatorsView: React.FC = () => {
   ];
 
   const filters = (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-wrap items-center gap-3">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-4 flex flex-wrap items-center gap-x-3 gap-y-2">
       <span className="text-xs font-bold uppercase tracking-wide text-gray-500">{t('indicators.period.label')}</span>
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('indicators.period.label')}>
+      <div className="flex flex-nowrap gap-1.5 overflow-x-auto md:flex-wrap" role="group" aria-label={t('indicators.period.label')}>
         {presets.map((p) => (
           <button
             key={p.id}
             type="button"
             onClick={() => setPreset(p.id)}
             aria-pressed={preset === p.id}
-            className={`min-h-9 px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
+            className={`min-h-9 shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
               preset === p.id ? 'bg-claro border-turquesa text-carbon' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
@@ -208,6 +208,28 @@ export const IndicatorsView: React.FC = () => {
     rows: data.rows.filter((r) => r.metric === metric),
   })).filter((g) => g.rows.length > 0);
 
+  // Notas de privacidad y de lectura: siempre visibles en pantallas anchas; plegadas bajo «Cómo leer» en celular
+  const notes = (
+    <>
+      <p className="mt-4 flex items-start gap-2 text-xs text-carbon-muted">
+        <ShieldCheck className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
+        <span>{t('indicators.threshold_note').replace('{n}', String(min))}</span>
+      </p>
+      {!data.exact && data.rounded_to && (
+        <p className="mt-2 flex items-start gap-2 text-xs text-carbon-muted">
+          <ShieldCheck className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
+          <span>{t('indicators.rounded_note').replace('{n}', String(data.rounded_to))}</span>
+        </p>
+      )}
+      {data.rows.some((r) => r.hidden_reason === 'complement') && (
+        <p className="mt-2 flex items-start gap-2 text-xs text-carbon-muted">
+          <EyeOff className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
+          <span>{t('indicators.protected_legend')}</span>
+        </p>
+      )}
+    </>
+  );
+
   const durations = (['to_case_plan', 'to_closure'] as const).map((b) => ({ bucket: b, r: row('duration', b) }));
 
   return (
@@ -215,7 +237,7 @@ export const IndicatorsView: React.FC = () => {
       {filters}
 
       <div className={`space-y-6 transition-opacity ${loading ? 'opacity-60' : ''}`} aria-busy={loading}>
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 md:p-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-claro rounded-lg text-turquesa-dark">
@@ -223,7 +245,7 @@ export const IndicatorsView: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-base font-bold text-carbon">{t('indicators.title')}</h2>
-                <p className="text-xs text-gray-500">{t('indicators.subtitle')}</p>
+                <p className="hidden text-xs text-gray-500 md:block">{t('indicators.subtitle')}</p>
               </div>
             </div>
             <div className="text-right">
@@ -236,22 +258,11 @@ export const IndicatorsView: React.FC = () => {
               {showPrev && total && <Delta current={total.count} previous={total.prev_count} />}
             </div>
           </div>
-          <p className="mt-4 flex items-start gap-2 text-xs text-carbon-muted">
-            <ShieldCheck className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
-            <span>{t('indicators.threshold_note').replace('{n}', String(min))}</span>
-          </p>
-          {!data.exact && data.rounded_to && (
-            <p className="mt-2 flex items-start gap-2 text-xs text-carbon-muted">
-              <ShieldCheck className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
-              <span>{t('indicators.rounded_note').replace('{n}', String(data.rounded_to))}</span>
-            </p>
-          )}
-          {data.rows.some((r) => r.hidden_reason === 'complement') && (
-            <p className="mt-2 flex items-start gap-2 text-xs text-carbon-muted">
-              <EyeOff className="w-4 h-4 text-turquesa-dark shrink-0 mt-px" />
-              <span>{t('indicators.protected_legend')}</span>
-            </p>
-          )}
+          <details data-como-leer className="mt-3 md:hidden">
+            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-turquesa-dark">{t('indicators.how_to_read')}</summary>
+            {notes}
+          </details>
+          <div className="hidden md:block">{notes}</div>
           {allSuppressed && (
             <p className="mt-3 rounded-lg bg-gray-50 border border-gray-200 p-3 text-xs text-gray-600">
               {t('indicators.all_suppressed').replace('{n}', String(min))}
