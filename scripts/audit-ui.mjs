@@ -383,14 +383,14 @@ try {
         // Expediente a dos columnas: la página tal cual; en celular, también con el acordeón de identidad abierto
         record(role.key, vp.name, 'expediente/dos columnas', await auditNow());
         // Composición del expediente en celular (E-01, E-02, E-03 del inventario del 02 nov 2026): estatus y alertas siempre a la vista,
-        // la captura rápida plegada al entrar y las acciones de bitácora dentro de la primera pantalla
+        // la captura rápida plegada al entrar y las acciones de bitácora dentro de la primera pantalla (el resumen crece con el número de
+        // alertas, por eso no se le pone un alto fijo: lo que importa es que las acciones sigan alcanzables sin desplazarse)
         if (vp.width < 768) {
           await page.evaluate(() => window.scrollTo(0, 0));
           const comp = await page.evaluate(() => {
             const vh = innerHeight, res = [];
             const strip = document.querySelector('[data-resumen-caso]');
             if (!strip || !strip.getBoundingClientRect().height) res.push('el resumen de estatus y alertas no está visible');
-            else if (strip.getBoundingClientRect().bottom > vh * 0.7) res.push('el resumen termina en ' + Math.round(strip.getBoundingClientRect().bottom) + ' px de ' + vh + ' (límite 70 %)');
             const q = document.querySelector('#nota-rapida');
             if (q && q.getBoundingClientRect().height > 0) res.push('la captura rápida está abierta al entrar');
             const row = document.querySelector('[data-bitacora-acciones]');
