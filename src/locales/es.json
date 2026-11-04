@@ -42,6 +42,12 @@
       "badge": "Voluntariado"
     }
   },
+  "language": {
+    "es": "Español",
+    "en": "English",
+    "switch_to": "Cambiar idioma a {language}",
+    "change_error": "No se pudo cambiar el idioma. Inténtalo de nuevo."
+  },
   "session": {
     "current_role": "Rol activo en sesión:",
     "switch_role": "Simular cambio de rol:",
@@ -253,7 +259,16 @@
   "countries": {
     "search_placeholder": "Escribe para buscar un país",
     "none_found": "Ningún país coincide con lo escrito.",
-    "n_found": "{n} países encontrados."
+    "n_found": "{n} países encontrados.",
+    "continents": {
+      "c1": "América del Norte y Central",
+      "c2": "América del Sur",
+      "c3": "Europa",
+      "c4": "Asia",
+      "c5": "África",
+      "c6": "Oceanía",
+      "c7": "Antártida y territorios australes"
+    }
   },
   "intake": {
     "physical": {
@@ -1558,6 +1573,7 @@
       "bv369": "El país no es válido.",
       "bv370": "El contexto de ingreso no es válido: elige ventanilla fija, móvil o transaccional.",
       "bv371": "Indica si cuenta con cada autorización (sí o no).",
+      "bv372": "Ese idioma no está disponible.",
       "bv334": "«La persona no quiso responder» no se combina con otras necesidades. Marca una cosa o la otra.",
       "bv401": "Sin el consentimiento general informado no se abre el expediente. La ayuda humanitaria inmediata no se condiciona a él.",
       "bv402": "Falta el consentimiento necesario: el de datos sensibles (para marcadores, sexo, nacionalidad, teléfonos e idioma) o, para la fotografía, la autorización firmada en físico.",

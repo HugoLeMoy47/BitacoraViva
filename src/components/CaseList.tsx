@@ -1,6 +1,6 @@
 import React, { useDeferredValue, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Search } from 'lucide-react';
-import { t } from '../lib/i18n';
+import { t, intlTag } from '../lib/i18n';
 import { CaseWithDetails } from '../types/database';
 import { VULNERABILITY_CATALOG, countryLabel, itemLabel } from '../lib/catalogs';
 import { useCatalog } from '../lib/catalog';
@@ -78,7 +78,7 @@ export const CaseList: React.FC<{ cases: CaseWithDetails[]; currentUserId: strin
       sort === 'folio'
         ? a.case_number.localeCompare(b.case_number)
         : sort === 'person'
-          ? personName(a).localeCompare(personName(b), 'es')
+          ? personName(a).localeCompare(personName(b), intlTag())
           : b.opened_at.localeCompare(a.opened_at)
     );
   }, [cases, term, stage, engagement, onlyMarkers, onlyMine, sort, currentUserId]);

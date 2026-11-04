@@ -9,7 +9,7 @@ import { FlexibleDateInput } from './FlexibleDateInput';
 import { VULNERABILITY_CATALOG } from '../lib/catalogs';
 import { useEnvironment } from '../lib/environment';
 import { useCatalog } from '../lib/catalog';
-import { countryName, legacyCountryId } from '../lib/countries';
+import { countryName, countryNameEs, legacyCountryId } from '../lib/countries';
 import { isDisabledByNone, toggleIdentityDocument, toSubmit } from '../lib/identityDocuments';
 import { CountryPicker } from './CountryPicker';
 import { ConsentInput, NewCaseInput, dataApi, getActivePrivacyNotice, listConsentTexts } from '../lib/data';
@@ -239,7 +239,7 @@ export const NewCasePage: React.FC<NewCasePageProps> = ({ onCancel, onCaseCreate
       sex_id: sensitiveGranted && sexId !== '' ? sexId : null,
       nationality_country_id: legacyCountryId(nationality),
       // El nombre canónico del país (nunca texto escrito a mano): lo leen el extracto ARCO y los informes
-      other_nationality: countryName(nationality),
+      other_nationality: countryNameEs(nationality),
       nationality_iso: nationality,
       primary_language_item_id: effectiveLang?.id ?? null,
       other_language: effectiveLang && effectiveLang.key !== 'no_response' && primaryLanguage.trim() ? primaryLanguage.trim() : null,

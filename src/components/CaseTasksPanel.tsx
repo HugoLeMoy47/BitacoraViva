@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { CalendarClock, Link2Off, ListChecks, Plus, User, X } from 'lucide-react';
-import { t } from '../lib/i18n';
+import { t, intlTag } from '../lib/i18n';
 import { formatDate } from '../lib/format';
 import { useCatalog } from '../lib/catalog';
 import { useToast } from '../lib/toast';
@@ -58,7 +58,7 @@ export const CaseTasksPanel: React.FC<CaseTasksPanelProps> = ({ caseId, caseNumb
   }, [load]);
 
   const assignees = useMemo(
-    () => assignableIds.map((id) => ({ id, name: userNames[id] || '' })).filter((a) => a.name).sort((a, b) => a.name.localeCompare(b.name, 'es')),
+    () => assignableIds.map((id) => ({ id, name: userNames[id] || '' })).filter((a) => a.name).sort((a, b) => a.name.localeCompare(b.name, intlTag())),
     [assignableIds, userNames]
   );
   const kindLabel = useMemo(() => new Map(kinds.map((k) => [k.id, k.label_es])), [kinds]);

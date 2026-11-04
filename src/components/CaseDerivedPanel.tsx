@@ -1,5 +1,5 @@
 import React from 'react';
-import { t } from '../lib/i18n';
+import { t, intlTag } from '../lib/i18n';
 import { useCatalog } from '../lib/catalog';
 import { ageYears, bandFor, birthdayMonth, stayDays } from '../lib/derived';
 import { CaseWithDetails } from '../types/database';
@@ -20,7 +20,7 @@ export const CaseDerivedPanel: React.FC<{ caseData: CaseWithDetails }> = ({ case
     caseData.statuses.shelter_status?.valueCode === 'sheltered',
     today
   );
-  const monthName = month ? new Date(2000, month - 1, 1).toLocaleDateString('es-MX', { month: 'long' }) : null;
+  const monthName = month ? new Date(2000, month - 1, 1).toLocaleDateString(intlTag(), { month: 'long' }) : null;
 
   const Item: React.FC<{ label: string; value: string | null; why: string }> = ({ label, value, why }) => (
     <div>
