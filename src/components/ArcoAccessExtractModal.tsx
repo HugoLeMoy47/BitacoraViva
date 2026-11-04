@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Printer, Copy, Check, FileText, ShieldAlert } from 'lucide-react';
-import { t } from '../lib/i18n';
+import { t, intlTag } from '../lib/i18n';
 import { CaseWithDetails } from '../types/database';
 import { useCatalog } from '../lib/catalog';
 import { api } from '../lib/data';
@@ -133,7 +133,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
               )}
             </div>
             <div className="text-right text-xs text-gray-500">
-              <span>{new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span>{new Date().toLocaleDateString(intlTag(), { year: 'numeric', month: 'long', day: 'numeric' })}</span>
             </div>
           </div>
 
@@ -238,7 +238,7 @@ export const ArcoAccessExtractModal: React.FC<ArcoAccessExtractModalProps> = ({
                         {entry.area_name || entry.area_code || 'Área Operativa'}
                       </span>
                       <span>
-                        {new Date(entry.occurred_at).toLocaleString('es-MX', {
+                        {new Date(entry.occurred_at).toLocaleString(intlTag(), {
                           dateStyle: 'medium',
                           timeStyle: 'short',
                         })}

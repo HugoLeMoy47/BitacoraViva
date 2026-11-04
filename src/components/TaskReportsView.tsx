@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { t } from '../lib/i18n';
+import { t, intlTag } from '../lib/i18n';
 import { useToast } from '../lib/toast';
 import { replaceQuery } from '../lib/router';
 import { buildCsv, csvFileName, downloadCsv } from '../lib/csv';
@@ -54,7 +54,7 @@ interface TaskReportsViewProps {
 }
 
 const weekLabel = (d: Date): string =>
-  new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' }).format(d).replace(/\./g, '');
+  new Intl.DateTimeFormat(intlTag(), { day: 'numeric', month: 'short' }).format(d).replace(/\./g, '');
 
 export const TaskReportsView: React.FC<TaskReportsViewProps> = ({ tasks, categories, workAreas, userNames, initialQuery, filePrefix }) => {
   const toast = useToast();
@@ -76,7 +76,7 @@ export const TaskReportsView: React.FC<TaskReportsViewProps> = ({ tasks, categor
   // ---- opciones de los selectores, derivadas de los datos que hay
   const options = useMemo(() => {
     const ids = (pick: (t: Task) => string | null) => Array.from(new Set(tasks.map(pick).filter((x): x is string => !!x)));
-    const sorted = (list: { id: string; label: string }[]) => list.sort((a, b) => a.label.localeCompare(b.label, 'es'));
+    const sorted = (list: { id: string; label: string }[]) => list.sort((a, b) => a.label.localeCompare(b.label, intlTag()));
     return {
       people: sorted(ids((x) => x.assigned_to).map((id) => ({ id, label: userNames[id] || t('tasks.assignee_former') }))),
       workAreas: sorted(ids((x) => x.work_area_id).map((id) => ({ id, label: workAreaName.get(id) || '—' }))),

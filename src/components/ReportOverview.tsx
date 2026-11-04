@@ -1,5 +1,5 @@
 import React from 'react';
-import { t } from '../lib/i18n';
+import { t, intlTag } from '../lib/i18n';
 import { GroupRow, GlobalMetrics, PersonMetrics, RecurringTask, StatusCounts } from '../lib/taskReports';
 import { BarItem, BarLegend, ReportBars } from './ReportBars';
 
@@ -14,7 +14,7 @@ const SEG = {
 };
 
 const days = (value: number | null): string =>
-  value === null ? t('tasks.reports.no_data') : t('tasks.reports.days').replace('{n}', value.toLocaleString('es-MX', { maximumFractionDigits: 1 }));
+  value === null ? t('tasks.reports.no_data') : t('tasks.reports.days').replace('{n}', value.toLocaleString(intlTag(), { maximumFractionDigits: 1 }));
 
 export const statusSegments = (c: StatusCounts) =>
   (['pending', 'in_progress', 'done'] as const).map((s) => ({ value: c[s], className: SEG[s].className, label: t(`tasks.status_${s}`) }));

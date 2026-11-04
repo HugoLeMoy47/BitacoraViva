@@ -9,6 +9,7 @@ import {
   UsersRound,
   History,
   Info,
+  Languages,
   Layers,
   ListChecks,
   LogOut,
@@ -16,7 +17,9 @@ import {
   Scale,
   Settings,
 } from 'lucide-react';
-import { t } from '../lib/i18n';
+import { availableLocales, getLocale, setLocale, t } from '../lib/i18n';
+import { dataApi } from '../lib/data';
+import { useToast } from '../lib/toast';
 import { SessionUser } from '../lib/session';
 import { RouteId, navigate } from '../lib/router';
 import { ADMIN_ROUTES, PRIMARY_ROUTES, ROUTE_LABEL_KEY } from '../lib/navigation';
@@ -82,6 +85,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   const hasAbout = allowed.includes('about');
   const inAdmin = !!route && admin.includes(route);
   const capture = useCaptureMode();
+  const toast = useToast();
 
   const label = (id: RouteId) => t(ROUTE_LABEL_KEY[id]);
   const menuItem = (id: RouteId): MenuItem => ({
@@ -92,8 +96,27 @@ export const AppShell: React.FC<AppShellProps> = ({
     onSelect: () => navigate(id),
   });
 
+  // La preferencia de idioma es de la persona: se guarda en su perfil y luego se aplica a la interfaz.
+  const changeLocale = async (next: 'es' | 'en') => {
+    try {
+      await dataApi.setMyLocale(next);
+      setLocale(next);
+    } catch {
+      toast.error(t('language.change_error'));
+    }
+  };
+  const languageItems: MenuItem[] = availableLocales()
+    .filter((l) => l !== getLocale())
+    .map((l) => ({
+      id: `language-${l}`,
+      label: t('language.switch_to').replace('{language}', t(`language.${l}`)),
+      icon: <Languages className="h-4 w-4" aria-hidden="true" />,
+      onSelect: () => void changeLocale(l),
+    }));
+
   const accountItems: MenuItem[] = [
     ...(hasAbout ? [menuItem('about')] : []),
+    ...languageItems,
     {
       id: 'sign-out',
       label: t('session.sign_out'),

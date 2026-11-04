@@ -1,6 +1,6 @@
 import React, { useId, useMemo, useState } from 'react';
-import { t } from '../lib/i18n';
-import { COUNTRIES, groupByContinent, searchCountries } from '../lib/countries';
+import { t, useLocale } from '../lib/i18n';
+import { continentKey, countriesInOrder, countryLabel, groupByContinent, searchCountries } from '../lib/countries';
 
 // País por ISO 3166-1 con búsqueda predictiva y agrupado por continente; sin texto libre (ciclo «Ingreso y expediente»).
 // Escribir filtra la lista; se elige de la lista, nunca se teclea un nombre propio.
@@ -14,10 +14,12 @@ export const CountryPicker: React.FC<{
 }> = ({ value, onChange, disabled, label }) => {
   const uid = useId();
   const [query, setQuery] = useState('');
-  const matches = useMemo(() => searchCountries(query), [query]);
+  const locale = useLocale();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const matches = useMemo(() => searchCountries(query), [query, locale]);
   // El país ya elegido sigue en la lista aunque la búsqueda lo oculte (si no, el selector mostraría otro)
   const shown = useMemo(() => {
-    const chosen = value && !matches.some((c) => c.iso === value) ? COUNTRIES.find((c) => c.iso === value) : undefined;
+    const chosen = value && !matches.some((c) => c.iso === value) ? countriesInOrder().find((c) => c.iso === value) : undefined;
     return chosen ? [...matches, chosen] : matches;
   }, [matches, value]);
   const groups = useMemo(() => groupByContinent(shown), [shown]);
@@ -50,8 +52,8 @@ export const CountryPicker: React.FC<{
       >
         <option value="">{t('common.not_recorded')}</option>
         {groups.map((g) => (
-          <optgroup key={g.continent} label={g.continent}>
-            {g.countries.map((c) => <option key={c.iso} value={c.iso}>{c.name_es}</option>)}
+          <optgroup key={g.continent} label={t(continentKey(g.continent))}>
+            {g.countries.map((c) => <option key={c.iso} value={c.iso}>{countryLabel(c)}</option>)}
           </optgroup>
         ))}
       </select>
