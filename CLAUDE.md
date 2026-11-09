@@ -26,7 +26,14 @@ Qué construir ahora: 10_producto/backlog.md
 9. **Cero literales de texto en componentes.** Toda cadena visible va con clave de traducción en `src/locales/`.
 10. **Cero cambios de esquema desde consola.** Todo es migración versionada en `supabase/migrations/`.
 
-## Normativa y alineación vigente (Octubre 2026):
-- Ethos: v1.2 (Biometría fuera de alcance E-01; nota de trabajo protegida `is_work_note` excluida de ARCO E-02; requerimientos de autoridad para directores E-03; umbral de agregación $n \ge 5$ E-05).
-- Requisitos No Funcionales: v1.0 vigente (Timeout sesión 30 min RNF-04; retención auditoría 5 años RNF-05; prioridad responsive móvil/tablet en captura y escritorio en dashboards RNF-08).
-- Modelo de Datos: Ficha de identificación, contexto de ingreso y marcadores de vulnerabilidad adoptan el estándar validado en campo de MAP-OIM v3 (MD-01 resuelto).
+## Estado, pendientes y decisiones
+
+Viven en Jarvis, clave `FJ-BV` (conector MCP `jarvis`).
+Al empezar: `consultar_proyecto`. Al terminar: `cerrar_sesion` con liga al commit o PR.
+Sin conector: anota en `40_bitacora/decisiones.md` con encabezado `## AAAA-MM-DD · título`.
+
+## Dónde está cada cosa
+- Diario largo de decisiones de diseño: `40_bitacora/decisiones.md` (OneDrive, ver rutas arriba).
+- Normativa vigente: `00_gobernanza/Ethos.md` (el número de versión está en su encabezado; no se copia aquí).
+- Requisitos no funcionales y modelo de datos: `20_arquitectura/`.
+- Backlog: `10_producto/backlog.md`.
