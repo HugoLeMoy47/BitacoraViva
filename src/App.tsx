@@ -11,7 +11,7 @@
 // Para agregar una pantalla: ruta en `lib/router.ts`, rol en `lib/navigation.ts`, etiqueta en `locales/es.json`
 // y su línea `current === '…'` más abajo.
 import React, { useCallback, useEffect, useState } from 'react';
-import { t } from './lib/i18n';
+import { t, useLocale } from './lib/i18n';
 import {
   StatusAxisCode,
   JournalEntry,
@@ -370,6 +370,11 @@ const Gate: React.FC = () => {
 
 // El enlace del correo de invitación (`/?bienvenida=1`) se atiende FUERA de la sesión normal (ADR-0010): la persona aún no tiene
 // rol y la sesión normal la sacaría antes de poder elegir su contraseña.
+// Al cambiar de idioma se vuelve a montar la interfaz: cada texto se lee de nuevo con el idioma activo.
+const LocaleKeyed: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <React.Fragment key={useLocale()}>{children}</React.Fragment>
+);
+
 export const App: React.FC = () => isWelcomeUrl(window.location.search) ? (
   <EnvironmentProvider>
     <WelcomePage />
@@ -378,8 +383,10 @@ export const App: React.FC = () => isWelcomeUrl(window.location.search) ? (
   <EnvironmentProvider>
     <SessionProvider>
       <ToastProvider>
-        <DemoBanner />
-        <Gate />
+        <LocaleKeyed>
+          <DemoBanner />
+          <Gate />
+        </LocaleKeyed>
       </ToastProvider>
     </SessionProvider>
   </EnvironmentProvider>

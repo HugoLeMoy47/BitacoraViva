@@ -4609,6 +4609,25 @@ begin
     perform pg_temp.expect('S-01: el centinela no aparece en ningún evento de auditoría', null, null,
         $q$select count(*)::text from public.audit_event where new_values::text like '%CENTINELA%' or old_values::text like '%CENTINELA%'$q$, '0');
 
+    -- ===== Idioma de la interfaz (preferencia por persona)
+    perform pg_temp.expect('Idioma: por defecto la interfaz es en español', null, null,
+        pg_temp.q($q$select ui_locale from public.user_profile where id = {INT}$q$), 'es');
+    perform pg_temp.expect('Idioma: una persona cambia su propio idioma', INT, 'authenticated',
+        $q$select count(*)::text from (select public.fn_set_my_locale('en')) x$q$, '1');
+    perform pg_temp.expect('Idioma: el cambio queda guardado en su perfil', null, null,
+        pg_temp.q($q$select ui_locale from public.user_profile where id = {INT}$q$), 'en');
+    perform pg_temp.expect('Idioma: el cambio no toca el perfil de otra persona', null, null,
+        pg_temp.q($q$select ui_locale from public.user_profile where id = {VW}$q$), 'es');
+    perform pg_temp.expect('Idioma: un idioma no disponible se rechaza → BV372', INT, 'authenticated',
+        $q$select count(*)::text from (select public.fn_set_my_locale('fr')) x$q$, 'ERR:BV372');
+    perform pg_temp.expect('Idioma: sin sesión no se cambia', null, 'anon',
+        $q$select count(*)::text from (select public.fn_set_my_locale('en')) x$q$, 'ERR');
+    perform pg_temp.expect('Idioma: tampoco por escritura directa a la tabla (D-20)', INT, 'authenticated',
+        pg_temp.q($q$with u as (update public.user_profile set ui_locale = 'es' where id = {INT} returning 1) select count(*)::text from u$q$), 'ERR');
+    perform pg_temp.expect('Idioma: el cambio genera evento de auditoría (regla 5)', null, null,
+        pg_temp.q($q$select count(*)::text from public.audit_event where table_name = 'user_profile' and record_id = {INT}::uuid
+           and new_values::text like '%ui_locale%'$q$), '>0');
+
     select string_agg(verdict || '^' || name || '^' || expected || '^' || actual, E'\n' order by verdict desc, name)
       into report from test_res;
     raise exception E'RLS_RESULTS\n%', report;

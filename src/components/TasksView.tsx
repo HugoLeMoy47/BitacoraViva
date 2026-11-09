@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ListChecks, PlayCircle, Plus } from 'lucide-react';
-import { t } from '../lib/i18n';
+import { t, intlTag } from '../lib/i18n';
 import { SessionUser } from '../lib/session';
 import { useCatalog } from '../lib/catalog';
 import { useToast } from '../lib/toast';
@@ -111,7 +111,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
 
   const people = useMemo(() => {
     const ids = Array.from(new Set(live.filter((x) => x.assigned_to).map((x) => x.assigned_to as string)));
-    return ids.map((id) => ({ id, name: userNames[id] || t('tasks.assignee_former') })).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    return ids.map((id) => ({ id, name: userNames[id] || t('tasks.assignee_former') })).sort((a, b) => a.name.localeCompare(b.name, intlTag()));
   }, [live, userNames]);
 
   const assignees = useMemo(
@@ -119,7 +119,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ user, section: sectionPara
       assignableUserIds
         .map((id) => ({ id, name: userNames[id] || '' }))
         .filter((a) => a.name)
-        .sort((a, b) => a.name.localeCompare(b.name, 'es')),
+        .sort((a, b) => a.name.localeCompare(b.name, intlTag())),
     [assignableUserIds, userNames]
   );
 

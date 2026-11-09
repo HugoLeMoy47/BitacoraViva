@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { RoleName, UserProfile, UserRole } from '../types/database';
+import { setLocale } from './i18n';
 
 // RNF-04: la sesión caduca por inactividad a los 30 minutos.
 export const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;
@@ -118,6 +119,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setStatus('anonymous');
       return;
     }
+    setLocale(loaded.profile.ui_locale ?? 'es');
     setUser(loaded);
     setStatus('authenticated');
   }, []);

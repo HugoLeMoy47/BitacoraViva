@@ -754,6 +754,8 @@ export const api = {
   grantRole: (userId: string, roleName: string, areaId: string | null, reason?: string) =>
     rpc<string>('fn_grant_role', { p_user_id: userId, p_role_name: roleName, p_area_id: areaId, p_reason: reason?.trim() || null }),
   revokeRole: (userRoleId: string, reason: string) => rpc('fn_revoke_role', { p_user_role_id: userRoleId, p_reason: reason.trim() }),
+  // Idioma de la interfaz: cada persona cambia el suyo (user_profile ya no admite escritura directa)
+  setMyLocale: (locale: string) => rpc('fn_set_my_locale', { p_locale: locale }),
   setUserActive: (userId: string, active: boolean, reason?: string) =>
     rpc('fn_set_user_active', { p_user_id: userId, p_active: active, p_reason: reason?.trim() || null }),
 

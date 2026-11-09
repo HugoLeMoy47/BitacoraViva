@@ -1,3 +1,4 @@
+import { intlTag } from './i18n';
 import { Task, TaskStatus } from '../types/database';
 import { TASK_STATUSES, isOverdue } from './taskFlow';
 
@@ -107,7 +108,7 @@ export function groupCounts(tasks: Task[], keyOf: (t: Task) => string, nameOf: (
     row.counts[t.status] += 1;
     row.counts.total += 1;
   }
-  return [...map.values()].sort((a, b) => b.counts.total - a.counts.total || a.name.localeCompare(b.name, 'es'));
+  return [...map.values()].sort((a, b) => b.counts.total - a.counts.total || a.name.localeCompare(b.name, intlTag()));
 }
 
 // ------------------------------------------------------------------ semanas
@@ -267,7 +268,7 @@ export function personMetrics(tasks: Task[], nameOf: (key: string) => string): P
         measured: r.works.length,
       };
     })
-    .sort((a, b) => (b.cycle ?? -1) - (a.cycle ?? -1) || a.name.localeCompare(b.name, 'es'));
+    .sort((a, b) => (b.cycle ?? -1) - (a.cycle ?? -1) || a.name.localeCompare(b.name, intlTag()));
 }
 
 export interface RecurringTask {
@@ -297,7 +298,7 @@ export function recurringTasks(tasks: Task[], minimum = 2): RecurringTask[] {
   return [...map.entries()]
     .filter(([, r]) => r.times >= minimum)
     .map(([name, r]) => ({ name, times: r.times, done: r.done, totalMean: mean(r.durations) }))
-    .sort((a, b) => b.times - a.times || a.name.localeCompare(b.name, 'es'));
+    .sort((a, b) => b.times - a.times || a.name.localeCompare(b.name, intlTag()));
 }
 
 // ------------------------------------------------------------------ orden
@@ -351,11 +352,11 @@ export function sortTasks(tasks: Task[], sort: SortState, lk: Lookups): Task[] {
   return [...tasks].sort((a, b) => {
     const va = comparable(sortValue(a, sort.field, lk));
     const vb = comparable(sortValue(b, sort.field, lk));
-    if (va === null && vb === null) return a.name.localeCompare(b.name, 'es');
+    if (va === null && vb === null) return a.name.localeCompare(b.name, intlTag());
     if (va === null) return 1;
     if (vb === null) return -1;
-    const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, 'es') : Number(va) - Number(vb);
+    const cmp = typeof va === 'string' && typeof vb === 'string' ? va.localeCompare(vb, intlTag()) : Number(va) - Number(vb);
     // Desempate estable por nombre: dos recargas dan el mismo orden
-    return cmp !== 0 ? cmp * sign : a.name.localeCompare(b.name, 'es');
+    return cmp !== 0 ? cmp * sign : a.name.localeCompare(b.name, intlTag());
   });
 }

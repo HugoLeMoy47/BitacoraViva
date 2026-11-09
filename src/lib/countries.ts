@@ -4,6 +4,8 @@
 // Compatibilidad: la base conserva `nationality_country_id` (Honduras 93, Guatemala 86 y «otro» 1) de la que dependen el
 // diccionario de departamentos de origen y los indicadores; el código ISO se guarda aparte (`person.nationality_iso`).
 
+import { getLocale, intlTag } from './i18n';
+
 export const CONTINENTS = [
   'América del Norte y Central',
   'América del Sur',
@@ -45,23 +47,63 @@ const nameOf = (iso: string): string | null => {
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const byName = (a: Country, b: Country) => a.name_es.localeCompare(b.name_es, 'es');
 
+// Los nombres en español son los que se guardan (other_nationality) y los que ordenan el catálogo base. Para
+// mostrar, cada idioma arma sus propios nombres con Intl.DisplayNames y su propio orden alfabético.
+const displayCache = new Map<string, { names: Map<string, string>; list: Country[] }>();
+function display(): { names: Map<string, string>; list: Country[] } {
+  const loc = getLocale();
+  let d = displayCache.get(loc);
+  if (!d) {
+    if (loc === 'es') {
+      d = { names: new Map(COUNTRIES.map((c) => [c.iso, c.name_es])), list: COUNTRIES };
+    } else {
+      const dn = new Intl.DisplayNames([intlTag()], { type: 'region' });
+      const names = new Map(COUNTRIES.map((c) => {
+        let n: string | undefined;
+        try { n = dn.of(c.iso); } catch { n = undefined; }
+        return [c.iso, n && n !== c.iso ? n : c.name_es] as [string, string];
+      }));
+      const tag = intlTag();
+      d = { names, list: [...COUNTRIES].sort((a, b) => (names.get(a.iso) as string).localeCompare(names.get(b.iso) as string, tag)) };
+    }
+    displayCache.set(loc, d);
+  }
+  return d;
+}
+
+/** Nombre del país en el idioma activo, para mostrar. */
+export const countryLabel = (c: Country): string => display().names.get(c.iso) ?? c.name_es;
+
 export const COUNTRIES: Country[] = (Object.entries(CODES) as [Continent, string][])
   .flatMap(([continent, list]) => list.split(' ').map((iso) => ({ iso, name_es: nameOf(iso) ?? iso, continent })))
   .sort(byName);
 
 const BY_ISO = new Map(COUNTRIES.map((c) => [c.iso, c]));
 
-/** Nombre en español de un código ISO; null si el código no existe (no se inventa un nombre). */
-export const countryName = (iso: string | null | undefined): string | null => (iso ? BY_ISO.get(iso)?.name_es ?? null : null);
+/** Nombre en español de un código ISO, el que se guarda en la base; null si el código no existe (no se inventa un nombre). */
+export const countryNameEs = (iso: string | null | undefined): string | null => (iso ? BY_ISO.get(iso)?.name_es ?? null : null);
+
+/** Nombre de un código ISO en el idioma activo, para mostrar; null si el código no existe. */
+export const countryName = (iso: string | null | undefined): string | null => {
+  const c = iso ? BY_ISO.get(iso) : undefined;
+  return c ? countryLabel(c) : null;
+};
+
+/** Los países en el orden alfabético del idioma activo. */
+export const countriesInOrder = (): Country[] => display().list;
 
 /** Búsqueda predictiva: por nombre (sin importar mayúsculas ni acentos) o por código ISO. Sin texto, todos por nombre. */
 export function searchCountries(query: string): Country[] {
   const q = plain(query.trim());
-  if (!q) return COUNTRIES;
-  return COUNTRIES.filter((c) => plain(c.name_es).includes(q) || c.iso.toLowerCase() === q);
+  const list = display().list;
+  if (!q) return list;
+  return list.filter((c) => plain(c.name_es).includes(q) || plain(countryLabel(c)).includes(q) || c.iso.toLowerCase() === q);
 }
 
 /** Agrupa por continente, en el orden definido y sin los continentes vacíos. */
+/** Clave de traducción del nombre de un continente. */
+export const continentKey = (c: Continent): string => `countries.continents.c${CONTINENTS.indexOf(c) + 1}`;
+
 export function groupByContinent(list: Country[]): { continent: Continent; countries: Country[] }[] {
   return CONTINENTS.map((continent) => ({ continent, countries: list.filter((c) => c.continent === continent) })).filter((g) => g.countries.length > 0);
 }

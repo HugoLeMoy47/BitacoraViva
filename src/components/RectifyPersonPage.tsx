@@ -6,7 +6,7 @@ import { CaseWithDetails, Person } from '../types/database';
 import { DisabledReason, describedBy } from './DisabledReason';
 import { DiscardConfirm, useBeforeUnloadGuard } from './LeaveGuard';
 import { useCatalog } from '../lib/catalog';
-import { countryName, legacyCountryId } from '../lib/countries';
+import { countryNameEs, legacyCountryId } from '../lib/countries';
 import { isDisabledByNone, toggleIdentityDocument, toSubmit } from '../lib/identityDocuments';
 import { CountryPicker } from './CountryPicker';
 
@@ -97,7 +97,7 @@ export const RectifyPersonPage: React.FC<RectifyPersonPageProps> = ({ caseData, 
           identity_documents_presented: toSubmit(docs),
           nationality_iso: iso || null,
           nationality_country_id: legacyCountryId(iso),
-          other_nationality: countryName(iso),
+          other_nationality: countryNameEs(iso),
         } : {}),
       },
       reason.trim()

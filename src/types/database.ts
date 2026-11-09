@@ -175,6 +175,8 @@ export interface UserProfile {
   email: string;
   full_name: string;
   active: boolean;
+  /** Idioma de la interfaz de esta persona (es | en) */
+  ui_locale: 'es' | 'en';
   created_at: string;
   updated_at: string;
 }

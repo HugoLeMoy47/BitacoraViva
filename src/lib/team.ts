@@ -1,6 +1,7 @@
 // E16 fase A · Equipo: lógica pura de la pantalla «Equipo y permisos».
 // La regla de quién gestiona el equipo vive en la base (`can_manage_team()`, hoy la dirección); aquí solo se decide qué
 // mostrar. Rol y área son independientes: una persona puede tener varios roles, cada uno con su área o sin ella.
+import { intlTag } from './i18n';
 
 export interface TeamProfile {
   id: string;
@@ -33,7 +34,7 @@ export interface TeamMember {
 export function groupTeam(profiles: TeamProfile[], roles: TeamRole[]): TeamMember[] {
   const byRecent = (a: TeamRole, b: TeamRole) => b.granted_at.localeCompare(a.granted_at);
   return [...profiles]
-    .sort((a, b) => a.full_name.localeCompare(b.full_name, 'es'))
+    .sort((a, b) => a.full_name.localeCompare(b.full_name, intlTag()))
     .map((profile) => {
       const mine = roles.filter((x) => x.user_id === profile.id);
       return {

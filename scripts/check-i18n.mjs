@@ -41,10 +41,40 @@ for (const file of files) {
   }
 }
 
-if (missing.size === 0) {
-  console.log('Traducciones: todas las claves usadas existen.');
-  process.exit(0);
+if (missing.size > 0) {
+  console.error(`Faltan ${missing.size} claves de traducción:`);
+  for (const [key, where] of missing) console.error(`  ${key}  ←  ${[...where].join(', ')}`);
+  process.exit(1);
 }
-console.error(`Faltan ${missing.size} claves de traducción:`);
-for (const [key, where] of missing) console.error(`  ${key}  ←  ${[...where].join(', ')}`);
-process.exit(1);
+console.log('Traducciones: todas las claves usadas existen.');
+
+// Inglés: el español es la fuente. Toda clave de en.json debe existir en es.json y llevar los mismos {marcadores}.
+// Mientras la traducción se completa, lo que falta se muestra en español (t() cae al español) y aquí solo se informa;
+// con --completo la falta de una clave es un error (la condición para ofrecer el inglés en el selector).
+const flatten = (obj, prefix = '', out = new Map()) => {
+  for (const [k, v] of Object.entries(obj)) {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (v && typeof v === 'object') flatten(v, key, out);
+    else out.set(key, String(v));
+  }
+  return out;
+};
+const es = flatten(locale);
+const en = flatten(JSON.parse(readFileSync(join(root, 'src', 'locales', 'en.json'), 'utf8')));
+const marcadores = (txt) => [...txt.matchAll(/\{[a-z_]+\}/g)].map((m) => m[0]).sort().join(',');
+const problemas = [];
+for (const [key, txt] of en) {
+  if (!es.has(key)) problemas.push(`${key}: existe en en.json y no en es.json`);
+  else if (marcadores(txt) !== marcadores(es.get(key))) problemas.push(`${key}: los marcadores {…} no coinciden con el español`);
+}
+const faltan = [...es.keys()].filter((k) => !en.has(k));
+console.log(`Inglés: ${en.size} de ${es.size} claves traducidas (${Math.round((100 * en.size) / es.size)} %).`);
+if (problemas.length > 0) {
+  console.error(`Inglés con ${problemas.length} problemas:`);
+  for (const p of problemas) console.error(`  ${p}`);
+  process.exit(1);
+}
+if (process.argv.includes('--completo') && faltan.length > 0) {
+  console.error(`Inglés incompleto: faltan ${faltan.length} claves (la primera: ${faltan[0]}).`);
+  process.exit(1);
+}
